@@ -123,4 +123,41 @@ document.addEventListener("DOMContentLoaded", function() {
         sendToTab("updateSpeed", value);
     }
 
+    function formatTime(seconds) {
+        const days = Math.floor(seconds / 86400); // 86400 seconds in a day
+        seconds %= 86400;
+    
+        const hours = Math.floor(seconds / 3600); // 3600 seconds in an hour
+        seconds %= 3600;
+    
+        const minutes = Math.floor(seconds / 60); // 60 seconds in a minute
+        seconds = Math.floor(seconds % 60); // Remaining seconds
+    
+        let formattedTime = "";
+    
+        if (days > 0) formattedTime += `${days} day${days !== 1 ? "s" : ""}, `;
+        if (hours > 0) formattedTime += `${hours} hour${hours !== 1 ? "s" : ""}, `;
+        if (minutes > 0) formattedTime += `${minutes} minute${minutes !== 1 ? "s" : ""}, `;
+        if (seconds > 0 || formattedTime === "") formattedTime += `${seconds} second${seconds !== 1 ? "s" : ""}`;
+    
+        // Remove trailing comma and space if any
+        return formattedTime.replace(/, $/, "");
+    }
+
+    const timeSavedEl = document.getElementById("timeSaved");
+
+    // Function to get the current saved time from the background script
+    const updateSavedTime = () => {
+        chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
+            if (response?.savedTime != null) {
+                timeSavedEl.textContent = `${formatTime(response.savedTime)}`;
+            }
+        });
+    };
+
+    // Update the saved time every second
+    setInterval(updateSavedTime, 1000);
+
+    // Initial update
+    updateSavedTime();
 });

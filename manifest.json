@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Panopto Custom Speed",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Allows you to set custom speeds on Panopto. Useful for University Students.",
   
   "icons": {
@@ -19,7 +19,10 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
-    "activeTab"
+    "activeTab", "storage"
   ]
 }
