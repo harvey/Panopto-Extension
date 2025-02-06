@@ -6,16 +6,19 @@ function updateSpeed() {
     let speed = localStorage.getItem('panoptoExtSpeed');
     const video = document.querySelector('video');
 
-    if(video && speed) {
+    if (video && speed) {
         video.playbackRate = speed;
-    }
-    else{
+    } else {
         console.log("Took too long to find video on page, assuming no video.");
     }
 }
 
 function track() {
     const video = document.querySelector('video');
+    if (!video) {
+        console.log("No video found to track.");
+        return;
+    }
     let lastCurrentTime = video.currentTime;
     let lastRealTime = Date.now();
     let isTracking = false;
@@ -24,26 +27,27 @@ function track() {
         const currentRealTime = Date.now();
         const currentCurrentTime = video.currentTime;
 
-        // Update last times if paused
+        // Reset markers if the video is paused.
         if (video.paused) {
             lastCurrentTime = currentCurrentTime;
             lastRealTime = currentRealTime;
             return;
         }
 
-        // Calculate deltas
-        const realTimeDelta = (currentRealTime - lastRealTime) / 1000; // Seconds
+        // Calculate elapsed time in seconds.
+        const realTimeDelta = (currentRealTime - lastRealTime) / 1000;
         const currentTimeDelta = currentCurrentTime - lastCurrentTime;
 
-        // Calculate saved time only if playing faster than 1x
+        // Only compute saved time if the playback rate is > 1 
+        // (and thereby ignore normal or skipped jumps which have been reset).
         if (video.playbackRate > 1) {
             const savedTime = currentTimeDelta - realTimeDelta;
-            
+
             if (savedTime > 0) {
                 chrome.runtime.sendMessage(
                     { type: "updateSavedTime", savedTime },
                     (response) => {
-                        if (response.status === "success") {
+                        if (response && response.status === "success") {
                             console.log(`Saved time: ${savedTime.toFixed(2)}s`);
                         }
                     }
@@ -51,34 +55,41 @@ function track() {
             }
         }
 
-        // Update tracking markers
+        // Update tracking markers.
         lastCurrentTime = currentCurrentTime;
         lastRealTime = currentRealTime;
     };
 
-    // Start tracking when video plays
+    // Start tracking when the video plays.
     video.addEventListener("play", () => {
         if (!isTracking) {
-            // Reset markers on play
+            // Reset markers at play.
             lastCurrentTime = video.currentTime;
             lastRealTime = Date.now();
             isTracking = true;
         }
     });
 
-    // Handle pause events
+    // Update tracking on pause.
     video.addEventListener("pause", () => {
         isTracking = false;
-        trackTimeSaved(); // Final update when paused
+        trackTimeSaved(); // Final update when paused.
     });
 
-    // Track changes continuously
+    // **New code:** Reset markers on manual seeking.
+    video.addEventListener("seeked", () => {
+        lastCurrentTime = video.currentTime;
+        lastRealTime = Date.now();
+        console.log("Markers reset due to seeking.");
+    });
+
+    // Continue to track saved time regularly.
     setInterval(trackTimeSaved, 1000);
     video.addEventListener("ratechange", trackTimeSaved);
 }
 
 chrome.runtime.onMessage.addListener(function(message) {
-    console.log('Injected panopto speed script into page successfully.')
+    console.log('Injected panopto speed script into page successfully.');
     if (message.action === "updateSpeed") {
         localStorage.setItem('panoptoExtSpeed', message.value);
         updateSpeed();
@@ -89,15 +100,24 @@ chrome.runtime.onMessage.addListener(function(message) {
     
 });
 
-window.addEventListener("load", () => {
-    if (localStorage.getItem('speedOnStartup') == "true"){
+// Initialization function
+function initExtension() {
+    if (localStorage.getItem('speedOnStartup') === "true"){
         sleep(500).then(() => {
             updateSpeed();
-        })
+        });
         sleep(1500).then(() => {  // for slow internet & computers
             updateSpeed();
-        })
+        });
     }
     track();
-});
+}
+
+// If the document is already loaded, initialize immediately;
+// otherwise, wait for the 'load' event.
+if (document.readyState === "complete") {
+    initExtension();
+} else {
+    window.addEventListener("load", initExtension);
+}
 

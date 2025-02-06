@@ -99,9 +99,24 @@ document.addEventListener("DOMContentLoaded", function() {
         return (key >= '0' && key <= '9') || ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'x', 'X', '.', 'Ctrl', 'a'].includes(key);
     }
 
+    // Set default values if they don't exist
+    let storedSpeed = parseFloat(localStorage.getItem('panoptoExtSpeed'));
+    if (isNaN(storedSpeed)) {
+        storedSpeed = 1;
+        localStorage.setItem('panoptoExtSpeed', '1');
+    }
+
     const sliderValue = document.getElementById('sliderValue');
-    slider.value = localStorage.getItem('panoptoExtSpeed');
-    sliderValue.innerText = `${slider.value}x`;
+
+    // Check if the stored speed is above the slider's default max (3)
+    let currentMax = parseFloat(slider.max);
+    if (storedSpeed > currentMax) {
+        slider.max = storedSpeed; // Update slider max to reflect the actual speed
+    }
+
+    // Set the current slider value to the stored speed
+    slider.value = storedSpeed;
+    sliderValue.innerText = `${storedSpeed.toFixed(2)}x`;
 
     slider.addEventListener('input', function() {
         updateSlider(this);
@@ -111,10 +126,9 @@ document.addEventListener("DOMContentLoaded", function() {
         sendSpeed();
     })
 
-    function updateSlider(slider) {
-        let value = parseFloat(slider.value);
-        
-        localStorage.setItem('panoptoExtSpeed', value)
+    function updateSlider(sliderElem) {
+        let value = parseFloat(sliderElem.value);
+        localStorage.setItem('panoptoExtSpeed', value);
         sliderValue.innerText = `${value.toFixed(2)}x`;
     }
 
