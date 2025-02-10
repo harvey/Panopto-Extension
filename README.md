@@ -1,5 +1,7 @@
 ## Panopto Custom Speed extension
 
+https://harveychandler.me/panopto
+
 <table>
   <tr style="text-weight: bold">
     <th>Name</th>
