@@ -48,7 +48,7 @@ function track() {
                     { type: "updateSavedTime", savedTime },
                     (response) => {
                         if (response && response.status === "success") {
-                            console.log(`Saved time: ${savedTime.toFixed(2)}s`);
+                            //console.log(`Saved time: ${savedTime.toFixed(2)}s`);
                         }
                     }
                 );
