@@ -14,6 +14,9 @@ document.addEventListener("DOMContentLoaded", function() {
     checkIfFirstTimeUse = localStorage.getItem('panoptoExtSpeed');
     if(!checkIfFirstTimeUse) {
         localStorage.setItem('panoptoExtSpeed','1');
+
+        let userDataOptIn = false;
+        localStorage.setItem('userDataOptIn', 'false');
     }
 
     checkIfFirstTimeUse = localStorage.getItem('panoptoExtToggle');
@@ -35,6 +38,13 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
+    z = localStorage.getItem('userDataOptIn');
+    if(z){
+        if(z == "true"){
+            document.getElementById('userDataOptIn').checked = true;
+        }
+    }
+
     checkBox.addEventListener('click', () => {
         if(checkBox.checked){
             localStorage.setItem('panoptoExtToggle', 'true');
@@ -45,6 +55,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
         console.log(localStorage.getItem('panoptoExtToggle'));
         sendToTab("speedOnStartup", localStorage.getItem('panoptoExtToggle'));
+    });
+
+    document.getElementById('userDataOptIn').addEventListener('click', () => {
+        if(document.getElementById('userDataOptIn').checked){
+            localStorage.setItem('userDataOptIn', 'true');
+        }
+        else{
+            localStorage.setItem('userDataOptIn', 'false');
+        }
+        console.log(localStorage.getItem('userDataOptIn'));
     });
 
     editableSpan.textContent = localStorage.getItem('panoptoExtSpeed') + "x";
@@ -174,4 +194,88 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Initial update
     updateSavedTime();
+
+    let ts = 0;
+
+    let uniqueID = localStorage.getItem('uniqueID');
+        if (!uniqueID) {
+        // Generate a simple unique ID (you can use a more robust method if needed)
+        uniqueID = 'user_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('uniqueID', uniqueID);
+        }
+        console.log('Unique ID:', uniqueID);
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        temp = localStorage.getItem('saved-time');
+
+        if(!temp) {
+            localStorage.setItem('saved-time', 0);
+        }
+        else {
+            previousSavedTime = temp;
+        }
+
+        optIn = localStorage.getItem('userDataOptIn');
+
+        if(optIn == "true"){ // if user opts in to ananymous data collection
+            chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
+                if (response?.savedTime != null) {
+                    ts = response.savedTime;
+                    let formURL = 'aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vZm9ybXMvZC9lLzFGQUlwUUxTZHl0dVh1eHZiVllHSlRtamNsRG9zX3BTM1lId0MtQWtKNjN0WENYaG5PS2tJTjFRL2Zvcm1SZXNwb25zZQ==';
+                    formURL = atob(formURL);
+        
+                    // Replace with your form input field names.
+                    const fieldValue1 = 'entry.934660280'; // Field name for "anonymous_id"
+                    const fieldValue2 = 'entry.1414306928'; // Field name for "time_saved
+                
+                    // Prepare your data.
+                    const formData = new URLSearchParams();
+                    if(ts == 0){
+                        sleep(3000).then(() => {
+                            chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
+                                if (response?.savedTime != null) {
+                                    ts = response.savedTime;
+                                }
+                            });
+                            formData.append(fieldValue1, uniqueID);  
+                            formData.append(fieldValue2, ts); 
+                    
+                            // Send the data using fetch in no-cors mode.
+                            try{
+                            fetch(formURL, {
+                                method: 'POST',
+                                mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
+                                body: formData,
+                            })
+                            }
+                            catch(e){
+                            console.log(e);
+                            }
+                        });
+                    }
+                    else{
+                        if (ts != previousSavedTime) {
+                            formData.append(fieldValue1, uniqueID);  // Replace 'Hello' with dynamic data
+                            formData.append(fieldValue2, ts);  // Replace 'World' with dynamic data
+                    
+                            // Send the data using fetch in no-cors mode.
+                            try{
+                            fetch(formURL, {
+                                method: 'POST',
+                                mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
+                                body: formData,
+                            })
+                            }
+                            catch(e){
+                            console.log(e);
+                            }
+                            localStorage.setItem('saved-time', ts);
+                        }
+                    }
+                }
+            });
+        }
 });
