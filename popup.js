@@ -224,8 +224,8 @@ document.addEventListener("DOMContentLoaded", function() {
             chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
                 if (response?.savedTime != null) {
                     ts = response.savedTime;
-                    let formURL = 'aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vZm9ybXMvZC9lLzFGQUlwUUxTZHl0dVh1eHZiVllHSlRtamNsRG9zX3BTM1lId0MtQWtKNjN0WENYaG5PS2tJTjFRL2Zvcm1SZXNwb25zZQ==';
-                    formURL = atob(formURL);
+                    let formURL = 'https://docs.google.com/forms/d/e/1FAIpQLSdytuXuxvbVYGJTmjclDos_pS3YHwC-AkJ63tXCXhnOKkIN1Q/formResponse';
+                    
         
                     // Replace with your form input field names.
                     const fieldValue1 = 'entry.934660280'; // Field name for "anonymous_id"
