@@ -337,5 +337,19 @@ document.addEventListener("DOMContentLoaded", function() {
               );
             });
 
+            document.getElementById('rate-button').addEventListener('click', () => {
+                // open a new tab to the chrome web store (https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam)
+                window.open(
+                    "https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews",
+                );
+            });
+    
+            document.getElementById('coffee-button').addEventListener('click', () => {
+                window.open(
+                    "https://buymeacoffee.com/harveychandler",
+                );
+            });     
+
+        
         getRank()
 });
