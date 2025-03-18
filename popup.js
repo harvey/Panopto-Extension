@@ -65,6 +65,7 @@ document.addEventListener("DOMContentLoaded", function() {
             localStorage.setItem('userDataOptIn', 'false');
         }
         console.log(localStorage.getItem('userDataOptIn'));
+        optInFunc();
     });
 
     editableSpan.textContent = localStorage.getItem('panoptoExtSpeed') + "x";
@@ -220,62 +221,121 @@ document.addEventListener("DOMContentLoaded", function() {
 
         optIn = localStorage.getItem('userDataOptIn');
 
-        if(optIn == "true"){ // if user opts in to ananymous data collection
-            chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
-                if (response?.savedTime != null) {
-                    ts = response.savedTime;
-                    let formURL = 'https://docs.google.com/forms/d/e/1FAIpQLSdytuXuxvbVYGJTmjclDos_pS3YHwC-AkJ63tXCXhnOKkIN1Q/formResponse';
+        optInFunc();
+
+        function optInFunc(){
+            optIn = localStorage.getItem('userDataOptIn');
+            anonContainer = document.getElementById('anon-container');
+
+            if(optIn == "true"){ // if user opts in to ananymous data collection
+                anonymousID = document.getElementById('anonymous-user');
+                anonymousID.textContent = uniqueID;
+                anonContainer.style.display = "flex";
+    
+                chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
+                    if (response?.savedTime != null) {
+                        ts = response.savedTime;
+                        let formURL = 'https://docs.google.com/forms/d/e/1FAIpQLSdytuXuxvbVYGJTmjclDos_pS3YHwC-AkJ63tXCXhnOKkIN1Q/formResponse';
+                        
+            
+                        // Replace with your form input field names.
+                        const fieldValue1 = 'entry.934660280'; // Field name for "anonymous_id"
+                        const fieldValue2 = 'entry.1414306928'; // Field name for "time_saved
                     
-        
-                    // Replace with your form input field names.
-                    const fieldValue1 = 'entry.934660280'; // Field name for "anonymous_id"
-                    const fieldValue2 = 'entry.1414306928'; // Field name for "time_saved
-                
-                    // Prepare your data.
-                    const formData = new URLSearchParams();
-                    if(ts == 0){
-                        sleep(3000).then(() => {
-                            chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
-                                if (response?.savedTime != null) {
-                                    ts = response.savedTime;
+                        // Prepare your data.
+                        const formData = new URLSearchParams();
+                        if(ts == 0){
+                            sleep(3000).then(() => {
+                                chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
+                                    if (response?.savedTime != null) {
+                                        ts = response.savedTime;
+                                    }
+                                });
+                                formData.append(fieldValue1, uniqueID);  
+                                formData.append(fieldValue2, ts); 
+                        
+                                // Send the data using fetch in no-cors mode.
+                                if(ts != 0) {
+                                    try{
+                                        fetch(formURL, {
+                                            method: 'POST',
+                                            mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
+                                            body: formData,
+                                        })
+                                        }
+                                    catch(e){
+                                        console.log(e);
+                                        }
                                 }
                             });
-                            formData.append(fieldValue1, uniqueID);  
-                            formData.append(fieldValue2, ts); 
-                    
-                            // Send the data using fetch in no-cors mode.
-                            try{
-                            fetch(formURL, {
-                                method: 'POST',
-                                mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
-                                body: formData,
-                            })
+                        }
+                        else{
+                            if (ts != previousSavedTime) {
+                                formData.append(fieldValue1, uniqueID);  // Replace 'Hello' with dynamic data
+                                formData.append(fieldValue2, ts);  // Replace 'World' with dynamic data
+                        
+                                // Send the data using fetch in no-cors mode.
+                                try{
+                                fetch(formURL, {
+                                    method: 'POST',
+                                    mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
+                                    body: formData,
+                                })
+                                }
+                                catch(e){
+                                console.log(e);
+                                }
+                                localStorage.setItem('saved-time', ts);
                             }
-                            catch(e){
-                            console.log(e);
-                            }
-                        });
-                    }
-                    else{
-                        if (ts != previousSavedTime) {
-                            formData.append(fieldValue1, uniqueID);  // Replace 'Hello' with dynamic data
-                            formData.append(fieldValue2, ts);  // Replace 'World' with dynamic data
-                    
-                            // Send the data using fetch in no-cors mode.
-                            try{
-                            fetch(formURL, {
-                                method: 'POST',
-                                mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
-                                body: formData,
-                            })
-                            }
-                            catch(e){
-                            console.log(e);
-                            }
-                            localStorage.setItem('saved-time', ts);
                         }
                     }
-                }
-            });
+                });
+            }
+            else{
+                //anonContainer.style.display = "none";
+                // only enable if bug fixed where popup window size does not correct once hidden
+            }
         }
+
+        async function getRank() {
+            if(localStorage.getItem('user-rank')){
+                if(localStorage.getItem('user-rank') == -1){
+                    document.getElementById('user-rank').textContent = `(rank >20)`;
+                }
+                else{
+                    document.getElementById('user-rank').textContent = `(#${localStorage.getItem('user-rank')})`;
+                }
+            }
+
+            // place a loading svg beside the rank to make it clear it could be old data
+            
+
+            fetch('https://script.google.com/macros/s/AKfycbzMjVxI1_k_upcNQMpOxSvGZlrMF-iZRJzUzahSubroBBihju2zfSE4ZEgKwkNj3KSQ/exec'
+                 + `?input=${uniqueID}`)
+                .then(response => response.text())
+                .then(text => {
+                    localStorage.setItem('user-rank', text);
+                    if(text != -1){
+                        document.getElementById('user-rank').textContent = `(#${text})`;
+                    }
+                    else{
+                        document.getElementById('user-rank').textContent = `(rank >20)`;
+                    }
+                    document.getElementById('loader').style.display = "none";
+                    document.getElementById('tick').style.display = "inline";
+                    
+                      
+                })
+                .catch(error => console.log('Error:', error));
+        }
+        
+        document.getElementById('leaderboard-popup').addEventListener('click', () => {
+            window.open(
+                "https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1510843010&format=interactive",
+                "popupWindow",
+                "width=644,height=620"
+              );
+            });
+
+        getRank()
 });

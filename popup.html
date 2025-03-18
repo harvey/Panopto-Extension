@@ -34,7 +34,16 @@
             <input id="userDataOptIn" type="checkbox" value="" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
             <label class="ms-2 text-sm text-zinc-500 dark:text-zinc-500">Opt in for anonymous user data</label>
           </div>
-          <label>This anonymous data might eventually allow a leaderboard of the users who have the most time saved.</label>
+          <p id="anon-container" style="display: none" class="text-zinc-500">
+            You are&nbsp;
+            <span style="font-weight: bold;" id="anonymous-user"></span>
+            <span>&nbsp; </span>
+            <span style="font-weight: bold" id="user-rank" class="text-blue-600"></span>
+            <svg id="loader" style="max-height: 15px; max-width: 15px; width: 1em;display: inline;vertical-align: bottom;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><radialGradient id="a7" cx=".66" fx=".66" cy=".3125" fy=".3125" gradientTransform="scale(1.5)"><stop offset="0" stop-color="#3A3A3A"></stop><stop offset=".3" stop-color="#3A3A3A" stop-opacity=".9"></stop><stop offset=".6" stop-color="#3A3A3A" stop-opacity=".6"></stop><stop offset=".8" stop-color="#3A3A3A" stop-opacity=".3"></stop><stop offset="1" stop-color="#3A3A3A" stop-opacity="0"></stop></radialGradient><circle transform-origin="center" fill="none" stroke="url(#a7)" stroke-width="30" stroke-linecap="round" stroke-dasharray="200 1000" stroke-dashoffset="0" cx="100" cy="100" r="70"><animateTransform type="rotate" attributeName="transform" calcMode="spline" dur="2" values="360;0" keyTimes="0;1" keySplines="0 0 1 1" repeatCount="indefinite"></animateTransform></circle><circle transform-origin="center" fill="none" opacity=".2" stroke="#3A3A3A" stroke-width="30" stroke-linecap="round" cx="100" cy="100" r="70"></circle></svg>
+            <svg id="tick" style="max-height: 14px; max-width: 14px; width: 1em;display: none;vertical-align: bottom;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64"><path d="M32,2C15.431,2,2,15.432,2,32c0,16.568,13.432,30,30,30c16.568,0,30-13.432,30-30C62,15.432,48.568,2,32,2z M25.025,50  l-0.02-0.02L24.988,50L11,35.6l7.029-7.164l6.977,7.184l21-21.619L53,21.199L25.025,50z" fill="#43a047"/></svg>
+          </p>
+          <label id="leaderboard-popup"><a href="" class="text-blue-500 underline">Leaderboard popup</a></label>
+          <!-- chart: https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1510843010 -->
           <div>
             <br>
             <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" class="text-purple-500 underline" target="_blank">Please rate this extension on the store</a>
