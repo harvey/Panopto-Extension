@@ -11,6 +11,13 @@ function sendToTab(action, value) {
 
 document.addEventListener("DOMContentLoaded", function() {
 
+    if(!localStorage.getItem('email')) {
+        clientLogout();
+    }
+    else{
+        getRank();
+    }
+
     checkIfFirstTimeUse = localStorage.getItem('panoptoExtSpeed');
     if(!checkIfFirstTimeUse) {
         localStorage.setItem('panoptoExtSpeed','1');
@@ -185,6 +192,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const updateSavedTime = () => {
         chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
             if (response?.savedTime != null) {
+                localStorage.setItem('saved-time',response.savedTime);
                 timeSavedEl.textContent = `${formatTime(response.savedTime)}`;
             }
         });
@@ -198,13 +206,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
     let ts = 0;
 
-    let uniqueID = localStorage.getItem('uniqueID');
-        if (!uniqueID) {
-        // Generate a simple unique ID (you can use a more robust method if needed)
-        uniqueID = 'user_' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('uniqueID', uniqueID);
-        }
-        console.log('Unique ID:', uniqueID);
+    uniqueID = localStorage.getItem('uniqueID');
+    //     if (!uniqueID) {
+    //     // Generate a simple unique ID (you can use a more robust method if needed)
+    //     uniqueID = 'user_' + Math.random().toString(36).substring(2, 9);
+    //     localStorage.setItem('uniqueID', uniqueID);
+    //     }
+    //     console.log('Unique ID:', uniqueID);
 
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
@@ -223,6 +231,292 @@ document.addEventListener("DOMContentLoaded", function() {
 
         optInFunc();
 
+        async function checkToken(token, email) {
+            if(token == 'null' || token == null){
+                return false;
+            }
+            const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${token}`;
+            try {
+                console.log(1);
+                const response = await fetch(tokenInfoUrl);
+                const tokenInfo = await response.json();
+            
+                if (tokenInfo.error_description) {
+                    return false;
+                }
+            
+                if(tokenInfo.email == email) {
+                    return true;
+                }
+
+                return false;
+            }
+            catch {
+                return false;
+            }
+        }
+
+        function clientLogout() {
+            try{
+                chrome.identity.removeCachedAuthToken({ token: localStorage.getItem('authToken') }, function() {
+                    if(localStorage.getItem('authToken') == 'null'){
+                        console.log("already logged out");
+                        localStorage.removeItem('username');
+                        localStorage.removeItem('email');
+                        // Optionally, update your UI here to show a sign-in button.
+                        document.getElementById('signInWithGoogle').style.display = "inline";
+                        document.getElementById('leaderboardText').style.display = "flex";
+                        document.getElementById('loginText').style.display = "none";
+                        document.getElementById('logout').style.display = "none";
+                        document.getElementById('optedInContainer').style.display = "none";
+                        document.getElementById('migrationContainer').style.display = "none";
+                    } else {
+                        console.log("User logged out (token removed).");
+                        localStorage.setItem('authToken', 'null');
+                        localStorage.removeItem('username');
+                        localStorage.removeItem('email');
+                        // Optionally, update your UI here to show a sign-in button.
+                        document.getElementById('signInWithGoogle').style.display = "inline";
+                        document.getElementById('leaderboardText').style.display = "flex";
+                        document.getElementById('loginText').style.display = "none";
+                        document.getElementById('logout').style.display = "none";
+                        document.getElementById('optedInContainer').style.display = "none";
+                        document.getElementById('migrationContainer').style.display = "none";
+
+                    }
+                  });
+            }
+            catch {console.log('no token to remove')}
+            localStorage.removeItem('username');
+            localStorage.removeItem('email');
+            // Optionally, update your UI here to show a sign-in button.
+            document.getElementById('signInWithGoogle').style.display = "inline";
+            document.getElementById('leaderboardText').style.display = "flex";
+            document.getElementById('loginText').style.display = "none";
+            document.getElementById('logout').style.display = "none";
+            document.getElementById('optedInContainer').style.display = "none";
+            document.getElementById('optInContainer').style.display = "none";
+            document.getElementById('leaderboard-popup').style.display = "none";
+        }
+
+        function validateUsername() {
+            const input = document.getElementById('newUsernameTextbox');
+            const username = input.value;
+            isValid = /^[a-zA-Z0-9]+$/.test(username);
+        
+            // Reset classes
+            input.classList.remove('border-green', 'border-red', 'border-white');
+        
+            // Add the correct class
+            if (username.length > 0 && isValid) {
+              input.classList.add('border-white');
+              console.log(2);
+              fetch('https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
+                + `?user={"username":"${username}", "token":"${localStorage.getItem('authToken')}", "email":"${localStorage.getItem('email')}"}`)
+               .then(response => response.text())
+               .then(text => {
+                   if(text == "true" || text == "false") {
+                        input.classList.remove('border-white');
+                        if(text == "true") {
+                            input.classList.add('border-green');
+                            currentValid = true;
+                            return true;
+                        }
+                        else{
+                            input.classList.add('border-red')
+                            return false;
+                        }
+                   }
+                     
+               })
+               .catch(error => console.log('Error:', error));
+
+            }
+        }
+
+        currentValid = false;
+
+        function migrateConfirm() {
+
+        }
+
+        function debounce(func, delay) {
+            let timeoutId;
+            return function(...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    func.apply(this, args);
+                }, delay);
+            };
+        }
+        
+        // Create a debounced version of validateUsername with 500ms delay
+        const debouncedValidateUsername = debounce(validateUsername, 500);
+
+        function clientLogin() {
+            // get username from server
+            try{
+                sleep(1100).then(() => {
+                    fetch('https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
+                        + `?getUsername={"token":"${localStorage.getItem('authToken')}", "email":"${localStorage.getItem('email')}"}`)
+                       .then(response => response.text())
+                       .then(text => {
+                           console.log(text);
+                           if(text == "{username not found}") {
+                                document.getElementById('migrationContainer').style.display = "flex";
+                                document.getElementById('oldUsernameTextbox').value = "(unknown)";
+                                // request username
+                                sleep(100).then(() => {
+                                    usrBox = document.getElementById('newUsernameTextbox');
+                                    usrBox.addEventListener('keyup', () => {
+                                        // console.log(usrBox.value);
+                                        currentValid = false;
+                                        debouncedValidateUsername();
+                                    });
+                                    usrBox.addEventListener('keydown', () => {
+                                        // console.log(usrBox.value);
+                                        currentValid = false;
+                                        debouncedValidateUsername();
+                                    });
+                                })
+                                //alert("WHO R U BOY");
+                           }
+                           else if (text.length <= 16){
+                                localStorage.setItem('username', text);
+                                document.getElementById('email').textContent = text;
+                                document.getElementById('migrationContainer').style = "display: none;";
+                                getRank();
+                           }
+                       });  
+                });
+            } catch {}
+            // localStorage.setItem('username', 'temporaryUsername');
+            document.getElementById('signInWithGoogle').style.display = "none";
+            document.getElementById('leaderboardText').style.display = "none";
+            document.getElementById('logout').style.display = "flex";
+
+            oldUSR = localStorage.getItem('uniqueID');
+
+            if(oldUSR) {
+                document.getElementById('migrationContainer').style.display = "flex";
+                document.getElementById('oldUsernameTextbox').value = oldUSR;
+
+                sleep(100).then(() => {
+                    usrBox = document.getElementById('newUsernameTextbox');
+                    usrBox.addEventListener('keyup', () => {
+                        // console.log(usrBox.value);
+                        currentValid = false;
+                        debouncedValidateUsername();
+                    });
+                    usrBox.addEventListener('keydown', () => {
+                        // console.log(usrBox.value);
+                        currentValid = false;
+                        debouncedValidateUsername();
+                    });
+                })
+
+            } else{
+                document.getElementById('loginText').style.display = "flex";
+                document.getElementById('email').textContent = localStorage.getItem('username');
+                document.getElementById('optedInContainer').style.display = "flex";
+            }
+            document.getElementById('optInContainer').style.display = "flex";
+        }
+
+        document.getElementById('logout').addEventListener('click', () => {
+            clientLogout();    
+        });
+
+        document.getElementById('newUsernameButton').addEventListener('click', () => {
+            if(currentValid) {
+                updateUsername();
+            }
+        });
+
+        async function updateUsername() {
+            localStorage.setItem('username', document.getElementById('newUsernameTextbox').value);
+            
+            testAddr = 'https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
+            const payload = {
+                option: "updateUser",
+                token: localStorage.getItem('authToken'),
+                email: localStorage.getItem('email'),
+                //originalUniqueID: oldUSR || "",
+                newUsername: document.getElementById('newUsernameTextbox').value
+            }
+            console.log(3);
+            await fetch(testAddr, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                localStorage.removeItem('uniqueID');
+                clientLogin();
+            });
+            
+        }
+
+        if(localStorage.getItem('userDataOptIn') == 'true' && localStorage.getItem('email')){
+            testAddr = 'https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
+            const payload = {
+                option: "logTime",
+                token: localStorage.getItem('authToken'),
+                email: localStorage.getItem('email'),
+                username: localStorage.getItem('username'),
+                timeSaved: localStorage.getItem('saved-time'),
+                speed: localStorage.getItem('panoptoExtSpeed')
+            }
+            console.log(4);
+            fetch(testAddr, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            // .then(response => response.json())
+            // .then(result => console.log(result))
+            // .catch(error => console.log(error));
+        }
+
+        document.getElementById('signInWithGoogle').addEventListener('click', () => {
+            chrome.identity.getAuthToken({ interactive: false }, async function(token) {
+                if (chrome.runtime.lastError) {
+                  console.log("User is not logged in.");
+                  // Show the sign-in button or prompt the user to log in.
+                } else {
+                  console.log("User is logged in. Token:", token);
+                  authTOKEN = token;
+
+                  localStorage.setItem('authToken', authTOKEN);
+
+                  // Optionally, verify the token with your backend or Google’s token info endpoint.
+                  const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${token}`;
+                  try {
+                    console.log(5);
+                    const response = await fetch(tokenInfoUrl);
+                    const tokenInfo = await response.json();
+                
+                    if (tokenInfo.error_description) {
+                      alert(res.status(401).json({ error: "Invalid token" }));
+                    }
+                
+                    // Optional: Check the email, audience, etc.
+                    console.log("Token is valid for:", tokenInfo.email);
+                    localStorage.setItem('email', tokenInfo.email);
+                    document.getElementById('email').textContent = tokenInfo.email;
+
+                    clientLogin();
+                    }
+                    catch (error) {
+                        console.log(error);
+                    }
+                    }
+              });
+            });
+
+        
+
         function optInFunc(){
             optIn = localStorage.getItem('userDataOptIn');
             anonContainer = document.getElementById('anon-container');
@@ -235,15 +529,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
                     if (response?.savedTime != null) {
                         ts = response.savedTime;
-                        let formURL = 'https://docs.google.com/forms/d/e/1FAIpQLSdytuXuxvbVYGJTmjclDos_pS3YHwC-AkJ63tXCXhnOKkIN1Q/formResponse';
                         
-            
-                        // Replace with your form input field names.
-                        const fieldValue1 = 'entry.934660280'; // Field name for "anonymous_id"
-                        const fieldValue2 = 'entry.1414306928'; // Field name for "time_saved
-                    
-                        // Prepare your data.
-                        const formData = new URLSearchParams();
                         if(ts == 0){
                             sleep(3000).then(() => {
                                 chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
@@ -251,17 +537,21 @@ document.addEventListener("DOMContentLoaded", function() {
                                         ts = response.savedTime;
                                     }
                                 });
-                                formData.append(fieldValue1, uniqueID);  
-                                formData.append(fieldValue2, ts); 
-                        
-                                // Send the data using fetch in no-cors mode.
+                                
                                 if(ts != 0) {
                                     try{
-                                        fetch(formURL, {
+                                        console.log(6);
+                                        fetch("https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec", {
                                             method: 'POST',
                                             mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
-                                            body: formData,
-                                        })
+                                            body: JSON.stringify({
+                                                option: "logTime",
+                                                token: localStorage.getItem('authToken'),
+                                                email: localStorage.getItem('email'),
+                                                timeSaved: ts,
+                                                speed: localStorage.getItem('panoptoExtSpeed')
+                                            })
+                                        });
                                         }
                                     catch(e){
                                         console.log(e);
@@ -271,16 +561,20 @@ document.addEventListener("DOMContentLoaded", function() {
                         }
                         else{
                             if (ts != previousSavedTime) {
-                                formData.append(fieldValue1, uniqueID);  // Replace 'Hello' with dynamic data
-                                formData.append(fieldValue2, ts);  // Replace 'World' with dynamic data
-                        
+                                
                                 // Send the data using fetch in no-cors mode.
                                 try{
-                                fetch(formURL, {
-                                    method: 'POST',
-                                    mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
-                                    body: formData,
-                                })
+                                    console.log(7);
+                                    fetch("https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec", {
+                                        method: 'POST',
+                                        mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
+                                        body: JSON.stringify({
+                                            option: "logTime",
+                                            token: localStorage.getItem('authToken'),
+                                            email: localStorage.getItem('email'),
+                                            timeSaved: localStorage.getItem('panoptoExtSpeed')
+                                        })
+                                    });
                                 }
                                 catch(e){
                                 console.log(e);
@@ -309,29 +603,32 @@ document.addEventListener("DOMContentLoaded", function() {
 
             // place a loading svg beside the rank to make it clear it could be old data
             
-
-            fetch('https://script.google.com/macros/s/AKfycbzMjVxI1_k_upcNQMpOxSvGZlrMF-iZRJzUzahSubroBBihju2zfSE4ZEgKwkNj3KSQ/exec'
-                 + `?input=${uniqueID}`)
-                .then(response => response.text())
-                .then(text => {
-                    localStorage.setItem('user-rank', text);
-                    if(text != -1){
-                        document.getElementById('user-rank').textContent = `(#${text})`;
-                    }
-                    else{
-                        document.getElementById('user-rank').textContent = `(rank >20)`;
-                    }
-                    document.getElementById('loader').style.display = "none";
-                    document.getElementById('tick').style.display = "inline";
-                    
-                      
-                })
-                .catch(error => console.log('Error:', error));
+            if(localStorage.getItem('authToken') != 'null' && localStorage.getItem('authToken') != null){
+                console.log(8);
+                fetch('https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
+                    + `?input=${localStorage.getItem('username')}`)
+                    .then(response => response.text())
+                    .then(text => {
+                        localStorage.setItem('user-rank', text);
+                        // alert(text);
+                        if(text != -1){
+                            document.getElementById('user-rank').textContent = `(#${text})`;
+                        }
+                        else{
+                            document.getElementById('user-rank').textContent = `(rank >20)`;
+                        }
+                        document.getElementById('loader').style.display = "none";
+                        document.getElementById('tick').style.display = "inline";
+                        
+                        
+                    })
+                    .catch(error => console.log('Error:', error));
+            }
         }
         
         document.getElementById('leaderboard-popup').addEventListener('click', () => {
             window.open(
-                "https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1510843010&format=interactive",
+                "https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive",
                 "popupWindow",
                 "width=644,height=620"
               );
@@ -351,5 +648,19 @@ document.addEventListener("DOMContentLoaded", function() {
             });     
 
         
-        getRank()
+        
+
+        tempToken = localStorage.getItem('authToken');
+        tempEmail = localStorage.getItem('email');
+
+        async function r() {
+            let a = await checkToken(tempToken, tempEmail);
+            if(a) {
+                clientLogin();
+            }
+        }
+
+        r();
+
+        
 });

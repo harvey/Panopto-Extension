@@ -1,12 +1,134 @@
-<html>
+<html class="h-auto">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="tailwind-script.js" nonce="TAILWIND"></script>
     <script src="popup.js" nonce="POPUPSCRIPT"></script>
+    <style>
+.gsi-material-button {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -webkit-appearance: none;
+  background-color: #f2f2f2;
+  background-image: none;
+  border: none;
+  -webkit-border-radius: 20px;
+  border-radius: 20px;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  color: #1f1f1f;
+  cursor: pointer;
+  font-family: 'Roboto', arial, sans-serif;
+  font-size: 14px;
+  height: 40px;
+  letter-spacing: 0.25px;
+  outline: none;
+  overflow: hidden;
+  padding: 0 12px;
+  position: relative;
+  text-align: center;
+  -webkit-transition: background-color .218s, border-color .218s, box-shadow .218s;
+  transition: background-color .218s, border-color .218s, box-shadow .218s;
+  vertical-align: middle;
+  white-space: nowrap;
+  width: auto;
+  max-width: 400px;
+  min-width: min-content;
+}
+
+.gsi-material-button .gsi-material-button-icon {
+  height: 20px;
+  margin-right: 12px;
+  min-width: 20px;
+  width: 20px;
+}
+
+.gsi-material-button .gsi-material-button-content-wrapper {
+  -webkit-align-items: center;
+  align-items: center;
+  display: flex;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  -webkit-flex-wrap: nowrap;
+  flex-wrap: nowrap;
+  height: 100%;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+}
+
+.gsi-material-button .gsi-material-button-contents {
+  -webkit-flex-grow: 1;
+  flex-grow: 1;
+  font-family: 'Roboto', arial, sans-serif;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+
+.gsi-material-button .gsi-material-button-state {
+  -webkit-transition: opacity .218s;
+  transition: opacity .218s;
+  bottom: 0;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.gsi-material-button:disabled {
+  cursor: default;
+  background-color: #ffffff61;
+}
+
+.gsi-material-button:disabled .gsi-material-button-state {
+  background-color: #1f1f1f1f;
+}
+
+.gsi-material-button:disabled .gsi-material-button-contents {
+  opacity: 38%;
+}
+
+.gsi-material-button:disabled .gsi-material-button-icon {
+  opacity: 38%;
+}
+
+.gsi-material-button:not(:disabled):active .gsi-material-button-state, 
+.gsi-material-button:not(:disabled):focus .gsi-material-button-state {
+  background-color: #001d35;
+  opacity: 12%;
+}
+
+.gsi-material-button:not(:disabled):hover {
+  -webkit-box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
+}
+
+.gsi-material-button:not(:disabled):hover .gsi-material-button-state {
+  background-color: #001d35;
+  opacity: 8%;
+}
+
+.border-green {
+    border: 1px solid green !important;
+  }
+  .border-red {
+    border: 1px solid red !important;
+  }
+  .border-white {
+    border: 1px solid white !important;
+  }
+  
+  #newUsernameTextbox:focus {
+    outline: none;
+  }
+    </style>
   </head>
-  <body style="width: 325px; height: 200px;">
-    <div class="p-4 shadow-lg" style="background-color: #11773D;">
+  <body style="width: 325px; height: 200px; overflow: hidden; background-color: #11773D;" class="p-4">
+    <div>
       <div class="bg-white p-4 rounded-lg">
 
         <div class="mb-4">
@@ -25,29 +147,67 @@
           <div>
             <p class="text-zinc-600">Amount of time saved: <span id="timeSaved"></span></p> 
           </div>
-          <div>
-            <br>
+          <div class="flex items-center mb-4">
             <p class="text-zinc-600 font-bold">Changes will only be saved if you are on the Panopto website.</p> 
           </div>
-          <div class="flex items-center mb-4">
-          </div>
+          <div id="optInContainer" style="display: none">
             <input id="userDataOptIn" type="checkbox" value="" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-            <label class="ms-2 text-sm text-zinc-500 dark:text-zinc-500">Opt in for anonymous user data</label>
+            <label class="mb-4 ms-2 text-sm text-zinc-500 dark:text-zinc-500">Opt in for user data</label>
           </div>
-          <p id="anon-container" style="display: none" class="text-zinc-500">
-            You are&nbsp;
-            <span style="font-weight: bold;" id="anonymous-user"></span>
-            <span>&nbsp; </span>
-            <span style="font-weight: bold" id="user-rank" class="text-blue-600"></span>
-            <svg id="loader" style="max-height: 15px; max-width: 15px; width: 1em;display: inline;vertical-align: bottom;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><radialGradient id="a7" cx=".66" fx=".66" cy=".3125" fy=".3125" gradientTransform="scale(1.5)"><stop offset="0" stop-color="#3A3A3A"></stop><stop offset=".3" stop-color="#3A3A3A" stop-opacity=".9"></stop><stop offset=".6" stop-color="#3A3A3A" stop-opacity=".6"></stop><stop offset=".8" stop-color="#3A3A3A" stop-opacity=".3"></stop><stop offset="1" stop-color="#3A3A3A" stop-opacity="0"></stop></radialGradient><circle transform-origin="center" fill="none" stroke="url(#a7)" stroke-width="30" stroke-linecap="round" stroke-dasharray="200 1000" stroke-dashoffset="0" cx="100" cy="100" r="70"><animateTransform type="rotate" attributeName="transform" calcMode="spline" dur="2" values="360;0" keyTimes="0;1" keySplines="0 0 1 1" repeatCount="indefinite"></animateTransform></circle><circle transform-origin="center" fill="none" opacity=".2" stroke="#3A3A3A" stroke-width="30" stroke-linecap="round" cx="100" cy="100" r="70"></circle></svg>
-            <svg id="tick" style="max-height: 14px; max-width: 14px; width: 1em;display: none;vertical-align: bottom;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64"><path d="M32,2C15.431,2,2,15.432,2,32c0,16.568,13.432,30,30,30c16.568,0,30-13.432,30-30C62,15.432,48.568,2,32,2z M25.025,50  l-0.02-0.02L24.988,50L11,35.6l7.029-7.164l6.977,7.184l21-21.619L53,21.199L25.025,50z" fill="#43a047"/></svg>
-          </p>
-          <label id="leaderboard-popup"><a href="" class="text-blue-500 underline">Leaderboard popup</a></label>
-          <!-- chart: https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1510843010 -->
-          <div>
-            <br>
-            <!-- <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" class="text-purple-500 underline" target="_blank">Please rate this extension on the store</a> -->
+          <div class="flex mb-1 text-center justify-center" id="lbText">
+            <span id="leaderboardText" class="text-sm text-zinc-500 dark:text-zinc-500">To find out your leaderboard position</span>
+            <span style="display: none;" id="loginText" class="text-sm text-zinc-500 dark:text-zinc-500">Logged in as&nbsp;<span id="email" class="text-zinc-400 dark:text-zinc-500" style="font-weight: bold;">123</span>
           </div>
+          <div id="optedInContainer" class="block mb-1 text-center justify-center">
+            <div class="flex mb-1 text-center justify-center">
+              <p id="anon-container" style="display: flex" class="text-zinc-500">
+                You are rank&nbsp;
+                <span style="font-weight: bold;" id="anonymous-user"></span>
+                <!-- <span>&nbsp; </span> -->
+                <span style="font-weight: bold" id="user-rank" class="text-blue-600"></span>
+                <svg id="loader" style="max-height: 15px; max-width: 15px; width: 1em;display: inline;vertical-align: bottom;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><radialGradient id="a7" cx=".66" fx=".66" cy=".3125" fy=".3125" gradientTransform="scale(1.5)"><stop offset="0" stop-color="#3A3A3A"></stop><stop offset=".3" stop-color="#3A3A3A" stop-opacity=".9"></stop><stop offset=".6" stop-color="#3A3A3A" stop-opacity=".6"></stop><stop offset=".8" stop-color="#3A3A3A" stop-opacity=".3"></stop><stop offset="1" stop-color="#3A3A3A" stop-opacity="0"></stop></radialGradient><circle transform-origin="center" fill="none" stroke="url(#a7)" stroke-width="30" stroke-linecap="round" stroke-dasharray="200 1000" stroke-dashoffset="0" cx="100" cy="100" r="70"><animateTransform type="rotate" attributeName="transform" calcMode="spline" dur="2" values="360;0" keyTimes="0;1" keySplines="0 0 1 1" repeatCount="indefinite"></animateTransform></circle><circle transform-origin="center" fill="none" opacity=".2" stroke="#3A3A3A" stroke-width="30" stroke-linecap="round" cx="100" cy="100" r="70"></circle></svg>
+                <svg id="tick" style="max-height: 14px; max-width: 14px; width: 1em;display: none;vertical-align: bottom;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64"><path d="M32,2C15.431,2,2,15.432,2,32c0,16.568,13.432,30,30,30c16.568,0,30-13.432,30-30C62,15.432,48.568,2,32,2z M25.025,50  l-0.02-0.02L24.988,50L11,35.6l7.029-7.164l6.977,7.184l21-21.619L53,21.199L25.025,50z" fill="#43a047"/></svg>
+              </p>
+            </div>
+          </div>
+            <div class="flex mb-1 text-center justify-center">
+              <label id="leaderboard-popup"><a href="" class="text-blue-500 underline">Leaderboard popup</a></label>
+              </div>
+              <div class="flex mb-1 text-center justify-center">
+            <p id="logout" style="display: none; cursor: pointer;">Log out</p>
+            </div>
+          
+          
+          <div class="flex items-center justify-center">
+            <button class="gsi-material-button" id="signInWithGoogle" hidden>
+              <div class="gsi-material-button-state"></div>
+              <div class="gsi-material-button-content-wrapper">
+                <div class="gsi-material-button-icon">
+                  <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" style="display: block;">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                    <path fill="none" d="M0 0h48v48H0z"></path>
+                  </svg>
+                </div>
+                <span class="gsi-material-button-contents">Sign in with Google</span>
+                <span style="display: none;">Sign in with Google</span>
+              </div>
+            </button>
+          </div>
+          <div id="migrationContainer" class="flex justify-center items-center" style="display: none;">
+            <div class="bg-card shadow-lg rounded-lg p-6 bg-zinc-100">
+              <h1 class="text-red-800 text-center mb-4">Usernames are migrating!</h1>
+              <input id="oldUsernameTextbox" type="text" style="border: 1px solid #575b5e98;" disabled class="w-full px-3 py-2 placeholder-zinc-400 text-zinc-500 bg-input rounded-md mb-2" value="user_abcdefg"/>
+              <small class="block text-zinc-500 mb-4 text-sm">Your old, randomised username</small>
+          
+              <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="New username" class="w-full px-3 py-2 placeholder-zinc-400 text-zinc-900 rounded-md mb-2 border-white" />
+              <button id="newUsernameButton" class="w-full bg-primary bg-zinc-900 text-white text-primary-foreground hover:bg-primary/80 py-2 rounded-md transition duration-300">Confirm</button>
+            </div>
+          </div>
+        </div>
+        <span style="display: none;" id="POST">POST</span>
           <div style="display: flex; gap: 10px;">
             <a id="coffee-button" href="https://buymeacoffee.com/harveychandler" style="flex: 1; display: block; text-decoration: none;">
               <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="40px" viewBox="0 0 250 60">
@@ -72,8 +232,8 @@
               </svg>
             </a>
           </div>
-          
       </div>
+      <br>
     </div>
   </body>
 </html>
