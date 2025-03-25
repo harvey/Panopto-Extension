@@ -231,30 +231,79 @@ document.addEventListener("DOMContentLoaded", function() {
 
         optInFunc();
 
-        async function checkToken(token, email) {
-            if(token == 'null' || token == null){
-                return false;
+        // Helper: Returns a promise that removes the cached token.
+        function removeCachedToken(token) {
+            return new Promise((resolve) => {
+            chrome.identity.removeCachedAuthToken({ token: token }, () => {
+                resolve();
+            });
+            });
+        }
+        
+        // Helper: Returns a promise that gets a new auth token.
+        function getAuthToken(options) {
+            return new Promise((resolve, reject) => {
+            chrome.identity.getAuthToken(options, (token) => {
+                if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+                } else {
+                resolve(token);
+                }
+            });
+            });
+        }
+        
+        // Modified checkToken function with token refresh logic
+        async function checkToken(token, email, refreshed = false) {
+            if (token == 'null' || token == null) {
+              return false;
             }
             const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${token}`;
             try {
-                console.log(1);
-                const response = await fetch(tokenInfoUrl);
-                const tokenInfo = await response.json();
-            
-                if (tokenInfo.error_description) {
+              console.log("Checking token...");
+              const response = await fetch(tokenInfoUrl);
+          
+              // Check for HTTP error status (400 etc.)
+              if (response.status === 400) {
+                if (!refreshed) {
+                  console.log("Token invalid. Refreshing token...");
+                  await removeCachedToken(token);
+                  signIn();
+                  try {
+                    const newToken = await getAuthToken({ interactive: true });
+                    // Delay and then re-check the token
+                    await new Promise(resolve => setTimeout(resolve, 150));
+                    return await checkToken(newToken, email, true);
+                  } catch (error) {
+                    console.log("Token refresh failed:", error);
                     return false;
+                  }
+                } else {
+                  return false;
                 }
-            
-                if(tokenInfo.email == email) {
-                    return true;
-                }
-
+              }
+              
+              if (!response.ok) {
+                console.log("Error: HTTP status", response.status);
                 return false;
-            }
-            catch {
+              }
+              
+              const tokenInfo = await response.json();
+              
+              if (tokenInfo.error_description) {
+                console.log("Error: ", tokenInfo.error_description);
                 return false;
+              }
+              
+              return tokenInfo.email === email;
+            } catch (error) {
+              console.log("Error during token check:", error);
+              return false;
             }
-        }
+          }
+          
+          
+       
 
         function clientLogout() {
             try{
@@ -479,40 +528,89 @@ document.addEventListener("DOMContentLoaded", function() {
             // .catch(error => console.log(error));
         }
 
-        function signIn() {
+        function storeToken(token, expiresIn) {
+            // Compute the expiry time (in milliseconds)
+            const expiryTime = Date.now() + expiresIn * 1000;
+            localStorage.setItem('oauthToken', token);
+            localStorage.setItem('tokenExpiry', expiryTime);
+          }
+          
+        function isTokenExpired() {
+          const tokenExpiry = localStorage.getItem('tokenExpiry');
+          if (!tokenExpiry) return true; // No expiry info means token is invalid
+          return Date.now() > parseInt(tokenExpiry, 10);
+        }
+
+        function signIn(retry = false) {
             chrome.identity.getAuthToken({ interactive: true }, async function(token) {
-                if (chrome.runtime.lastError) {
-                  console.log("User is not logged in.");
-                  // Show the sign-in button or prompt the user to log in.
-                } else {
-                  console.log("User is logged in. Token:", token);
-                  authTOKEN = token;
+              if (chrome.runtime.lastError) {
+                console.log("User is not logged in.");
+                // Show the sign-in button or prompt the user to log in.
+                return;
+              }
+              
+              console.log("User is logged in. Token:", token);
+              authTOKEN = token;
+              localStorage.setItem('authToken', authTOKEN);
+          
+              const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${token}`;
+              try {
+                console.log("Verifying token...");
+                const response = await fetch(tokenInfoUrl);
+          
+                // If a 400 error is encountered...
+                if (response.status === 400) {
+                  if (!retry) {
+                    // Remove the cached token and try signing in again
+                    chrome.identity.removeCachedAuthToken({ token: token }, function() {
+                      console.log("Cached token removed. Retrying sign-in...");
+                      signIn(true);
+                    });
+                  } else {
+                    // If already retried and still failing, log out the client
+                    console.log("Token verification failed on retry. Logging out.");
+                    clientLogout();
+                  }
+                  return;
+                }
+          
+                const tokenInfo = await response.json();
+          
+                // If the token info contains an error description, handle it (optional)
+                if (tokenInfo.error_description) {
+                  console.log("Token error: " + tokenInfo.error_description);
+                  return;
+                }
+          
+                // Token is valid – proceed with login actions
+                console.log("Token is valid for:", tokenInfo.email);
+                localStorage.setItem('email', tokenInfo.email);
+                document.getElementById('email').textContent = tokenInfo.email;
 
-                  localStorage.setItem('authToken', authTOKEN);
+                logLogin();
+                storeToken(token, tokenInfo.expires_in);
 
-                  // Optionally, verify the token with your backend or Google’s token info endpoint.
-                  const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${token}`;
-                  try {
-                    console.log(5);
-                    const response = await fetch(tokenInfoUrl);
-                    const tokenInfo = await response.json();
-                
-                    if (tokenInfo.error_description) {
-                      alert(res.status(401).json({ error: "Invalid token" }));
-                    }
-                
-                    // Optional: Check the email, audience, etc.
-                    console.log("Token is valid for:", tokenInfo.email);
-                    localStorage.setItem('email', tokenInfo.email);
-                    document.getElementById('email').textContent = tokenInfo.email;
 
-                    clientLogin();
-                    }
-                    catch (error) {
-                        console.log(error);
-                    }
-                    }
-              });
+                clientLogin();
+          
+              } catch (error) {
+                console.log("Error during token verification:", error);
+              }
+            });
+          }
+          
+        function logLogin() {
+            try{
+                fetch("https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec", {
+                    method: 'POST',
+                    mode: 'no-cors', // This prevents CORS errors, though the response is opaque.
+                    body: JSON.stringify({
+                        option: "logLogin",
+                        token: localStorage.getItem('authToken'),
+                        email: localStorage.getItem('email'),
+                    })
+                });
+            } catch {console.log('logLogin failed')}
         }
 
         document.getElementById('signInWithGoogle').addEventListener('click', () => {
@@ -658,10 +756,19 @@ document.addEventListener("DOMContentLoaded", function() {
         tempEmail = localStorage.getItem('email');
 
         async function r() {
-            let a = await checkToken(tempToken, tempEmail);
+            let a = isTokenExpired();
             if(a) {
+                clientLogout();
+                signIn();
                 clientLogin();
             }
+            else{
+                clientLogin();
+            }
+            //     clientLogout();
+            //     signIn();
+            //     clientLogin();
+            // }
         }
 
         r();
