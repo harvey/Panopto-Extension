@@ -479,8 +479,8 @@ document.addEventListener("DOMContentLoaded", function() {
             // .catch(error => console.log(error));
         }
 
-        document.getElementById('signInWithGoogle').addEventListener('click', () => {
-            chrome.identity.getAuthToken({ interactive: false }, async function(token) {
+        function signIn() {
+            chrome.identity.getAuthToken({ interactive: true }, async function(token) {
                 if (chrome.runtime.lastError) {
                   console.log("User is not logged in.");
                   // Show the sign-in button or prompt the user to log in.
@@ -513,7 +513,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                     }
               });
-            });
+        }
+
+        document.getElementById('signInWithGoogle').addEventListener('click', () => {
+            signIn();
+        });
 
         
 
