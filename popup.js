@@ -354,25 +354,26 @@ document.addEventListener("DOMContentLoaded", function() {
             isValid = /^[a-zA-Z0-9]+$/.test(username);
         
             // Reset classes
-            input.classList.remove('border-green', 'border-red', 'border-white');
-        
+            input.classList.remove('border-green', 'border-red', 'border-orange');
             // Add the correct class
             if (username.length > 0 && isValid) {
-              input.classList.add('border-white');
+              input.classList.add('border-orange');
               console.log(2);
               fetch('https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
                 + `?user={"username":"${username}", "token":"${localStorage.getItem('authToken')}", "email":"${localStorage.getItem('email')}"}`)
                .then(response => response.text())
                .then(text => {
                    if(text == "true" || text == "false") {
-                        input.classList.remove('border-white');
+                        input.classList.remove('border-orange');
                         if(text == "true") {
                             input.classList.add('border-green');
+                            document.getElementById('newUsernameButton').disabled = false;
                             currentValid = true;
                             return true;
                         }
                         else{
                             input.classList.add('border-red')
+                            document.getElementById('newUsernameButton').disabled = true;
                             return false;
                         }
                    }
@@ -380,6 +381,10 @@ document.addEventListener("DOMContentLoaded", function() {
                })
                .catch(error => console.log('Error:', error));
 
+            }
+            else{
+                input.classList.add('border-red');
+                return false;
             }
         }
 
@@ -417,13 +422,9 @@ document.addEventListener("DOMContentLoaded", function() {
                                 // request username
                                 sleep(100).then(() => {
                                     usrBox = document.getElementById('newUsernameTextbox');
-                                    usrBox.addEventListener('keyup', () => {
+                                    usrBox.addEventListener('input', () => {
                                         // console.log(usrBox.value);
-                                        currentValid = false;
-                                        debouncedValidateUsername();
-                                    });
-                                    usrBox.addEventListener('keydown', () => {
-                                        // console.log(usrBox.value);
+                                        document.getElementById('newUsernameButton').disabled = true;
                                         currentValid = false;
                                         debouncedValidateUsername();
                                     });
@@ -452,13 +453,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 sleep(100).then(() => {
                     usrBox = document.getElementById('newUsernameTextbox');
-                    usrBox.addEventListener('keyup', () => {
+                    usrBox.addEventListener('input', () => {
                         // console.log(usrBox.value);
-                        currentValid = false;
-                        debouncedValidateUsername();
-                    });
-                    usrBox.addEventListener('keydown', () => {
-                        // console.log(usrBox.value);
+                        document.getElementById('newUsernameButton').disabled = true;
                         currentValid = false;
                         debouncedValidateUsername();
                     });
@@ -477,13 +474,14 @@ document.addEventListener("DOMContentLoaded", function() {
         });
 
         document.getElementById('newUsernameButton').addEventListener('click', () => {
-            if(currentValid) {
+            if(currentValid && document.getElementById('newUsernameButton').disabled == false) {
                 updateUsername();
             }
         });
 
         async function updateUsername() {
             localStorage.setItem('username', document.getElementById('newUsernameTextbox').value);
+            document.getElementById('newUsernameButton').disabled = true;
             
             testAddr = 'https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
             const payload = {

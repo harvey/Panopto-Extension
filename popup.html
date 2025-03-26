@@ -118,12 +118,16 @@
   .border-red {
     border: 1px solid red !important;
   }
-  .border-white {
-    border: 1px solid white !important;
+  .border-orange {
+    border: 1px solid orange !important;
   }
   
   #newUsernameTextbox:focus {
     outline: none;
+  }
+
+  button:disabled {
+    background-color: rgba(128, 128, 128, 0.425);
   }
     </style>
   </head>
@@ -203,7 +207,7 @@
               <small class="block text-zinc-500 mb-4 text-sm">Your old, randomised username</small>
           
               <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="New username" class="w-full px-3 py-2 placeholder-zinc-400 text-zinc-900 rounded-md mb-2 border-white" />
-              <button id="newUsernameButton" class="w-full bg-primary bg-zinc-900 text-white text-primary-foreground hover:bg-primary/80 py-2 rounded-md transition duration-300">Confirm</button>
+              <button disabled id="newUsernameButton" class="w-full bg-primary bg-zinc-900 text-white text-primary-foreground hover:bg-primary/80 py-2 rounded-md transition duration-300">Confirm</button>
             </div>
           </div>
         </div>
