@@ -410,7 +410,7 @@ document.addEventListener("DOMContentLoaded", function() {
         function clientLogin() {
             // get username from server
             try{
-                sleep(1100).then(() => {
+                sleep(1).then(() => {
                     fetch('https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
                         + `?getUsername={"token":"${localStorage.getItem('authToken')}", "email":"${localStorage.getItem('email')}"}`)
                        .then(response => response.text())
@@ -482,6 +482,7 @@ document.addEventListener("DOMContentLoaded", function() {
         async function updateUsername() {
             localStorage.setItem('username', document.getElementById('newUsernameTextbox').value);
             document.getElementById('newUsernameButton').disabled = true;
+            document.getElementById('newUsernameButton').textContent = "Please wait...";
             
             testAddr = 'https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
             const payload = {
@@ -500,6 +501,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }).then(() => {
                 localStorage.removeItem('uniqueID');
                 clientLogin();
+                document.getElementById('newUsernameButton').textContent = "Confirm";
             });
             
         }
