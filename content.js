@@ -324,6 +324,7 @@ startupCheckbox.style.backgroundColor = "#F3F4F6"; // bg-gray-100
 startupCheckbox.style.border = "1px solid #D1D5DB"; // border-gray-300
 startupCheckbox.style.borderRadius = "4px"; // rounded
 startupCheckbox.style.verticalAlign = "middle";
+startupCheckbox.disabled = true;
 
 // Check if first time use for the toggle
 let checkIfFirstTimeUse = localStorage.getItem('speedOnStartup');
