@@ -9,6 +9,10 @@ function sendToTab(action, value) {
     }
 }
 
+function generateUniqueId() {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+}
+
 document.addEventListener("DOMContentLoaded", function() {
 
     if(!localStorage.getItem('email')) {
@@ -166,6 +170,12 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function formatTime(seconds) {
+        const years = Math.floor(seconds / 31536000); // 31536000 seconds in a year
+        seconds %= 31536000;
+        
+        const months = Math.floor(seconds / 2592000); // 2592000 seconds in a month
+        seconds %= 2592000;
+        
         const days = Math.floor(seconds / 86400); // 86400 seconds in a day
         seconds %= 86400;
     
@@ -177,12 +187,13 @@ document.addEventListener("DOMContentLoaded", function() {
     
         let formattedTime = "";
     
+        if (years > 0) formattedTime += `${years} year${years !== 1 ? "s" : ""}, `;
+        if (months > 0) formattedTime += `${months} month${months !== 1 ? "s" : ""}, `;
         if (days > 0) formattedTime += `${days} day${days !== 1 ? "s" : ""}, `;
         if (hours > 0) formattedTime += `${hours} hour${hours !== 1 ? "s" : ""}, `;
         if (minutes > 0) formattedTime += `${minutes} minute${minutes !== 1 ? "s" : ""}, `;
         if (seconds > 0 || formattedTime === "") formattedTime += `${seconds} second${seconds !== 1 ? "s" : ""}`;
     
-        // Remove trailing comma and space if any
         return formattedTime.replace(/, $/, "");
     }
 
@@ -773,5 +784,41 @@ document.addEventListener("DOMContentLoaded", function() {
 
         r();
 
+        let tttemp = localStorage.getItem('aID');
+        let timingDiv = document.getElementById('timingDiv');
+        let timingSpan = document.getElementById('timingSpan');
+
+        if(!tttemp) {
+            aID = generateUniqueId();
+            localStorage.setItem('aID', aID);
+        }
+        else{
+            if(localStorage.getItem('fullTime')) {
+                timingDiv.style.display = "block";
+                timingSpan.textContent = formatTime(localStorage.getItem('fullTime'));
+            }
+            
+            function fetchData() {
+                fetch('https://script.google.com/macros/s/AKfycbxr5AZzyaYAFm8NyhpWj7oSOb3Tc1NhYcTiHlo5OekghLYFiNsmY_Lfp1dWec_UDxUk/exec'
+                  + `?getFullTime={"aID":"${localStorage.getItem('aID')}", "myTime":"${localStorage.getItem('saved-time')}"}`)
+                  .then(response => response.text())
+                  .then(text => {
+                    if (text) {
+                    //   console.log(text);
+                      localStorage.setItem('fullTime', text);
+                      timingDiv.style.display = "block";
+                      timingSpan.textContent = formatTime(localStorage.getItem('fullTime'));
+                    }
+                  })
+                  .catch(error => console.log('Error:', error));
+              }
+              
+              // Call immediately
+              fetchData();
+              
+              // Then schedule to run every 5 seconds
+              setInterval(fetchData, 5000);
+              
+        }
         
 });
