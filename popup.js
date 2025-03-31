@@ -791,6 +791,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if(!tttemp) {
             aID = generateUniqueId();
             localStorage.setItem('aID', aID);
+            fetchData();
         }
         else{
             if(localStorage.getItem('fullTime')) {
