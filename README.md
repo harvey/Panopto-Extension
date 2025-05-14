@@ -1,5 +1,11 @@
 ## Panopto Custom Speed extension
 
+This extension has a login system where you can compete against other users for the most time-saved (who has watched the most university videos).
+
+![image](https://github.com/user-attachments/assets/41e08201-d602-4e17-b9d6-ffbe36e47c4c)
+![image](https://github.com/user-attachments/assets/9b38db2b-007b-461d-acd0-89ed4b283aab)
+
+
 https://harveychandler.me/panopto
 
 <table>
