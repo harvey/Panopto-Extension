@@ -136,9 +136,9 @@
       <div class="bg-white p-4 rounded-lg">
 
         <div class="mb-4">
-          <label class="block text-lg font-bold text-zinc-700">Panopto Custom Speed</label>
+          <label class="block text-lg font-bold text-zinc-700" id="pTitle">Panopto Custom Speed</label>
           <div class="flex items-center mt-2">
-            <span class="text-sm text-zinc-500 mr-2">Select a value:</span>
+            <span class="text-sm text-zinc-500 mr-2" id="pSele">Select a value:</span>
             <input type="range" id="dynamicSlider" name="dynamicSlider" min="0.5" max="3" value="1" step="0.25" class="slider w-full h-2 bg-blue-500 rounded-lg appearance-none cursor-pointer">
             <span id="sliderValue" class="ml-2 text-lg font-bold text-blue-500 cursor-pointer hover:underline" title="Click to edit the speed">1.75x</span>
           </div>
@@ -146,17 +146,17 @@
         <div class="mb-4">
           <div class="flex items-center mb-4">
             <input id="startupSpeed" type="checkbox" value="" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-            <label for="default-checkbox" class="ms-2 text-sm text-zinc-500 dark:text-zinc-500">Change speed on startup</label>
+            <label for="default-checkbox" class="ms-2 text-sm text-zinc-500 dark:text-zinc-500" id="pStartup">Change speed on startup</label>
           </div>
           <div>
-            <p class="text-zinc-600">Amount of time saved: <span id="timeSaved"></span></p> 
+            <p class="text-zinc-600" id="pTimeSaved">Amount of time saved: <span id="timeSaved"></span></p> 
           </div>
           <div class="flex items-center mb-4">
-            <p class="text-zinc-600 font-bold">Changes will only be saved if you are on the Panopto website.</p> 
+            <p class="text-zinc-600 font-bold" id="pInfo">Changes will only be saved if you are on the Panopto website.</p> 
           </div>
           <div id="optInContainer" style="display: none">
             <input id="userDataOptIn" type="checkbox" value="" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-            <label class="mb-4 ms-2 text-sm text-zinc-500 dark:text-zinc-500">Opt into leaderboard logging</label>
+            <label class="mb-4 ms-2 text-sm text-zinc-500 dark:text-zinc-500" id="pLeaderboardInfo">Opt into leaderboard logging</label>
           </div>
           <div class="flex mb-1 text-center justify-center" id="lbText">
             <span id="leaderboardText" class="text-sm text-zinc-500 dark:text-zinc-500">To find out your leaderboard position</span>
@@ -165,7 +165,7 @@
           <div id="optedInContainer" class="block mb-1 text-center justify-center">
             <div class="flex mb-1 text-center justify-center">
               <p id="anon-container" style="display: flex" class="text-zinc-500">
-                You are rank&nbsp;
+                <span id="pYouAreRank">You are rank&nbsp;</span>
                 <span style="font-weight: bold;" id="anonymous-user"></span>
                 <!-- <span>&nbsp; </span> -->
                 <span style="font-weight: bold" id="user-rank" class="text-blue-600"></span>
@@ -195,14 +195,14 @@
                     <path fill="none" d="M0 0h48v48H0z"></path>
                   </svg>
                 </div>
-                <span class="gsi-material-button-contents">Sign in with Google</span>
-                <span style="display: none;">Sign in with Google</span>
+                <span class="gsi-material-button-contents" id="pSignInWithGoogle">Sign in with Google</span>
+                <span style="display: none;" id="pSignInWithGoogle">Sign in with Google</span>
               </div>
             </button>
           </div>
           <div id="migrationContainer" class="flex justify-center items-center" style="display: none;">
             <div class="bg-card shadow-lg rounded-lg p-6 bg-zinc-100">
-              <h1 class="text-red-800 text-center mb-4">Usernames are migrating!</h1>
+              <h1 class="text-red-800 text-center mb-4" id="pUsernamesAreMigrating">Usernames are migrating!</h1>
               <input id="oldUsernameTextbox" type="text" style="border: 1px solid #575b5e98;" disabled class="w-full px-3 py-2 placeholder-zinc-400 text-zinc-500 bg-input rounded-md mb-2" value="user_abcdefg"/>
               <small class="block text-zinc-500 mb-4 text-sm">Your old, randomised username</small>
           
@@ -219,7 +219,7 @@
                 <rect width="250" height="60" rx="15" fill="#FFDD00"/>
                 <!-- Centered text and emoji -->
                 <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
-                      font-family="Lato, sans-serif" font-size="20" fill="#000000" font-weight="bold">
+                      font-family="Lato, sans-serif" font-size="20" fill="#000000" font-weight="bold" id="pBuyMeACoffee">
                   ☕ Buy me a coffee
                 </text>
               </svg>
@@ -230,18 +230,27 @@
                 <rect width="250" height="60" rx="15" fill="#4285f4"/>
                 <!-- Centered text and emoji -->
                 <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
-                      font-family="Lato, sans-serif" font-size="20" fill="#000000" font-weight="bold">
+                      font-family="Lato, sans-serif" font-size="20" fill="#000000" font-weight="bold" id="pRateThisExtension">
                   ⭐ Rate this extension
                 </text>
               </svg>
             </a>
           </div>
           <div style="text-align: center; display:none" id="timingDiv">
-            <span>Time saved by all users</span>
+            <span id="pTimeSavedByAllUsers">Time saved by all users</span>
             <br>
             <span class="font-bold" id="timingSpan"></span>
           </div>
-      </div>
+          <div class="flex items-center justify-center">
+            <label for="language-select" class="mr-2" id="pChooseLanguage">Choose Language:</label>
+            <select id="language-select" class="border border-gray-300 rounded px-2 py-1">
+              <option value="en">English</option>
+              <option value="ko">한국어</option>
+              <option value="he">עברית</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+        </div>
       <br>
     </div>
   </body>
