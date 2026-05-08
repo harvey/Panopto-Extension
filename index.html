@@ -197,13 +197,12 @@
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <div class="eyebrow"><span class="pulse"></span> Manifest V3 · <span id="repoVersionLabel">repo version loading…</span></div>
+          <div class="eyebrow"><span class="pulse"></span>Chrome extension for Panopto lectures</div>
           <h1><span class="grad">Speed through Panopto</span> without fighting the player.</h1>
           <p class="lead">A compact Chrome extension for lecture videos: custom playback speeds, startup speed, time-saved tracking, leaderboard opt-in, and a multilingual popup UI.</p>
           <div class="actions">
             <a class="btn primary" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Add to Chrome</a>
             <a class="btn green" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Rate it</a>
-            <a class="btn" href="https://github.com/harvey/Panopto-Extension" target="_blank" rel="noreferrer">View code</a>
           </div>
           <div class="mini-meta">
             <span class="pill">Works on *.panopto.com</span>
@@ -261,8 +260,8 @@
     <section id="stats">
       <div class="wrap">
         <div class="section-head">
-          <h2>Live store stats, no stale numbers.</h2>
-          <p>The badges below are loaded from Shields using the Chrome Web Store extension ID, so users, rating, rating count, and store version update automatically.</p>
+          <h2>Chrome Web Store stats.</h2>
+          <p>A quick snapshot of installs, ratings, and the current store version.</p>
         </div>
         <div class="grid-4">
           <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><span class="stat-label">Users</span><img src="https://img.shields.io/chrome-web-store/users/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Chrome%20users&color=11773D&labelColor=111827" alt="Live Chrome Web Store users" /></a>
@@ -270,7 +269,6 @@
           <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer"><span class="stat-label">Ratings</span><img src="https://img.shields.io/chrome-web-store/rating-count/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Ratings&color=4285f4&labelColor=111827" alt="Live Chrome Web Store rating count" /></a>
           <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><span class="stat-label">Store version</span><img src="https://img.shields.io/chrome-web-store/v/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Store%20version&color=7fb0ff&labelColor=111827" alt="Live Chrome Web Store version" /></a>
         </div>
-        <p class="live-note">The page also reads <code>/Panopto-Extension/manifest.json</code> at runtime to show the repo version in the hero when hosted on GitHub Pages.</p>
       </div>
     </section>
 
@@ -286,23 +284,7 @@
           <article class="card"><div class="feature-icon">⏱️</div><h3>Time saved tracking</h3><p>The extension tracks saved time while watching faster than normal, and avoids counting manual seeking as progress.</p></article>
           <article class="card"><div class="feature-icon">🏆</div><h3>Leaderboard</h3><p>Users can sign in and opt into leaderboard logging to compare time saved with other students.</p></article>
           <article class="card"><div class="feature-icon">🌍</div><h3>Multiple languages</h3><p>The popup supports English, Korean, Chinese, Hebrew, and Ukrainian UI labels.</p></article>
-          <article class="card"><div class="feature-icon">🧩</div><h3>Chrome extension</h3><p>Manifest V3 extension using a popup, content script, background service worker, storage, activeTab, and identity.</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section id="technical">
-      <div class="wrap split">
-        <div class="section-head">
-          <h2>What it does under the hood.</h2>
-          <p>A simple technical explanation for people who want to know this is more than a pretty popup.</p>
-        </div>
-        <div class="tech-list">
-          <div class="tech-item"><strong>Targets Panopto</strong><span>Runs on <code>https://*.panopto.com/*</code> and <code>https://*.panopto.eu/*</code>.</span></div>
-          <div class="tech-item"><strong>Sets playback rate</strong><span>Finds the page <code>video</code> element and applies the stored custom speed to <code>video.playbackRate</code>.</span></div>
-          <div class="tech-item"><strong>Tracks saved time</strong><span>Compares real elapsed time against video progress while playback speed is above 1x.</span></div>
-          <div class="tech-item"><strong>Stores progress</strong><span>The background worker keeps total saved time in Chrome local storage and can sync if the server has a higher value.</span></div>
-          <div class="tech-item"><strong>Leaderboard backend</strong><span>The popup talks to a Google Apps Script endpoint for usernames, rank, opt-in logging, and total saved time.</span></div>
+          <article class="card"><div class="feature-icon">🧩</div><h3>Lightweight Chrome install</h3><p>Add it to Chrome and use it directly on Panopto without changing your normal workflow.</p></article>
         </div>
       </div>
     </section>
@@ -312,7 +294,7 @@
         <div>
           <div class="section-head">
             <h2>Watch the demo.</h2>
-            <p>Still useful for showing the core idea quickly.</p>
+            <p>A quick look at how the extension works.</p>
           </div>
         </div>
         <div class="video-box">
@@ -325,7 +307,7 @@
       <div class="wrap">
         <div class="section-head">
           <h2>Top student feedback.</h2>
-          <p>Short review cards pulled from public Chrome Web Store review mirrors, with the latest reviews linked for verification.</p>
+          <p>A few public reviews from students using the extension.</p>
         </div>
         <div class="reviews">
           <article class="card review"><div><div class="stars">★★★★★</div><blockquote>“Super awesome extension!! Works great for rewatching lectures!!!”</blockquote></div><small>Paris Lewis · Feb 2026</small></article>
@@ -351,14 +333,13 @@
     <section id="links">
       <div class="wrap">
         <div class="section-head">
-          <h2>Correct links for the new home.</h2>
-          <p>This page assumes it will live at <code>/Panopto-Extension/</code> on GitHub Pages, so local links point there instead of the older <code>/panopto</code> page.</p>
+          <h2>Useful links.</h2>
+          <p>Install the extension, read reviews, or open the leaderboard.</p>
         </div>
         <div class="links">
-          <article class="card link-card"><h3>Website home</h3><p>Where this one-page site should be hosted.</p><a href="/Panopto-Extension/">Open /Panopto-Extension</a></article>
-          <article class="card link-card"><h3>Chrome Web Store</h3><p>Install page, public stats, reviews, and privacy declaration.</p><a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Open listing</a></article>
-          <article class="card link-card"><h3>GitHub repository</h3><p>Source code for the current extension.</p><a href="https://github.com/harvey/Panopto-Extension" target="_blank" rel="noreferrer">Open repo</a></article>
-          <article class="card link-card"><h3>Leaderboard chart</h3><p>Interactive chart used by the popup leaderboard link.</p><a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive" target="_blank" rel="noreferrer">Open leaderboard</a></article>
+          <article class="card link-card"><h3>Chrome Web Store</h3><p>Install the extension and view the public listing.</p><a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Open listing</a></article>
+          <article class="card link-card"><h3>Reviews</h3><p>Read recent feedback from Chrome Web Store users.</p><a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Open reviews</a></article>
+          <article class="card link-card"><h3>Leaderboard</h3><p>See the shared time-saved leaderboard.</p><a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive" target="_blank" rel="noreferrer">Open leaderboard</a></article>
         </div>
       </div>
     </section>
@@ -366,7 +347,7 @@
 
   <footer>
     <div class="wrap">
-      <strong>Panopto Custom Speed</strong><br />Hosted at <a href="/Panopto-Extension/">harvey.github.io/Panopto-Extension</a> · Built by Harvey Chandler.
+      <strong>Panopto Custom Speed</strong><br />Built by Harvey Chandler.
     </div>
   </footer>
 
@@ -451,16 +432,6 @@
       totalText.textContent = totalExpanded ? '200 days, 12 hours' : '4,812 hours';
       totalHint.textContent = totalExpanded ? 'click to collapse' : 'click to expand';
     });
-
-    fetch('/Panopto-Extension/manifest.json')
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(manifest => {
-        document.getElementById('repoVersionLabel').textContent = `repo v${manifest.version}`;
-        if (manifest.description) document.querySelector('meta[name="description"]').setAttribute('content', manifest.description);
-      })
-      .catch(() => {
-        document.getElementById('repoVersionLabel').textContent = 'repo v4.0';
-      });
   </script>
 </body>
 </html>
