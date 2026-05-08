@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panopto Custom Speed | Harvey Chandler</title>
+  <meta name="description" content="One-page overview of Panopto Custom Speed, a Chrome extension by Harvey Chandler for setting custom playback speeds on Panopto videos." />
+  <style>
+    :root {
+      --bg: #070b0a;
+      --panel: rgba(255,255,255,0.065);
+      --panel-strong: rgba(255,255,255,0.105);
+      --text: #f5f7f6;
+      --muted: #b6c2bd;
+      --soft: #dce7e2;
+      --line: rgba(255,255,255,0.12);
+      --green: #11773D;
+      --green-2: #21a663;
+      --blue: #4285F4;
+      --blue-2: #7fb0ff;
+      --gold: #ffd166;
+      --shadow: 0 30px 100px rgba(0,0,0,.45);
+      --radius: 28px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 0%, rgba(33,166,99,.25), transparent 34rem), radial-gradient(circle at 85% 10%, rgba(66,133,244,.22), transparent 28rem), linear-gradient(180deg, #07100c 0%, var(--bg) 45%, #050606 100%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    img { max-width: 100%; display: block; }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(18px); background: rgba(7,11,10,.72); border-bottom: 1px solid var(--line); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 0; }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 800; letter-spacing: -0.03em; }
+    .brand img { width: 36px; height: 36px; border-radius: 12px; box-shadow: 0 12px 30px rgba(17,119,61,.35); }
+    .nav-links { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; font-weight: 650; }
+    .nav-links a { text-decoration: none; padding: 8px 10px; border-radius: 999px; }
+    .nav-links a:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    .hero { padding: 72px 0 42px; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); gap: 34px; align-items: center; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid rgba(33,166,99,.45); background: rgba(33,166,99,.12); border-radius: 999px; color: #bdf7d4; font-size: 13px; font-weight: 760; margin-bottom: 18px; }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--green-2); box-shadow: 0 0 18px var(--green-2); }
+    h1 { margin: 0; max-width: 850px; font-size: clamp(44px, 7vw, 82px); line-height: .92; letter-spacing: -0.075em; }
+    .gradient-text { background: linear-gradient(120deg, #fff, #b7f7d3 45%, #9ec5ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { margin: 24px 0 0; max-width: 690px; font-size: clamp(17px, 2vw, 21px); color: var(--soft); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 12px 18px; border-radius: 999px; text-decoration: none; font-weight: 800; border: 1px solid var(--line); background: var(--panel); transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+    .btn:hover { transform: translateY(-2px); background: var(--panel-strong); border-color: rgba(255,255,255,.24); }
+    .btn.primary { background: var(--blue); color: white; border-color: transparent; box-shadow: 0 18px 38px rgba(66,133,244,.28); }
+    .btn.primary:hover { background: #3367D6; }
+    .panel { border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,.105), rgba(255,255,255,.055)); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .store-card { padding: 24px; position: relative; overflow: hidden; }
+    .store-card::before { content: ""; position: absolute; inset: -120px -120px auto auto; width: 260px; height: 260px; border-radius: 999px; background: radial-gradient(circle, rgba(66,133,244,.32), transparent 70%); }
+    .product-head { display: flex; gap: 16px; align-items: center; position: relative; }
+    .product-head img { width: 86px; height: 86px; border-radius: 24px; background: white; padding: 8px; }
+    .product-head h2 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.04em; }
+    .product-head p { margin: 0; color: var(--muted); }
+    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top: 22px; }
+    .metric { padding: 16px; border-radius: 20px; background: rgba(0,0,0,.22); border: 1px solid var(--line); }
+    .metric strong { display: block; font-size: 25px; letter-spacing: -0.04em; line-height: 1; }
+    .metric span { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .badge { display: inline-flex; align-items: center; border: 1px solid var(--line); background: rgba(255,255,255,.065); color: var(--soft); border-radius: 999px; padding: 7px 10px; font-size: 13px; font-weight: 750; }
+    section { padding: 54px 0; }
+    .section-head { max-width: 780px; margin-bottom: 24px; }
+    .section-head h2 { margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -0.06em; }
+    .section-head p { margin: 14px 0 0; color: var(--muted); font-size: 17px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+    .feature { padding: 22px; border-radius: 24px; border: 1px solid var(--line); background: var(--panel); min-height: 230px; }
+    .feature img { width: 54px; height: 54px; border-radius: 16px; object-fit: contain; background: white; padding: 6px; margin-bottom: 18px; }
+    .feature h3 { margin: 0 0 10px; font-size: 20px; letter-spacing: -0.03em; }
+    .feature p { margin: 0; color: var(--muted); }
+    .split { display: grid; grid-template-columns: minmax(0, .95fr) minmax(330px, 1.05fr); gap: 18px; align-items: start; }
+    .demo-shell { border-radius: 32px; background: #11773D; padding: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), var(--shadow); }
+    .popup { background: white; color: #27272a; border-radius: 18px; padding: 18px; min-height: 250px; }
+    .popup-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 20px; font-weight: 850; margin-bottom: 14px; }
+    .popup-row { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
+    .popup-row label { color: #71717a; font-weight: 700; }
+    .range { width: 100%; accent-color: var(--blue); }
+    .speed-val { min-width: 62px; color: var(--blue); font-size: 20px; font-weight: 900; cursor: pointer; }
+    .popup-small { color: #52525b; margin: 10px 0; }
+    .popup-note { color: #3f3f46; font-weight: 800; font-size: 13px; }
+    .tiny-link { color: var(--blue); font-weight: 800; }
+    .popup-buttons { display: flex; gap: 10px; margin-top: 12px; }
+    .mini-btn { flex: 1; padding: 10px; border: 0; border-radius: 12px; font-weight: 850; cursor: default; }
+    .mini-btn.coffee { background: #FFDD00; color: #000; }
+    .mini-btn.rate { background: var(--blue); color: #06111f; }
+    .tech-list { display: grid; gap: 12px; }
+    .tech-item { padding: 18px; border-radius: 22px; border: 1px solid var(--line); background: var(--panel); }
+    .tech-item strong { display: block; margin-bottom: 4px; font-size: 16px; }
+    .tech-item span { color: var(--muted); }
+    .video-box { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 26px; overflow: hidden; border: 1px solid var(--line); background: rgba(255,255,255,.06); box-shadow: var(--shadow); }
+    .video-box iframe { width: 100%; height: 100%; border: 0; }
+    .reviews { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+    .review { padding: 22px; border-radius: 24px; border: 1px solid var(--line); background: var(--panel); }
+    .stars { color: var(--gold); font-size: 18px; letter-spacing: 2px; }
+    .review p { color: var(--soft); margin: 12px 0; }
+    .review small { color: var(--muted); font-weight: 750; }
+    .source-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .source-card { padding: 18px; border: 1px solid var(--line); border-radius: 22px; background: var(--panel); }
+    .source-card h3 { margin: 0 0 8px; letter-spacing: -0.03em; }
+    .source-card p { margin: 0 0 12px; color: var(--muted); }
+    .source-card a { color: var(--blue-2); font-weight: 800; }
+    .privacy { padding: 22px; border-radius: 24px; background: rgba(66,133,244,.10); border: 1px solid rgba(66,133,244,.28); }
+    .privacy h3 { margin: 0 0 8px; }
+    .privacy p { margin: 0; color: var(--soft); }
+    footer { padding: 42px 0 60px; border-top: 1px solid var(--line); color: var(--muted); }
+    @media (max-width: 860px) {
+      .hero-grid, .split, .source-grid { grid-template-columns: 1fr; }
+      .grid-3, .reviews { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .hero { padding-top: 46px; }
+    }
+    @media (max-width: 520px) {
+      .wrap { width: min(100% - 22px, 1120px); }
+      .product-head { align-items: flex-start; }
+      .product-head img { width: 68px; height: 68px; border-radius: 18px; }
+      .metrics { grid-template-columns: 1fr; }
+      .popup-row { align-items: flex-start; flex-direction: column; }
+      .popup-buttons { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#">
+        <img src="https://raw.githubusercontent.com/harvey/harvey.github.io/main/assets/panopto/icon.png" alt="Panopto Custom Speed icon" />
+        <span>Panopto Custom Speed</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#demo">Demo</a>
+        <a href="#technical">Technical</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#sources">Sources</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> Chrome extension by Harvey Chandler</div>
+          <h1><span class="gradient-text">Custom playback speed</span> for Panopto lectures.</h1>
+          <p class="lead">Speed up or slow down Panopto videos with a simple slider, save your preferred speed for future videos, and track how much time you have saved while studying.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Add to Chrome</a>
+            <a class="btn" href="https://github.com/harvey/Panopto-Extension" target="_blank" rel="noreferrer">View GitHub repo</a>
+            <a class="btn" href="https://www.youtube.com/watch?v=DJ8a1dYxs5I" target="_blank" rel="noreferrer">Watch demo</a>
+          </div>
+        </div>
+        <aside class="panel store-card" aria-label="Chrome Web Store summary">
+          <div class="product-head">
+            <img src="https://raw.githubusercontent.com/harvey/harvey.github.io/main/assets/panopto/icon.png" alt="Panopto Custom Speed logo" />
+            <div>
+              <h2>Panopto Custom Speed</h2>
+              <p>Functionality &amp; UI · Manifest V3</p>
+            </div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><strong>4,000</strong><span>Chrome users</span></div>
+            <div class="metric"><strong>4.7/5</strong><span>15 ratings</span></div>
+            <div class="metric"><strong>3.5.1</strong><span>Current store version</span></div>
+            <div class="metric"><strong>181 KiB</strong><span>Extension size</span></div>
+          </div>
+          <div class="badges">
+            <span class="badge">Panopto.com</span>
+            <span class="badge">Panopto.eu</span>
+            <span class="badge">activeTab</span>
+            <span class="badge">storage</span>
+            <span class="badge">identity</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Everything the current page says it does.</h2>
+          <p>The original site splits this across the header, feature cards, live popup iframe, demo video, reviews, and footer. This version pulls it into one clean page.</p>
+        </div>
+        <div class="grid-3">
+          <article class="feature"><img src="https://raw.githubusercontent.com/harvey/harvey.github.io/main/assets/panopto/icon.png" alt="" /><h3>Easy setup</h3><p>Install the extension from the Chrome Web Store and activate it while watching Panopto videos.</p></article>
+          <article class="feature"><img src="https://raw.githubusercontent.com/harvey/harvey.github.io/main/assets/panopto/speed.png" alt="" /><h3>Custom speed options</h3><p>Pick a speed using a slider or enter a specific speed manually. The extension can save the chosen speed for the next video.</p></article>
+          <article class="feature"><img src="https://raw.githubusercontent.com/harvey/harvey.github.io/main/assets/panopto/settings.png" alt="" /><h3>User-friendly interface</h3><p>A simple popup gives quick access to playback speed, startup behaviour, time saved, and leaderboard-related features.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo">
+      <div class="wrap split">
+        <div>
+          <div class="section-head"><h2>Live popup mock.</h2><p>This is a self-contained version of the extension popup so the page still feels interactive without loading a separate iframe.</p></div>
+          <div class="demo-shell">
+            <div class="popup">
+              <div class="popup-title"><span>Panopto Custom Speed</span><span style="font-size:13px;color:#11773D;">demo</span></div>
+              <div class="popup-row"><label for="speedRange">Select a value:</label><input class="range" id="speedRange" type="range" min="0.5" max="4" value="1.75" step="0.25" /><span class="speed-val" id="speedValue" contenteditable="true" title="Click to edit speed">1.75x</span></div>
+              <div class="popup-row" style="flex-direction: row;"><input id="startup" type="checkbox" checked /><label for="startup">Change speed on startup</label></div>
+              <p class="popup-small">Amount of time saved: <strong id="savedTime">0 seconds</strong></p>
+              <p class="popup-note">Changes are saved when used on a Panopto website.</p>
+              <p class="popup-small"><a class="tiny-link" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Rate this extension on the store</a></p>
+              <div class="popup-buttons"><button class="mini-btn coffee">☕ Buy me a coffee</button><button class="mini-btn rate">⭐ Rate this extension</button></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Watch the demo.</h2><p>The original Panopto page embeds this YouTube demo.</p></div>
+          <div class="video-box"><iframe src="https://www.youtube.com/embed/DJ8a1dYxs5I" title="Panopto Custom Speed demo video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="technical">
+      <div class="wrap split">
+        <div class="section-head"><h2>Technical snapshot.</h2><p>Useful if you want this page to show more than marketing copy.</p></div>
+        <div class="tech-list">
+          <div class="tech-item"><strong>Manifest V3 Chrome extension</strong><span>Runs as a Chrome extension with a popup UI, background service worker, and content script.</span></div>
+          <div class="tech-item"><strong>Panopto domain targeting</strong><span>The content script targets <code>*.panopto.com</code> and <code>*.panopto.eu</code>.</span></div>
+          <div class="tech-item"><strong>Playback speed injection</strong><span>The content script finds the page video element and sets <code>video.playbackRate</code> to the stored custom speed.</span></div>
+          <div class="tech-item"><strong>Startup speed</strong><span>When enabled, the extension applies the saved speed shortly after the Panopto page loads.</span></div>
+          <div class="tech-item"><strong>Time saved tracking</strong><span>The extension tracks saved time while playback rate is above normal speed and avoids counting manual seeking as saved time.</span></div>
+          <div class="tech-item"><strong>Leaderboard concept</strong><span>The extension includes a login system/leaderboard flow so users can compare saved time.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reviews">
+      <div class="wrap">
+        <div class="section-head"><h2>Social proof.</h2><p>Current public listing and repo material mention strong student-focused feedback.</p></div>
+        <div class="reviews">
+          <article class="review"><div class="stars">★★★★★</div><p>“Great extension! It makes watching Panopto videos so much easier.”</p><small>Original site review · S.H</small></article>
+          <article class="review"><div class="stars">★★★★★</div><p>Students report saving hours while revising and using the extension across their degree.</p><small>Original site review · N.A</small></article>
+          <article class="review"><div class="stars">★★★★★</div><p>“Works great makes studying a lot faster.”</p><small>Chrome Web Store review mirror</small></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy"><div class="wrap"><div class="privacy"><h3>Privacy / store declaration</h3><p>The Chrome Web Store listing says the extension handles personally identifiable information and user activity. It also declares that data is not sold, not used or transferred for unrelated purposes, and not used for lending or creditworthiness decisions.</p></div></div></section>
+
+    <section id="sources">
+      <div class="wrap">
+        <div class="section-head"><h2>Links pulled into this one page.</h2><p>Everything important is now visible here, with the original destinations kept for verification and action.</p></div>
+        <div class="source-grid">
+          <article class="source-card"><h3>Chrome Web Store</h3><p>Main install page, public stats, version, ratings, and privacy declaration.</p><a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Open listing</a></article>
+          <article class="source-card"><h3>Website page</h3><p>Original public landing page from harvey.github.io / harveychandler.dev.</p><a href="https://harvey.github.io/panopto.html" target="_blank" rel="noreferrer">Open page</a></article>
+          <article class="source-card"><h3>Extension repo</h3><p>Source repo containing the README, manifest, popup, and content script.</p><a href="https://github.com/harvey/Panopto-Extension" target="_blank" rel="noreferrer">Open GitHub repo</a></article>
+          <article class="source-card"><h3>Demo video</h3><p>YouTube demo embedded on the original page.</p><a href="https://www.youtube.com/watch?v=DJ8a1dYxs5I" target="_blank" rel="noreferrer">Open YouTube demo</a></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="wrap"><strong>Panopto Custom Speed</strong><br />One-page consolidation for Harvey Chandler’s extension landing content.</div></footer>
+
+  <script>
+    const range = document.getElementById("speedRange");
+    const val = document.getElementById("speedValue");
+    const saved = document.getElementById("savedTime");
+    let savedSeconds = 0;
+    let fractional = 0;
+    function formatSeconds(total) {
+      const d = Math.floor(total / 86400); total %= 86400;
+      const h = Math.floor(total / 3600); total %= 3600;
+      const m = Math.floor(total / 60);
+      const s = Math.floor(total % 60);
+      const parts = [];
+      if (d) parts.push(`${d} day${d === 1 ? "" : "s"}`);
+      if (h) parts.push(`${h} hour${h === 1 ? "" : "s"}`);
+      if (m) parts.push(`${m} minute${m === 1 ? "" : "s"}`);
+      if (s || parts.length === 0) parts.push(`${s} second${s === 1 ? "" : "s"}`);
+      return parts.join(", ");
+    }
+    function cleanSpeed(input) {
+      const parsed = parseFloat(String(input).replace(/[^\d.]/g, ""));
+      if (Number.isFinite(parsed)) return Math.max(0.5, Math.min(4, parsed));
+      return 1;
+    }
+    function setSpeed(speed) {
+      const rounded = Math.round(speed * 100) / 100;
+      range.value = rounded;
+      val.textContent = rounded.toFixed(2) + "x";
+    }
+    range.addEventListener("input", () => setSpeed(parseFloat(range.value)));
+    val.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); val.blur(); } });
+    val.addEventListener("blur", () => setSpeed(cleanSpeed(val.textContent)));
+    setInterval(() => {
+      const speed = cleanSpeed(range.value);
+      fractional += Math.max(0, speed - 1);
+      if (fractional >= 1) {
+        const inc = Math.floor(fractional);
+        savedSeconds += inc;
+        fractional -= inc;
+        saved.textContent = formatSeconds(savedSeconds);
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
