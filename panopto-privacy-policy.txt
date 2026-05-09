@@ -1,10 +1,10 @@
 Privacy Policy for Panopto Custom Speed
 
-Effective Date: 21/03/2025
+Effective Date: 09/05/2026
 
 1. Information Collection
 
-Anonymous Usage Data: We collect the amount of time you save by using the extension. This usage data is collected in an anonymous format.
+Anonymous Usage Data: We collect the amount of time you save by using the extension. This usage data is collected in an anonymous format unless you opt into leaderboard logging and sign in with your Google account, in which case the data is linked to your email address for leaderboard and reward purposes.
 
 User Identification: When you log in using your Google account, your email address is recorded along with your usage data. This is the only personal information we collect.
 
@@ -12,9 +12,15 @@ Opt In Requirement: Data collection is opt in and is disabled by default. You mu
 
 2. Purpose of Data Collection
 
-Performance Analysis: The collected anonymous usage data (time saved) is used solely to analyze and improve the extension's performance.
+Performance Analysis: The collected usage data, including time saved, is used to analyze and improve the extension's performance.
 
-Abuse Prevention: Your email address is stored exclusively to prevent abuse on the platform. This enables us to ban users who submit fraudulent data in order to unfairly boost leaderboard rankings.
+Leaderboard Participation: If you opt into leaderboard logging, your time-saved data and email address may be used to calculate leaderboard rankings and determine eligibility for free Premium or other rewards.
+
+Winner Notifications: If you win free Premium or another reward, we may use your recorded email address to contact you and notify you that you have won.
+
+Premium Access: Where applicable, your email address may be used to apply, verify, or manage free Premium access that you have won or been given.
+
+Abuse Prevention: Your email address is stored to identify your opted-in account, prevent abuse, manage leaderboard participation, determine reward eligibility, and contact you if you win free Premium or another reward. This enables us to ban users who submit fraudulent data in order to unfairly boost leaderboard rankings.
 
 3. Data Storage and Security
 
@@ -26,26 +32,40 @@ Data Protection: We employ industry-standard security measures to protect your i
 
 4. Data Sharing and Third Parties
 
-No Third-Party Sharing: We do not sell, rent, or share your personal or usage data with any third parties. Your email address is used solely for internal purposes related to abuse prevention.
+No Third-Party Sharing: We do not sell, rent, or share your personal or usage data with any third parties. Your email address is used for internal purposes related to leaderboard participation, abuse prevention, reward eligibility, Premium access, and winner notifications.
 
 5. Data Retention
 
-Retention Period: Data is retained only as long as necessary for performance analysis and abuse prevention. We conduct periodic reviews to ensure data is not kept longer than required.
+Retention Period: Data is retained only as long as necessary for performance analysis, leaderboard participation, reward eligibility, Premium access, winner notifications, and abuse prevention. We conduct periodic reviews to ensure data is not kept longer than required.
 
 6. User Rights and Opting Out
 
 Opting Out: You may opt out of data collection at any time via the extension's main page. When you opt out, no further data will be collected from your account.
 
-Data Control: While opting out stops future data collection, previously collected data may be retained for abuse prevention and performance analysis purposes.
+Data Control: While opting out stops future data collection, previously collected data may be retained for abuse prevention, performance analysis, reward verification, Premium access records, and leaderboard integrity purposes.
 
-7. Changes to This Privacy Policy
+7. Leaderboard Rewards, Premium Giveaways, and Review Requests
+
+Leaderboard Rewards: If you opt into leaderboard logging, your recorded time-saved data may be used to calculate leaderboard rankings and determine eligibility for free Premium or other rewards.
+
+Winner Notifications: If you win free Premium or another reward, we may use your recorded email address to contact you and notify you that you have won. These emails are used only to notify you about rewards connected to leaderboard participation or giveaways.
+
+Premium Access: Where applicable, your email address may be used to apply, verify, or manage free Premium access that you have won or been given.
+
+Reviews: We may ask users for honest feedback or an honest Chrome Web Store review. Leaving a review is completely optional. You are free to leave a positive, negative, mixed, or no review at all.
+
+No Incentivised Reviews: Premium, rewards, giveaways, leaderboard rankings, and extension access are not conditional on leaving a review. Leaving a review does not affect whether you win, claim, keep, or qualify for Premium or any other reward.
+
+Optional Emails: We may send optional update, promotional, or review-request emails only where permitted by law. You may opt out of these emails at any time.
+
+8. Changes to This Privacy Policy
 
 We may update this Privacy Policy from time to time. When changes are made, the "Effective Date" at the top of this document will be updated. We encourage you to review this policy periodically to stay informed about our data practices.
 
-8. Contact Information
+9. Contact Information
 
 If you have any questions, concerns, or suggestions regarding this Privacy Policy or our data practices, please contact us at:
 
 Email: harveychandler235@gmail.com
 
-By using the "Panopto custom speed" extension, you agree to the terms outlined in this Privacy Policy. If you do not agree with this policy, please refrain from using the extension.
+By using the "Panopto Custom Speed" extension, you agree to the terms outlined in this Privacy Policy. If you do not agree with this policy, please refrain from using the extension.
