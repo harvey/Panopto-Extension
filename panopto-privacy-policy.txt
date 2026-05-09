@@ -1,0 +1,51 @@
+Privacy Policy for Panopto Custom Speed
+
+Effective Date: 21/03/2025
+
+1. Information Collection
+
+Anonymous Usage Data: We collect the amount of time you save by using the extension. This usage data is collected in an anonymous format.
+
+User Identification: When you log in using your Google account, your email address is recorded along with your usage data. This is the only personal information we collect.
+
+Opt In Requirement: Data collection is opt in and is disabled by default. You must explicitly opt in via the extension's main page to enable data collection.
+
+2. Purpose of Data Collection
+
+Performance Analysis: The collected anonymous usage data (time saved) is used solely to analyze and improve the extension's performance.
+
+Abuse Prevention: Your email address is stored exclusively to prevent abuse on the platform. This enables us to ban users who submit fraudulent data in order to unfairly boost leaderboard rankings.
+
+3. Data Storage and Security
+
+Storage Method: All data is securely stored in Google Sheets.
+
+Access Control: Access to this data is limited to authorized administrator accounts only. No unauthorized third parties have access.
+
+Data Protection: We employ industry-standard security measures to protect your information.
+
+4. Data Sharing and Third Parties
+
+No Third-Party Sharing: We do not sell, rent, or share your personal or usage data with any third parties. Your email address is used solely for internal purposes related to abuse prevention.
+
+5. Data Retention
+
+Retention Period: Data is retained only as long as necessary for performance analysis and abuse prevention. We conduct periodic reviews to ensure data is not kept longer than required.
+
+6. User Rights and Opting Out
+
+Opting Out: You may opt out of data collection at any time via the extension's main page. When you opt out, no further data will be collected from your account.
+
+Data Control: While opting out stops future data collection, previously collected data may be retained for abuse prevention and performance analysis purposes.
+
+7. Changes to This Privacy Policy
+
+We may update this Privacy Policy from time to time. When changes are made, the "Effective Date" at the top of this document will be updated. We encourage you to review this policy periodically to stay informed about our data practices.
+
+8. Contact Information
+
+If you have any questions, concerns, or suggestions regarding this Privacy Policy or our data practices, please contact us at:
+
+Email: harveychandler235@gmail.com
+
+By using the "Panopto custom speed" extension, you agree to the terms outlined in this Privacy Policy. If you do not agree with this policy, please refrain from using the extension.
