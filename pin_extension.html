@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pin Panopto Custom Speed</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: #0d1117;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#stage {
+  width: min(1180px, 94vw);
+  height: min(720px, 86vh);
+  position: relative;
+}
+#caption {
+  position: absolute;
+  left: 50%;
+  top: 468px;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: rgba(17,119,61,0.94);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 10px 24px;
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.36);
+  transition: opacity 0.35s, transform 0.35s;
+}
+#caption.fade {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
+#browser {
+  position: absolute;
+  inset: 28px 0 68px;
+  background: #f8fafc;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.52);
+}
+#chrome {
+  height: 86px;
+  background: #dee1e6;
+  border-bottom: 1px solid #c9cdd4;
+}
+#tabs {
+  height: 36px;
+  background: #c8cbd0;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px;
+}
+.tab {
+  width: 270px;
+  height: 29px;
+  background: #f1f3f4;
+  border-radius: 9px 9px 0 0;
+  color: #2f3337;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tab-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg,#11773D,#22c55e);
+  position: relative;
+}
+.tab-icon::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  border-left: 5px solid #fff;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+#toolbar {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+.nav-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #59616b;
+  font-size: 16px;
+}
+#address {
+  flex: 1;
+  height: 32px;
+  border-radius: 18px;
+  background: #fff;
+  color: #5f6368;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-size: 13px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+}
+#toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+}
+.tool-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #4b5563;
+  position: relative;
+}
+.tool-btn.active {
+  background: rgba(0,0,0,0.08);
+}
+#extensions-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+#pinned-extension {
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.35s, transform 0.35s;
+}
+#pinned-extension.show {
+  opacity: 1;
+  transform: scale(1);
+}
+#pinned-extension.active {
+  background: rgba(17,119,61,0.12);
+}
+.ext-img {
+  width: 23px;
+  height: 23px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+#page {
+  height: calc(100% - 86px);
+  background: linear-gradient(180deg,#ffffff 0%,#eef7f2 100%);
+  display: grid;
+  place-items: center;
+  padding-bottom: 40px;
+}
+#page-card {
+  width: 520px;
+  color: #111827;
+  text-align: center;
+}
+#page-card img {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(17,119,61,0.25);
+  margin-bottom: 18px;
+}
+#page-card h1 {
+  font-size: 36px;
+  line-height: 1.05;
+  letter-spacing: 0;
+  margin-bottom: 10px;
+}
+#page-card p {
+  font-size: 17px;
+  color: #4b5563;
+  line-height: 1.45;
+}
+#extensions-menu {
+  position: absolute;
+  top: 82px;
+  right: 12px;
+  width: 360px;
+  background: #fff;
+  color: #202124;
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.08);
+  z-index: 20;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity 0.28s, transform 0.28s;
+}
+#extensions-menu.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.menu-head {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #edf0f2;
+}
+.menu-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.menu-sub {
+  font-size: 12px;
+  color: #68717d;
+}
+.extension-row {
+  display: grid;
+  grid-template-columns: 34px 1fr 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.extension-row.highlight {
+  background: #f5fbf7;
+}
+.row-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.row-desc {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+#pin-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+  transition: background 0.22s, color 0.22s, transform 0.22s;
+}
+#pin-btn svg {
+  width: 18px;
+  height: 18px;
+}
+#pin-btn.pinned {
+  background: rgba(17,119,61,0.14);
+  color: #11773D;
+  transform: rotate(-18deg) scale(1.08);
+}
+#popup {
+  position: absolute;
+  top: 82px;
+  right: 10px;
+  width: 340px;
+  background: #11773D;
+  padding: 6px;
+  border-radius: 14px;
+  box-shadow: 0 18px 52px rgba(0,0,0,0.42);
+  z-index: 22;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  transform-origin: top right;
+  transition: opacity 0.28s, transform 0.28s;
+  pointer-events: none;
+}
+#popup.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.popup-top {
+  color: rgba(255,255,255,0.92);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 5px 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.popup-top img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+.popup-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  color: #111827;
+}
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.speed-badge {
+  width: 76px;
+  background: #11773D;
+  color: #fff;
+  border-radius: 8px;
+  padding: 7px 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+}
+.slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+.slider-fill {
+  width: 58%;
+  height: 100%;
+  background: linear-gradient(90deg,#11773D,#22c55e);
+}
+.popup-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.meta-box {
+  background: #f7faf8;
+  border: 1px solid #e5efe9;
+  border-radius: 8px;
+  padding: 9px;
+}
+.meta-label {
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.meta-value {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #11773D;
+}
+#cursor {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  z-index: 40;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+  transition: left 0.7s cubic-bezier(0.22,1,0.36,1), top 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.18s;
+}
+#cursor::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  width: 0;
+  height: 0;
+  border-left: 20px solid #111827;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  transform: rotate(-18deg);
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
+}
+#cursor.click {
+  transform: scale(0.82);
+}
+#spotlight {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid rgba(34,197,94,0.75);
+  box-shadow: 0 0 0 9px rgba(34,197,94,0.13);
+  z-index: 16;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%,-50%) scale(0.8);
+  transition: opacity 0.28s, transform 0.28s, left 0.55s, top 0.55s;
+}
+#spotlight.show {
+  opacity: 1;
+  transform: translate(-50%,-50%) scale(1);
+}
+#controls {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(13,17,23,0.9);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+#replay {
+  border: none;
+  background: #11773D;
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+#progress {
+  width: 260px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.14);
+  overflow: hidden;
+}
+#bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg,#11773D,#22c55e);
+}
+@media (max-width: 760px) {
+  #stage { width: 100vw; height: 100vh; }
+  #browser { inset: 18px 10px 74px; }
+  #caption { top: auto; bottom: 92px; font-size: 14px; max-width: calc(100vw - 28px); white-space: normal; text-align: center; line-height: 1.25; }
+  #extensions-menu, #popup { right: 14px; width: min(340px, calc(100vw - 28px)); }
+  #page-card { width: min(420px, 84vw); }
+  #page-card h1 { font-size: 30px; }
+  #controls { width: calc(100vw - 28px); justify-content: center; }
+  #progress { width: 38vw; }
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="browser">
+    <div id="chrome">
+      <div id="tabs">
+        <div class="tab"><div class="tab-icon"></div><span>Panopto Custom Speed</span></div>
+      </div>
+      <div id="toolbar">
+        <div class="nav-dot">&#8592;</div>
+        <div class="nav-dot">&#8594;</div>
+        <div class="nav-dot">&#8635;</div>
+        <div id="address"><span>https://chromewebstore.google.com/detail/panopto-custom-speed</span></div>
+        <div id="toolbar-right">
+          <div class="tool-btn" id="pinned-extension" title="Panopto Custom Speed"><img class="ext-img" src="icon.png" alt=""></div>
+          <div class="tool-btn" id="extensions-btn" title="Extensions">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3.8h1.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/>
+            </svg>
+          </div>
+          <div class="tool-btn" title="Chrome menu">&#8942;</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page">
+      <div id="page-card">
+        <img src="icon.png" alt="">
+        <h1>Panopto Custom Speed</h1>
+        <p>Pin it to Chrome so the speed controls are always one click away on Panopto.</p>
+      </div>
+    </div>
+
+    <div id="extensions-menu">
+      <div class="menu-head">
+        <div class="menu-title">Extensions</div>
+        <div class="menu-sub">Pin extensions to the toolbar for quick access.</div>
+      </div>
+      <div class="extension-row highlight">
+        <img class="ext-img" src="icon.png" alt="">
+        <div>
+          <div class="row-name">Panopto Custom Speed</div>
+          <div class="row-desc">Allows custom speeds on Panopto.</div>
+        </div>
+        <div id="pin-btn" title="Pin">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2l8 8-2 2-1.5-1.5-4.1 4.1.4 3.8-1.4 1.4-4.6-4.6L3.5 20.5 2 19l5.3-5.3-4.6-4.6 1.4-1.4 3.8.4L12 4 10.5 2.5 12.5.5 14 2z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div id="popup">
+      <div class="popup-top"><img src="icon.png" alt=""><span>Panopto Custom Speed</span></div>
+      <div class="popup-card">
+        <div class="speed-control">
+          <div class="speed-badge">1.5x</div>
+          <div class="slider"><div class="slider-fill"></div></div>
+        </div>
+        <div class="popup-meta">
+          <div class="meta-box"><div class="meta-label">Current site</div><div class="meta-value">Panopto</div></div>
+          <div class="meta-box"><div class="meta-label">Shortcut</div><div class="meta-value">Pinned</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="caption">Open Chrome's Extensions menu</div>
+  <div id="spotlight"></div>
+  <div id="cursor"></div>
+  <div id="controls">
+    <button id="replay">Replay</button>
+    <div id="progress"><div id="bar"></div></div>
+  </div>
+</div>
+
+<script>
+const captionEl = document.getElementById('caption');
+const cursor = document.getElementById('cursor');
+const spotlight = document.getElementById('spotlight');
+const menu = document.getElementById('extensions-menu');
+const pinBtn = document.getElementById('pin-btn');
+const pinned = document.getElementById('pinned-extension');
+const popup = document.getElementById('popup');
+const bar = document.getElementById('bar');
+let timers = [];
+let startedAt = 0;
+let raf = 0;
+const total = 10200;
+
+function rect(id) {
+  return document.getElementById(id).getBoundingClientRect();
+}
+function center(id, ox=0, oy=0) {
+  const r = rect(id);
+  const stageRect = document.getElementById('stage').getBoundingClientRect();
+  return {
+    x: r.left - stageRect.left + r.width / 2 + ox,
+    y: r.top - stageRect.top + r.height / 2 + oy
+  };
+}
+function moveTo(id, ox=0, oy=0) {
+  const p = center(id, ox, oy);
+  cursor.style.left = p.x + 'px';
+  cursor.style.top = p.y + 'px';
+}
+function showSpot(id, ox=0, oy=0) {
+  const p = center(id, ox, oy);
+  spotlight.style.left = p.x + 'px';
+  spotlight.style.top = p.y + 'px';
+  spotlight.classList.add('show');
+}
+function hideSpot() {
+  spotlight.classList.remove('show');
+}
+function click(fn) {
+  cursor.classList.remove('click');
+  void cursor.offsetWidth;
+  cursor.classList.add('click');
+  if (fn) setTimeout(fn, 130);
+}
+function caption(text) {
+  captionEl.classList.add('fade');
+  setTimeout(() => {
+    captionEl.textContent = text;
+    captionEl.classList.remove('fade');
+  }, 230);
+}
+function at(ms, fn) {
+  timers.push(setTimeout(fn, ms));
+}
+function clear() {
+  timers.forEach(clearTimeout);
+  timers = [];
+  cancelAnimationFrame(raf);
+}
+function reset() {
+  clear();
+  menu.classList.remove('show');
+  pinBtn.classList.remove('pinned');
+  pinned.classList.remove('show','active');
+  popup.classList.remove('show');
+  document.getElementById('extensions-btn').classList.remove('active');
+  captionEl.textContent = "Open Chrome's Extensions menu";
+  captionEl.classList.remove('fade');
+  hideSpot();
+  bar.style.width = '0%';
+  startedAt = performance.now();
+  moveTo('address', 80, 0);
+  schedule();
+  tick();
+}
+function tick() {
+  const elapsed = performance.now() - startedAt;
+  bar.style.width = Math.min(100, elapsed / total * 100) + '%';
+  if (elapsed < total) raf = requestAnimationFrame(tick);
+}
+function schedule() {
+  at(400, () => showSpot('extensions-btn'));
+  at(900, () => moveTo('extensions-btn'));
+  at(1700, () => click(() => {
+    document.getElementById('extensions-btn').classList.add('active');
+    menu.classList.add('show');
+    caption('Find Panopto Custom Speed in the list');
+  }));
+  at(3000, () => {
+    showSpot('pin-btn');
+    moveTo('pin-btn');
+    caption('Click the pin next to Panopto Custom Speed');
+  });
+  at(4300, () => click(() => {
+    pinBtn.classList.add('pinned');
+    pinned.classList.add('show');
+    caption('The extension is now pinned to the toolbar');
+  }));
+  at(5700, () => {
+    menu.classList.remove('show');
+    document.getElementById('extensions-btn').classList.remove('active');
+    hideSpot();
+    showSpot('pinned-extension');
+    moveTo('pinned-extension');
+    caption('Click the pinned extension icon');
+  });
+  at(7000, () => click(() => {
+    pinned.classList.add('active');
+    popup.classList.add('show');
+    caption('Panopto Custom Speed opens instantly');
+  }));
+  at(8900, () => {
+    caption('Pinned and ready whenever you watch Panopto');
+  });
+}
+
+document.getElementById('replay').addEventListener('click', reset);
+window.addEventListener('resize', reset);
+reset();
+</script>
+</body>
+</html>
