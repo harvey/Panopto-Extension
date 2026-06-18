@@ -3,435 +3,1365 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panopto Custom Speed | Harvey Chandler</title>
-  <meta name="description" content="Panopto Custom Speed is a Chrome extension that lets students set custom playback speeds, save time, and compete on a time-saved leaderboard." />
+  <title>Panopto Custom Speed — AI Notes, Flashcards & Translation</title>
+  <meta name="description" content="A Chrome extension for Panopto lectures: push past the 2× cap, then turn any lecture into AI notes, flashcards (export to Anki), an AI tutor chat, and translation. Track time saved and climb the weekly leaderboard." />
   <link rel="canonical" href="https://harvey.github.io/Panopto-Extension/" />
-  <meta property="og:title" content="Panopto Custom Speed" />
-  <meta property="og:description" content="Custom playback speed, time saved tracking, startup speed, leaderboard, and multilingual UI for Panopto lecture videos." />
+  <meta property="og:title" content="Panopto Custom Speed — AI Notes, Flashcards & Translation" />
+  <meta property="og:description" content="Custom playback speed plus an AI study toolkit: lecture notes, flashcards → Anki, an AI tutor that cites timestamps, translation/dubbing, and a time-saved leaderboard." />
   <meta property="og:url" content="https://harvey.github.io/Panopto-Extension/" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://harvey.github.io/Panopto-Extension/icon.png" />
+  <meta property="og:image" content="https://harvey.github.io/Panopto-Extension/img/speed-toolkit.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#060b08" />
+  <link rel="icon" href="icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --green: #11773D;
-      --green-dark: #0d6332;
-      --green-soft: #f3faf6;
-      --blue: #4285f4;
-      --yellow: #FFDD00;
-      --ink: #111827;
-      --text: #eaf7ef;
-      --muted: #a8b9af;
-      --line: rgba(255,255,255,.12);
-      --card: rgba(255,255,255,.075);
-      --card-2: rgba(255,255,255,.115);
-      --shadow: 0 28px 90px rgba(0,0,0,.42);
-      --radius: 28px;
+      --bg:        #060b08;
+      --bg-2:      #040705;
+      --green:     #11773D;
+      --green-2:   #0d6332;
+      --lime:      #22c55e;
+      --glow:      #34d878;
+      --gold:      #f5d97a;
+      --gold-2:    #fbbf24;
+      --bronze:    #d9954a;
+      --silver:    #cbd5e1;
+      --violet:    #b07cff;
+      --blue:      #4285f4;
+      --text:      #eaf7ef;
+      --text-soft: #c8d4cc;
+      --muted:     #9db3a6;
+      --muted-2:   #7d9488;
+      --line:      rgba(255,255,255,.10);
+      --line-2:    rgba(255,255,255,.18);
+      --card:      rgba(255,255,255,.045);
+      --card-2:    rgba(255,255,255,.085);
+      --radius:    22px;
+      --radius-lg: 30px;
+      --shadow:    0 30px 90px rgba(0,0,0,.5);
+      --ease:      cubic-bezier(.22,1,.36,1);
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
     body {
       margin: 0;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(circle at 18% -8%, rgba(17,119,61,.58), transparent 32rem),
-        radial-gradient(circle at 92% 4%, rgba(66,133,244,.28), transparent 30rem),
-        linear-gradient(180deg, #07100b 0%, #07100b 26%, #050706 100%);
+      background: var(--bg);
       min-height: 100vh;
       line-height: 1.55;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      opacity: .22;
-      background-size: 34px 34px;
-      background-image: linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,.08) 1px, transparent 1px);
-      mask-image: linear-gradient(180deg, black, transparent 82%);
+    /* layered ambient background */
+    .bg-layer { position: fixed; inset: 0; z-index: -3; pointer-events: none;
+      background:
+        radial-gradient(60rem 40rem at 12% -10%, rgba(17,119,61,.55), transparent 60%),
+        radial-gradient(50rem 38rem at 88% 2%, rgba(52,216,120,.16), transparent 55%),
+        radial-gradient(60rem 50rem at 50% 120%, rgba(13,99,50,.4), transparent 60%),
+        linear-gradient(180deg, #07100b 0%, #060b08 40%, #040705 100%);
     }
-    a { color: inherit; }
+    .bg-grid { position: fixed; inset: 0; z-index: -2; pointer-events: none; opacity: .5;
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,.045) 1px, transparent 1px);
+      mask-image: linear-gradient(180deg, black, transparent 75%);
+      -webkit-mask-image: linear-gradient(180deg, black, transparent 75%);
+    }
+    .aurora { position: fixed; z-index: -2; pointer-events: none; border-radius: 50%; filter: blur(54px); opacity: .42; will-change: transform; }
+    .aurora.a1 { width: 44rem; height: 44rem; top: -16rem; left: -10rem; background: radial-gradient(circle, rgba(34,197,94,.4), transparent 70%); animation: drift1 22s ease-in-out infinite; }
+    .aurora.a2 { width: 38rem; height: 38rem; top: 26rem; right: -14rem; background: radial-gradient(circle, rgba(52,216,120,.26), transparent 70%); animation: drift2 27s ease-in-out infinite; }
+    @keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(5rem,3rem) scale(1.12); } }
+    @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-4rem,-3rem) scale(1.1); } }
+
+    a { color: inherit; text-decoration: none; }
     img { max-width: 100%; display: block; }
-    code { color: #d7ffdf; background: rgba(0,0,0,.28); padding: 2px 6px; border-radius: 7px; }
-    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(7,16,11,.74);
-      border-bottom: 1px solid var(--line);
-      backdrop-filter: blur(18px);
-    }
-    .nav-inner { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 850; letter-spacing: -.035em; }
-    .brand img { width: 38px; height: 38px; border-radius: 12px; background: white; padding: 4px; box-shadow: 0 13px 28px rgba(17,119,61,.3); }
-    .nav-links { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 750; font-size: 14px; }
-    .nav-links a { text-decoration: none; padding: 8px 10px; border-radius: 999px; }
-    .nav-links a:hover { color: #fff; background: rgba(255,255,255,.08); }
-    .hero { padding: 70px 0 44px; }
-    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr); gap: 42px; align-items: center; }
-    .eyebrow { display: inline-flex; align-items: center; gap: 9px; padding: 8px 12px; border: 1px solid rgba(104,236,151,.38); border-radius: 999px; color: #c3ffd7; background: rgba(17,119,61,.16); font-size: 13px; font-weight: 850; margin-bottom: 18px; }
-    .pulse { width: 8px; height: 8px; border-radius: 50%; background: #37d878; box-shadow: 0 0 22px #37d878; }
-    h1 { margin: 0; max-width: 760px; font-size: clamp(43px, 7vw, 82px); line-height: .91; letter-spacing: -.075em; }
-    .grad { color: transparent; background: linear-gradient(120deg, #fff, #cbffdd 45%, #9cc3ff); -webkit-background-clip: text; background-clip: text; }
-    .lead { max-width: 720px; color: #d5e6db; font-size: clamp(17px, 2vw, 21px); margin: 22px 0 0; }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 12px 18px; text-decoration: none; border-radius: 999px; font-weight: 850; border: 1px solid var(--line); background: rgba(255,255,255,.08); transition: transform .16s ease, background .16s ease, border-color .16s ease; }
-    .btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.25); }
-    .btn.primary { background: var(--blue); border-color: transparent; color: #fff; box-shadow: 0 18px 36px rgba(66,133,244,.26); }
-    .btn.primary:hover { background: #3367d6; }
-    .btn.green { background: var(--green); border-color: transparent; color: white; box-shadow: 0 18px 36px rgba(17,119,61,.26); }
-    .btn.green:hover { background: var(--green-dark); }
-    .mini-meta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; color: #b8d8c4; font-size: 13px; font-weight: 800; }
-    .pill { padding: 7px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.07); }
-    .mock-stage { position: relative; display: flex; justify-content: center; }
-    .mock-stage::before { content: ""; position: absolute; inset: 34px 10px 0; background: rgba(17,119,61,.22); filter: blur(42px); border-radius: 45px; }
-    .popup-shell {
-      position: relative;
-      width: 366px;
-      max-width: 100%;
-      background: var(--green);
-      border-radius: 24px;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,.18);
-      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.12);
-      transform: rotate(1deg);
-    }
-    .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 2px; }
-    .top-bar-title { font-size: 13px; font-weight: 850; color: rgba(255,255,255,.94); }
-    .lang-select { background: rgba(0,0,0,.2); color: white; border: 1px solid rgba(255,255,255,.26); border-radius: 8px; padding: 4px 7px; font-size: 12px; outline: none; }
-    .lang-select option { color: var(--ink); background: white; }
-    .popup-card { background: white; color: var(--ink); border-radius: 16px; padding: 14px; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
-    .section-label { color: #9ca3af; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; font-weight: 900; margin-bottom: 8px; }
+    ::selection { background: rgba(52,216,120,.3); }
+    .wrap { width: min(1180px, calc(100% - 36px)); margin: 0 auto; }
+
+    /* scroll progress bar */
+    .scroll-prog { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100; transform: scaleX(0); transform-origin: 0 50%; background: linear-gradient(90deg, var(--green), var(--lime) 55%, var(--glow)); box-shadow: 0 0 12px rgba(52,216,120,.6); will-change: transform; }
+
+    /* typewriter rotor in the headline */
+    .rotor { white-space: nowrap; }
+    .rotor-caret { display: inline-block; width: 4px; height: .82em; margin-left: 6px; border-radius: 2px; background: var(--lime); -webkit-text-fill-color: var(--lime); vertical-align: -2px; box-shadow: 0 0 14px rgba(52,216,120,.8); animation: blink 1.05s steps(1) infinite; }
+
+    /* ── nav ── */
+    .nav { position: sticky; top: 0; z-index: 80; border-bottom: 1px solid transparent; transition: background .3s, border-color .3s, backdrop-filter .3s; }
+    .nav.scrolled { background: rgba(6,11,8,.72); border-bottom-color: var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    .nav-inner { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 900; letter-spacing: -.03em; font-size: 16px; }
+    .brand img { width: 34px; height: 34px; border-radius: 10px; background: #fff; padding: 3px; box-shadow: 0 10px 26px rgba(17,119,61,.4); }
+    .nav-links { display: flex; align-items: center; gap: 4px; color: var(--muted); font-weight: 650; font-size: 14px; }
+    .nav-links a { padding: 8px 12px; border-radius: 999px; transition: color .15s, background .15s; }
+    .nav-links a:hover { color: #fff; background: rgba(255,255,255,.07); }
+    .nav-cta { display: inline-flex; align-items: center; gap: 8px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 11px 20px; border-radius: 999px; font-weight: 800; font-size: 14.5px; border: 1px solid var(--line-2); background: rgba(255,255,255,.06); color: var(--text); cursor: pointer; transition: transform .16s var(--ease), background .16s, border-color .16s, box-shadow .16s; white-space: nowrap; }
+    .btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.12); border-color: var(--line-2); }
+    .btn.primary { background: linear-gradient(120deg, var(--green) 0%, var(--lime) 58%, var(--glow) 120%); background-size: 180% 100%; background-position: 0 0; border-color: transparent; color: #fff; box-shadow: 0 16px 40px -12px rgba(34,197,94,.6); transition: transform .16s var(--ease), background-position .5s var(--ease), box-shadow .2s; }
+    .btn.primary:hover { background-position: 100% 0; transform: translateY(-2px); box-shadow: 0 22px 52px -12px rgba(34,197,94,.82); }
+    .nav-cta .btn.primary { animation: ctaGlow 3.4s ease-in-out infinite; }
+    @keyframes ctaGlow { 0%,100% { box-shadow: 0 10px 26px -12px rgba(34,197,94,.5); } 50% { box-shadow: 0 14px 40px -10px rgba(34,197,94,.85); } }
+    .btn.ghost { background: rgba(255,255,255,.05); }
+    .btn.sm { min-height: 38px; padding: 8px 15px; font-size: 13.5px; }
+    .btn .chev { transition: transform .16s; }
+    .btn:hover .chev { transform: translateX(3px); }
+    .nav-burger { display: none; }
+
+    /* ── hero ── */
+    .hero { padding: 64px 0 36px; position: relative; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(330px,.95fr); gap: 46px; align-items: center; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; padding: 7px 13px; border: 1px solid rgba(52,216,120,.38); border-radius: 999px; color: #c8ffdc; background: rgba(17,119,61,.18); font-size: 12.5px; font-weight: 800; margin-bottom: 22px; }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 0 0 rgba(52,216,120,.6); animation: pulse 2.2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,216,120,.55); } 70% { box-shadow: 0 0 0 9px rgba(52,216,120,0); } 100% { box-shadow: 0 0 0 0 rgba(52,216,120,0); } }
+    h1 { margin: 0; font-size: clamp(42px, 6.4vw, 78px); line-height: .94; letter-spacing: -.045em; font-weight: 900; }
+    .grad { background: linear-gradient(100deg, #fff 10%, #b6ffce 45%, #7fe0ff 70%, #fff 100%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 7s linear infinite; }
+    @keyframes shimmer { to { background-position: 220% 0; } }
+    .lead { max-width: 560px; color: #cfe3d6; font-size: clamp(16.5px, 1.7vw, 20px); margin: 22px 0 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .trust { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 22px; margin-top: 26px; }
+    .trust-stars { color: var(--gold); letter-spacing: 2px; font-size: 15px; }
+    .trust-item { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13.5px; font-weight: 650; }
+    .trust-item img { height: 26px; }
+    .trust-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted-2); }
+
+    /* popup mock */
+    .mock-stage { position: relative; display: flex; justify-content: center; perspective: 1400px; }
+    .mock-stage::before { content: ""; position: absolute; inset: 8% 6% -4%; background: radial-gradient(closest-side, rgba(17,119,61,.5), transparent); filter: blur(48px); }
+    .floaty { animation: floaty 6.5s ease-in-out infinite; }
+    @keyframes floaty { 0%,100% { transform: translateY(0) rotateX(0) rotate(1.4deg); } 50% { transform: translateY(-14px) rotateX(2deg) rotate(1.4deg); } }
+    .popup-shell { position: relative; width: 360px; max-width: 100%; background: linear-gradient(180deg, #149350, var(--green)); border-radius: 22px; padding: 11px; border: 1px solid rgba(255,255,255,.2); box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.18); transform-style: preserve-3d; transition: transform .18s var(--ease), box-shadow .18s var(--ease); }
+    .pop-top { display: flex; align-items: center; justify-content: space-between; padding: 1px 4px 8px; }
+    .pop-title { font-size: 13px; font-weight: 800; color: rgba(255,255,255,.95); }
+    .pop-top-right { display: flex; align-items: center; gap: 6px; }
+    .streak-chip { display: inline-flex; align-items: center; gap: 3px; background: rgba(0,0,0,.22); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 2px 7px; font-size: 11.5px; font-weight: 800; }
+    .lang-select { background: rgba(0,0,0,.22); color: #fff; border: 1px solid rgba(255,255,255,.26); border-radius: 7px; padding: 3px 7px; font-size: 11.5px; outline: none; cursor: pointer; }
+    .lang-select option { color: #1f2937; background: #fff; }
+    .pop-card { background: #fff; color: #111827; border-radius: 15px; padding: 13px; box-shadow: 0 10px 26px rgba(0,0,0,.22); }
+    .slabel { color: #6b7280; text-transform: uppercase; letter-spacing: .1em; font-size: 9.5px; font-weight: 900; margin-bottom: 7px; }
     .speed-row { display: flex; align-items: center; gap: 9px; }
-    .slider { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 999px; background: #d1d5db; outline: none; accent-color: var(--green); }
-    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 17px; height: 17px; border-radius: 50%; background: var(--green); box-shadow: 0 1px 5px rgba(0,0,0,.25); }
-    .speed-badge-wrap { width: 82px; flex-shrink: 0; }
-    .speed-badge { display: block; width: 100%; text-align: center; background: var(--green); color: white; border-radius: 8px; padding: 5px 0; font-size: 20px; line-height: 1.1; font-weight: 900; white-space: nowrap; overflow: hidden; border: 2px solid transparent; }
-    .speed-badge[contenteditable="true"] { background: #0d6332; outline: none; }
-    .edit-hint { margin-top: 7px; color: var(--green); text-align: center; font-size: 11px; font-weight: 750; }
-    .warning { display: none; margin-top: 5px; text-align: center; font-size: 11px; color: #dc2626; }
-    .divider { height: 1px; background: #f0f0f0; margin: 10px 0; }
-    .startup { display: flex; align-items: center; gap: 7px; color: #374151; font-size: 13px; margin-bottom: 8px; }
-    .startup input { accent-color: var(--green); }
-    .saved { display: flex; align-items: baseline; gap: 5px; background: var(--green-soft); color: #6b7280; border-radius: 8px; padding: 7px 9px; font-size: 12px; }
-    .saved strong { color: var(--green); font-size: 14px; }
-    .small-note { color: #9ca3af; font-size: 11px; margin-top: 6px; }
-    .leader-row { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin: 6px 0; }
-    .google-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #dadce0; background: #f8f9fa; color: #3c4043; border-radius: 999px; min-height: 34px; padding: 0 12px; font-size: 12px; font-weight: 650; }
-    .rank { display: inline-block; background: var(--green); color: white; border-radius: 999px; padding: 2px 10px; font-weight: 850; font-size: 13px; }
-    .mock-link { color: var(--green); text-decoration: underline; font-size: 12px; font-weight: 750; }
-    .bottom-buttons { display: flex; gap: 7px; margin: 10px 0 8px; }
-    .bottom-buttons a { flex: 1; text-align: center; text-decoration: none; border-radius: 8px; padding: 8px; font-weight: 850; font-size: 12px; }
-    .coffee { background: var(--yellow); color: #111; }
-    .rate { background: var(--blue); color: white; }
-    .total-time { background: var(--green-soft); border-radius: 8px; text-align: center; padding: 8px 10px; color: #4b7a5e; font-size: 12px; cursor: pointer; user-select: none; }
-    .total-time strong { display: block; color: var(--green); font-size: 14px; }
-    section { padding: 54px 0; }
-    .section-head { max-width: 790px; margin-bottom: 24px; }
-    .section-head h2 { margin: 0; font-size: clamp(30px, 4vw, 48px); line-height: .98; letter-spacing: -.065em; }
-    .section-head p { margin: 14px 0 0; color: var(--muted); font-size: 17px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    .card { border: 1px solid var(--line); background: linear-gradient(180deg, var(--card-2), var(--card)); border-radius: var(--radius); padding: 22px; box-shadow: 0 20px 55px rgba(0,0,0,.18); }
-    .card h3 { margin: 0 0 8px; letter-spacing: -.035em; font-size: 20px; }
-    .card p { margin: 0; color: var(--muted); }
-    .stat { min-height: 118px; display: flex; flex-direction: column; justify-content: center; gap: 9px; text-decoration: none; }
-    .stat-label { text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-size: 12px; font-weight: 900; }
-    .stat img { height: 30px; width: fit-content; max-width: 100%; }
-    .live-note { margin-top: 12px; color: var(--muted); font-size: 13px; }
-    .split { display: grid; grid-template-columns: minmax(0, .9fr) minmax(330px, 1.1fr); gap: 18px; align-items: start; }
-    .feature-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; background: rgba(17,119,61,.18); color: #bfffd4; margin-bottom: 14px; font-size: 20px; }
-    .tech-list { display: grid; gap: 12px; }
-    .tech-item { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; border: 1px solid var(--line); background: var(--card); border-radius: 20px; padding: 16px; }
-    .tech-item strong { color: #fff; }
-    .tech-item span { color: var(--muted); }
-    .video-box { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(255,255,255,.07); box-shadow: var(--shadow); }
+    .slider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 999px; background: #d1d5db; outline: none; }
+    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--green); box-shadow: 0 1px 5px rgba(0,0,0,.25); cursor: pointer; }
+    .slider::-moz-range-thumb { width: 16px; height: 16px; border: none; border-radius: 50%; background: var(--green); cursor: pointer; }
+    .speed-badge-wrap { width: 78px; flex-shrink: 0; }
+    .speed-badge { display: block; width: 100%; text-align: center; background: var(--green); color: #fff; border-radius: 8px; padding: 4px 0; font-size: 18px; line-height: 1.15; font-weight: 900; cursor: pointer; border: 2px solid transparent; }
+    .speed-badge:focus { outline: none; background: var(--green-2); border-color: #0a5028; }
+    .edit-hint { margin-top: 6px; color: var(--green); text-align: center; font-size: 10.5px; font-weight: 700; }
+    .pop-divider { height: 1px; background: #f0f0f0; margin: 9px 0; }
+    .row-flex { display: flex; align-items: center; gap: 7px; }
+    .saved-pill { margin-left: auto; font-size: 11px; color: #6b7280; }
+    .saved-pill strong { color: var(--green); font-size: 13px; }
+    .prize { display: flex; align-items: center; gap: 7px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; padding: 5px 8px; margin: 6px 0; font-size: 11px; color: #166534; line-height: 1.4; }
+    .leader-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 5px 0; }
+    .rank { display: inline-block; background: var(--green); color: #fff; border-radius: 999px; padding: 1px 9px; font-weight: 800; font-size: 12px; }
+    .mock-link { color: var(--green); text-decoration: underline; font-size: 11.5px; font-weight: 700; }
+    .ai-subhead { font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--violet); margin: 9px 0 5px; }
+    .ai-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+    .ai-btn { background: var(--green); color: #fff; border: none; border-radius: 7px; padding: 7px 3px; font-size: 9.5px; font-weight: 800; line-height: 1.2; text-align: center; cursor: pointer; transition: background .15s, transform .15s; }
+    .ai-btn:hover { background: var(--green-2); transform: translateY(-1px); }
+    .ai-beta { font-size: 8px; background: var(--violet); color: #fff; border-radius: 3px; padding: 1px 4px; font-weight: 800; vertical-align: middle; }
+    .prem-pill { display: inline-flex; align-items: center; gap: 4px; margin-top: 9px; padding: 3px 10px; border-radius: 999px; color: #fff; font-weight: 800; font-size: 11px; background: linear-gradient(135deg, var(--green) 0%, var(--green-2) 45%, #d4af37 180%); box-shadow: inset 0 0 0 .5px rgba(252,211,77,.5); }
+
+    /* floating chips around the popup */
+    .chip-float { position: absolute; z-index: 4; display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 14px; background: rgba(12,20,15,.86); border: 1px solid var(--line-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 13px; font-weight: 800; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+    .chip-float .ic { font-size: 16px; }
+    .chip-a { top: 4%; left: -7%; color: #c8ffdc; animation: floaty 7s ease-in-out infinite; }
+    .chip-b { top: 42%; right: -9%; color: #ffe9a8; animation: floaty 8s ease-in-out infinite .8s; }
+    .chip-c { bottom: -3%; left: -4%; color: #d8c4ff; animation: floaty 7.6s ease-in-out infinite .4s; }
+
+    /* ── reusable section bits ── */
+    section { padding: 64px 0; position: relative; }
+    main > section:nth-of-type(even) { background: linear-gradient(180deg, rgba(255,255,255,.016), transparent 42%); }
+    main > section + section::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, transparent, var(--line-2), transparent); }
+    #leaderboard, #pricing { padding: 88px 0; }
+    .section-head { max-width: 760px; margin: 0 auto 38px; text-align: center; }
+    .section-head.left { margin-left: 0; text-align: left; }
+    .kicker { display: inline-block; color: var(--glow); font-weight: 800; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: clamp(29px, 4vw, 47px); line-height: 1; letter-spacing: -.04em; font-weight: 900; }
+    .section-head p { margin: 16px auto 0; color: var(--muted); font-size: 17px; max-width: 620px; }
+    .section-head.left p { margin-left: 0; }
+
+    /* reveal animation */
+    .reveal { opacity: 0; transform: translateY(28px) scale(.985); filter: blur(6px); transition: opacity .7s var(--ease), transform .7s var(--ease), filter .7s var(--ease); }
+    .reveal.in { opacity: 1; transform: none; filter: none; }
+
+    /* ── live stats band ── */
+    .stats-band { border: 1px solid var(--line); background: linear-gradient(180deg, var(--card-2), var(--card)); border-radius: var(--radius-lg); padding: 30px; box-shadow: var(--shadow); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; text-align: center; }
+    .stat-num { font-size: clamp(28px,3.4vw,42px); font-weight: 900; letter-spacing: -.03em; background: linear-gradient(180deg,#fff,#9fe9bb); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; }
+    .stat-label { color: var(--muted); font-size: 13px; font-weight: 700; margin-top: 9px; text-transform: uppercase; letter-spacing: .06em; }
+    .stat-cell { padding: 6px; }
+    .stat-cell + .stat-cell { border-left: 1px solid var(--line); }
+    .shields { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 22px; }
+    .shields img { height: 28px; }
+
+    /* ── AI demo (interactive) ── */
+    .demo-wrap { border: 1px solid var(--line); background: linear-gradient(180deg, rgba(13,20,16,.9), rgba(8,13,10,.92)); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+    .demo-chrome { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.35); background: linear-gradient(135deg, #0a3d22, var(--green)); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+    .demo-chrome-title { margin-left: 8px; font-size: 12.5px; font-weight: 700; color: rgba(255,255,255,.9); }
+    .demo-chrome-title small { color: rgba(255,255,255,.8); font-weight: 600; }
+    .demo-gemini { margin-left: auto; font-size: 11px; color: rgba(255,255,255,.85); display: inline-flex; align-items: center; gap: 6px; }
+    .demo-gemini .spark { animation: sparkle 2.6s ease-in-out infinite; }
+    @keyframes sparkle { 0%,100% { opacity: .6; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.12); } }
+    .demo-tabs { display: flex; gap: 6px; padding: 12px 16px 0; flex-wrap: wrap; }
+    .demo-tab { display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 11px 11px 0 0; font-weight: 700; font-size: 13.5px; color: var(--muted); background: transparent; border: 1px solid transparent; border-bottom: none; cursor: pointer; transition: color .15s, background .15s; }
+    .demo-tab:hover { color: var(--text); }
+    .demo-tab.active { color: #fff; background: rgba(255,255,255,.05); border-color: var(--line); }
+    .demo-tab .tdot { width: 7px; height: 7px; border-radius: 50%; }
+    .demo-body { padding: 22px; min-height: 360px; border-top: 1px solid var(--line); }
+    .demo-panel { display: none; animation: fadeUp .5s var(--ease); }
+    .demo-panel.active { display: block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    /* notes panel */
+    .notes-layout { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 22px; }
+    .toc { border-right: 1px solid var(--line); padding-right: 18px; }
+    .toc-label { color: var(--muted-2); text-transform: uppercase; letter-spacing: .1em; font-size: 10px; font-weight: 800; margin-bottom: 10px; }
+    .toc-item { padding: 6px 9px; border-radius: 8px; font-size: 13px; color: var(--muted); margin-bottom: 2px; transition: background .15s, color .15s; cursor: default; }
+    .toc-item.act { background: rgba(34,197,94,.12); color: #bff5d2; font-weight: 700; }
+    .notes-h { font-size: 20px; font-weight: 800; letter-spacing: -.02em; margin: 0 0 4px; }
+    .notes-meta { color: var(--muted); font-size: 12.5px; margin-bottom: 16px; }
+    .save-callout { display: flex; align-items: center; gap: 10px; background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.3); border-radius: 11px; padding: 10px 13px; margin-bottom: 18px; font-size: 12.5px; color: #bff5d2; }
+    .save-callout .dl { margin-left: auto; background: var(--lime); color: #06240f; border-radius: 7px; padding: 4px 11px; font-weight: 800; font-size: 12px; white-space: nowrap; }
+    .chap-tag { display: inline-block; color: var(--glow); font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+    .chap-h { font-size: 17px; font-weight: 800; margin: 0 0 10px; }
+    .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .shot { aspect-ratio: 16/10; border-radius: 10px; border: 1px solid var(--line); position: relative; overflow: hidden; background: linear-gradient(135deg,#1b2a20,#0f1813); }
+    .shot::after { content: "▶"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: rgba(255,255,255,.45); text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+    .shot::before { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 60% at 50% 30%, rgba(255,255,255,.06), transparent 70%); }
+    .shot .ts { position: absolute; left: 7px; top: 7px; background: rgba(0,0,0,.6); color: #fff; font-size: 9.5px; font-weight: 700; border-radius: 5px; padding: 1px 6px; }
+    .shot.board { background: linear-gradient(135deg,#2a2418,#161009); }
+    .notes-p { color: var(--text-soft, #c8d4cc); font-size: 14px; margin: 0 0 14px; }
+    .formula { display: inline-block; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-family: "Cambria Math", Georgia, serif; font-size: 16px; color: #eafff1; margin: 4px 0 14px; }
+    .formula i { color: #ffe9a8; }
+
+    /* chat panel */
+    .chat-log { display: flex; flex-direction: column; gap: 12px; max-width: 760px; margin: 0 auto; }
+    .bubble { max-width: 82%; padding: 11px 15px; border-radius: 16px; font-size: 14px; line-height: 1.6; }
+    .bubble.user { align-self: flex-end; background: linear-gradient(135deg,var(--green),var(--lime)); color: #fff; border-bottom-right-radius: 5px; box-shadow: 0 8px 20px -8px rgba(34,197,94,.6); }
+    .bubble.ai { align-self: flex-start; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+    .bubble.ai strong { color: #fff; }
+    .ts-chip { display: inline-flex; align-items: center; gap: 4px; background: rgba(52,216,120,.16); color: #bff5d2; border: 1px solid rgba(52,216,120,.35); border-radius: 6px; padding: 0 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+    .ts-chip:hover { background: rgba(52,216,120,.28); }
+    .pop-in { animation: popIn .45s var(--ease) both; }
+    @keyframes popIn { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+    .caret { display: inline-block; width: 8px; height: 16px; background: var(--lime); margin-left: 2px; vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .chat-inputbar { display: flex; gap: 10px; max-width: 760px; margin: 18px auto 0; }
+    .chat-fakeinput { flex: 1; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 12px; padding: 11px 15px; color: var(--muted); font-size: 13.5px; }
+    .chat-send { background: var(--lime); color: #06240f; border: none; border-radius: 12px; padding: 0 20px; font-weight: 800; cursor: pointer; }
+
+    /* flashcards panel */
+    .fc-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
+    .fc-tool { font-size: 12.5px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 9px; padding: 7px 13px; cursor: pointer; transition: color .15s, border-color .15s; }
+    .fc-tool:hover { color: #fff; border-color: var(--line-2); }
+    .fc-tool.anki { color: #bff5d2; border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.08); }
+    .fc-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .fc { perspective: 1100px; height: 168px; cursor: pointer; }
+    .fc-inner { position: relative; width: 100%; height: 100%; transition: transform .6s var(--ease); transform-style: preserve-3d; }
+    .fc.flip .fc-inner { transform: rotateY(180deg); }
+    .fc-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; }
+    .fc-front { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); }
+    .fc-back { background: linear-gradient(180deg, rgba(34,197,94,.14), rgba(17,119,61,.06)); transform: rotateY(180deg); border-color: rgba(34,197,94,.35); }
+    .fc-cardno { font-size: 9px; font-weight: 800; letter-spacing: .1em; color: var(--muted-2); text-transform: uppercase; }
+    .fc-q { font-size: 13px; font-weight: 700; margin-top: 8px; flex: 1; display: flex; align-items: center; }
+    .fc-a { font-size: 12.5px; color: #d6ffe4; margin-top: 8px; flex: 1; display: flex; align-items: center; }
+    .fc-hint { font-size: 10px; color: var(--muted-2); font-weight: 700; margin-top: auto; }
+    .fc-back .fc-hint { color: #8fd6a8; }
+
+    /* translation panel */
+    .tr-wrap { max-width: 720px; margin: 0 auto; }
+    .tr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; justify-content: center; }
+    .tr-langs { display: inline-flex; align-items: center; gap: 10px; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px; }
+    .tr-pill { padding: 5px 13px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+    .tr-pill.from { color: var(--muted); }
+    .tr-pill.to { background: rgba(34,197,94,.16); color: #bff5d2; border: 1px solid rgba(34,197,94,.35); }
+    .tr-arrow { color: var(--glow); font-weight: 900; }
+    .tr-card { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; background: rgba(255,255,255,.03); }
+    .tr-card .lab { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 6px; }
+    .tr-card.src .txt { color: var(--muted); }
+    .tr-card.dst { background: rgba(34,197,94,.07); border-color: rgba(34,197,94,.3); }
+    .tr-card.dst .txt { color: #eafff1; font-weight: 600; }
+    .tr-play { display: inline-flex; align-items: center; gap: 9px; background: var(--lime); color: #06240f; border: none; border-radius: 11px; padding: 10px 18px; font-weight: 800; cursor: pointer; }
+    .tr-eq { display: flex; align-items: center; gap: 8px; justify-content: center; color: var(--muted); font-size: 13px; }
+    .tr-wave { display: inline-flex; gap: 3px; align-items: flex-end; height: 18px; }
+    .tr-wave span { width: 3px; background: var(--lime); border-radius: 2px; animation: wave 1s ease-in-out infinite; }
+    .tr-wave span:nth-child(2){animation-delay:.15s} .tr-wave span:nth-child(3){animation-delay:.3s} .tr-wave span:nth-child(4){animation-delay:.45s} .tr-wave span:nth-child(5){animation-delay:.6s}
+    @keyframes wave { 0%,100% { height: 5px; } 50% { height: 18px; } }
+
+    /* ── showcase split (store screenshots) ── */
+    .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-bottom: 26px; }
+    .showcase.rev .sc-media { order: 2; }
+    .sc-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--glow); font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 14px; }
+    .sc-eyebrow .ic { font-size: 17px; }
+    .showcase h3 { font-size: clamp(24px, 3vw, 35px); line-height: 1.04; letter-spacing: -.035em; margin: 0 0 12px; font-weight: 900; }
+    .showcase p { color: var(--muted); font-size: 16.5px; margin: 0 0 18px; max-width: 460px; }
+    .sc-list { display: flex; flex-direction: column; gap: 9px; margin: 0 0 8px; padding: 0; list-style: none; }
+    .sc-list li { display: flex; align-items: flex-start; gap: 10px; color: #d3e6da; font-size: 14.5px; }
+    .sc-list .tick { color: var(--lime); font-weight: 900; flex-shrink: 0; }
+    .sc-media { position: relative; }
+    .frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 60px -28px rgba(0,0,0,.75); background: #0a0f0c; transition: transform .4s var(--ease), box-shadow .4s var(--ease); }
+    .frame:hover { box-shadow: 0 32px 70px -26px rgba(34,197,94,.35); }
+    .frame:hover { transform: translateY(-6px); }
+    .frame img { width: 100%; aspect-ratio: 16/10; object-fit: cover; object-position: top center; }
+    .sc-media::before { content: ""; position: absolute; inset: 10% -6% -10% -6%; background: radial-gradient(closest-side, rgba(34,197,94,.28), transparent); filter: blur(46px); z-index: -1; }
+
+    /* ── feature grid ── */
+    .feat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .feat { border: 1px solid var(--line); background: linear-gradient(180deg, var(--card-2), var(--card)); border-radius: var(--radius); padding: 20px; transition: transform .2s var(--ease), border-color .2s, background .2s; position: relative; overflow: hidden; }
+    .feat:hover { transform: translateY(-5px); border-color: rgba(52,216,120,.35); background: linear-gradient(180deg, rgba(34,197,94,.08), var(--card)); }
+    .feat-ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 13px; font-size: 21px; margin-bottom: 13px; background: radial-gradient(120% 120% at 30% 20%, rgba(52,216,120,.28), rgba(17,119,61,.12)); border: 1px solid rgba(52,216,120,.25); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+    .feat-ic, .sc-eyebrow .ic, .chip-float .ic, .mini-card .ic { filter: grayscale(.12) brightness(1.04); }
+    .feat h4 { margin: 0 0 6px; font-size: 16.5px; letter-spacing: -.02em; }
+    .feat p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+    .feat .badge { position: absolute; top: 14px; right: 14px; font-size: 9px; font-weight: 800; letter-spacing: .05em; border-radius: 4px; padding: 2px 6px; }
+    .badge.new { background: var(--blue); color: #fff; }
+    .badge.beta { background: var(--violet); color: #fff; }
+    .badge.alpha { background: var(--gold-2); color: #1b1b1b; }
+
+    /* ── leaderboard ── */
+    .lb-card { border: 1px solid var(--line); background: linear-gradient(180deg, rgba(13,20,16,.92), rgba(8,13,10,.94)); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+    .lb-head { background: linear-gradient(135deg, #0a3d22 0%, var(--green) 100%); padding: 20px 22px 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+    .lb-head-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .lb-head h3 { margin: 0; font-size: 21px; font-weight: 900; }
+    .lb-head .eyebrow2 { font-size: 11px; color: rgba(255,255,255,.82); text-transform: uppercase; letter-spacing: .08em; }
+    .lb-prize { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,221,0,.14); border: 1px solid rgba(255,221,0,.4); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 700; color: #ffe9a8; }
+    .lb-tabs { display: flex; gap: 6px; margin-top: 16px; }
+    .lb-tab { flex: 0 0 auto; background: rgba(0,0,0,.25); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 7px 18px; font-size: 13px; font-weight: 800; cursor: pointer; transition: background .15s, color .15s; }
+    .lb-tab.active { background: rgba(255,255,255,.2); color: #fff; border-color: rgba(255,255,255,.35); }
+    .lb-winner { margin: 14px 16px 0; display: flex; align-items: center; gap: 12px; background: rgba(255,215,0,.07); border: 1px solid rgba(255,215,0,.3); border-radius: 12px; padding: 11px 15px; }
+    .lb-winner .crown { font-size: 20px; }
+    .lb-winner .lab { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+    .lb-winner .nm { font-weight: 800; color: #fde68a; }
+    .lb-winner .tm { margin-left: auto; font-weight: 800; color: var(--gold-2); }
+    .lb-list { padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 7px; }
+    .lb-row { display: flex; align-items: center; gap: 13px; padding: 12px 15px; border-radius: 12px; background: rgba(255,255,255,.025); border: 1px solid var(--line); }
+    .lb-row.r1 { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.38); }
+    .lb-row.r2 { background: rgba(203,213,225,.06); border-color: rgba(203,213,225,.28); }
+    .lb-row.r3 { background: rgba(217,149,74,.08); border-color: rgba(217,149,74,.32); }
+    .lb-row.you { background: rgba(34,197,94,.09); border-color: rgba(34,197,94,.45); }
+    .lb-badge { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 13px; flex-shrink: 0; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--muted); }
+    .lb-badge.gold { background: rgba(245,158,11,.18); color: var(--gold-2); border-color: rgba(245,158,11,.5); font-size: 17px; }
+    .lb-badge.silver { background: rgba(203,213,225,.14); color: var(--silver); border-color: rgba(203,213,225,.5); font-size: 17px; }
+    .lb-badge.bronze { background: rgba(217,149,74,.16); color: var(--bronze); border-color: rgba(217,149,74,.5); font-size: 17px; }
+    .lb-name { flex: 1; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .lb-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-tag { font-size: 9.5px; font-weight: 800; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
+    .lb-tag.prem { background: var(--green); color: #fff; }
+    .lb-tag.dev { background: #dc2626; color: #fff; }
+    .lb-tag.me { background: rgba(34,197,94,.22); color: #bff5d2; border: 1px solid rgba(34,197,94,.4); }
+    .lb-time { font-weight: 800; font-size: 14px; color: var(--lime); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .lb-row.r1 .lb-time { color: var(--gold-2); } .lb-row.r2 .lb-time { color: var(--silver); } .lb-row.r3 .lb-time { color: var(--bronze); }
+    .lb-foot { padding: 0 16px 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+    .lb-streak { display: inline-flex; align-items: center; gap: 8px; color: #ffcf8a; font-weight: 700; font-size: 13.5px; }
+    .lb-aside { display: flex; flex-direction: column; gap: 16px; }
+    .mini-card { border: 1px solid var(--line); background: linear-gradient(180deg, var(--card-2), var(--card)); border-radius: var(--radius); padding: 20px; }
+    .mini-card .ic { font-size: 24px; } .mini-card h4 { margin: 10px 0 6px; font-size: 17px; letter-spacing: -.02em; }
+    .mini-card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .lb-split { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,.85fr); gap: 22px; align-items: start; }
+
+    /* ── pricing ── */
+    .price-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; align-items: stretch; }
+    .price { border: 1px solid var(--line); background: linear-gradient(180deg, var(--card-2), var(--card)); border-radius: var(--radius-lg); padding: 26px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+    .price.feat-plan { border-color: rgba(52,216,120,.5); box-shadow: 0 0 60px -20px rgba(34,197,94,.5); }
+    .price.feat-plan::before { content: ""; position: absolute; top: 0; left: -40%; width: 35%; height: 100%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.12), transparent); transform: skewX(-18deg); animation: sweep 5s ease-in-out infinite; }
+    @keyframes sweep { 0% { left: -40%; } 55%,100% { left: 130%; } }
+    .price-name { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--muted); }
+    .best { position: absolute; top: 16px; right: 16px; background: var(--lime); color: #06240f; font-size: 10px; font-weight: 900; letter-spacing: .05em; border-radius: 999px; padding: 3px 10px; }
+    .price-amt { font-size: 46px; font-weight: 900; letter-spacing: -.04em; margin: 14px 0 2px; line-height: 1; }
+    .price-amt small { font-size: 16px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+    .price-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
+    .price ul { list-style: none; padding: 0; margin: 0 0 22px; display: flex; flex-direction: column; gap: 10px; }
+    .price li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #d3e6da; }
+    .price li .tick { color: var(--lime); font-weight: 900; flex-shrink: 0; }
+    .price li.off { color: var(--muted-2); } .price li.off .tick { color: var(--muted-2); }
+    .price .btn { margin-top: auto; width: 100%; }
+    .promo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 22px; border: 1px dashed rgba(52,216,120,.45); background: rgba(34,197,94,.06); border-radius: 14px; padding: 14px 18px; }
+    .promo-code { font-family: "Courier New", monospace; font-weight: 800; letter-spacing: .12em; background: var(--green); color: #fff; border-radius: 7px; padding: 5px 12px; font-size: 15px; }
+    .promo-copy { background: rgba(255,255,255,.07); border: 1px solid var(--line-2); color: var(--text); border-radius: 8px; padding: 6px 13px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background .15s; }
+    .promo-copy:hover { background: rgba(255,255,255,.14); }
+
+    /* ── demo video ── */
+    .video-box { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: var(--radius-lg); border: 1px solid var(--line-2); box-shadow: var(--shadow); background: #0a0f0c; }
     .video-box iframe { width: 100%; height: 100%; border: 0; }
-    .reviews { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    .review { min-height: 210px; display: flex; flex-direction: column; justify-content: space-between; }
-    .stars { color: #ffd166; letter-spacing: 2px; }
-    .review blockquote { margin: 12px 0; color: #eaf7ef; font-size: 16px; }
-    .review small { color: var(--muted); font-weight: 800; }
-    .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    .link-card a { color: #9cc3ff; font-weight: 850; }
-    .callout { border: 1px solid rgba(66,133,244,.28); background: rgba(66,133,244,.11); border-radius: var(--radius); padding: 24px; }
-    .callout h3 { margin: 0 0 9px; }
-    .callout p { margin: 0; color: #dbe9ff; }
-    footer { border-top: 1px solid var(--line); color: var(--muted); padding: 40px 0 56px; }
-    @media (max-width: 940px) {
-      .hero-grid, .split { grid-template-columns: 1fr; }
-      .mock-stage { justify-content: flex-start; }
-      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .grid-3, .reviews { grid-template-columns: 1fr; }
+
+    /* ── reviews ── */
+    .reviews { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    .review { border: 1px solid var(--line); background: linear-gradient(180deg, var(--card-2), var(--card)); border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; gap: 12px; min-height: 180px; }
+    .review .stars { color: var(--gold); letter-spacing: 2px; }
+    .review blockquote { margin: 0; font-size: 15.5px; color: #eaf7ef; line-height: 1.55; flex: 1; }
+    .review small { color: var(--muted); font-weight: 700; }
+
+    /* ── faq ── */
+    .faq { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+    details.q { border: 1px solid var(--line); background: var(--card); border-radius: 16px; padding: 4px 20px; transition: border-color .2s, background .2s; }
+    details.q[open] { border-color: rgba(52,216,120,.3); background: rgba(34,197,94,.04); }
+    details.q summary { cursor: pointer; list-style: none; padding: 16px 0; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    details.q summary::-webkit-details-marker { display: none; }
+    details.q summary .pm { color: var(--glow); font-size: 22px; font-weight: 400; transition: transform .25s; flex-shrink: 0; }
+    details.q[open] summary .pm { transform: rotate(45deg); }
+    details.q p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; line-height: 1.65; }
+
+    /* ── final CTA ── */
+    .cta-band { text-align: center; border: 1px solid rgba(52,216,120,.3); background: radial-gradient(60rem 30rem at 50% -40%, rgba(34,197,94,.22), transparent 70%), linear-gradient(180deg, rgba(13,20,16,.9), rgba(8,13,10,.9)); border-radius: var(--radius-lg); padding: 56px 28px; box-shadow: var(--shadow); }
+    .cta-band h2 { margin: 0 0 14px; }
+    .cta-band p { color: var(--muted); max-width: 540px; margin: 0 auto 26px; font-size: 17px; }
+
+    /* ── language marquee ── */
+    .marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+    .marquee-track { display: inline-flex; gap: 14px; white-space: nowrap; animation: marquee 26s linear infinite; padding: 4px 0; }
+    .marquee:hover .marquee-track { animation-play-state: paused; }
+    @keyframes marquee { to { transform: translateX(-50%); } }
+    .lang-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 600; color: var(--muted); }
+
+    /* ── footer ── */
+    footer { border-top: 1px solid var(--line); color: var(--muted); padding: 44px 0 60px; margin-top: 30px; }
+    .foot-grid { display: flex; flex-wrap: wrap; gap: 26px; justify-content: space-between; align-items: flex-start; }
+    .foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
+    .foot-links a { color: var(--muted); font-size: 14px; font-weight: 600; transition: color .15s; }
+    .foot-links a:hover { color: #fff; }
+    .foot-brand { display: flex; align-items: center; gap: 11px; font-weight: 900; color: var(--text); }
+    .foot-brand img { width: 30px; height: 30px; border-radius: 9px; background: #fff; padding: 3px; }
+
+    /* keyboard focus visibility */
+    .btn:focus-visible, .demo-tab:focus-visible, .lb-tab:focus-visible, .ai-btn:focus-visible, .chat-send:focus-visible, .tr-play:focus-visible, .promo-copy:focus-visible, .mock-link:focus-visible, .fc-tool:focus-visible, .fc:focus-visible, .slider:focus-visible, .lang-select:focus-visible, .trust-item:focus-visible, .nav-links a:focus-visible, .foot-links a:focus-visible, details.q summary:focus-visible, .speed-badge:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+    /* count-up no-flash */
+    [data-count] { font-variant-numeric: tabular-nums; }
+
+    /* ── responsive ── */
+    @media (max-width: 980px) {
+      .hero-grid { grid-template-columns: minmax(0,1fr); gap: 36px; }
+      .mock-stage { justify-content: center; margin-top: 8px; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); gap: 22px 14px; }
+      .stat-cell:nth-child(2n) { border-left: 1px solid var(--line); }
+      .stat-cell:nth-child(odd) { border-left: none; }
+      .feat-grid { grid-template-columns: repeat(2,1fr); }
+      .fc-grid { grid-template-columns: repeat(2,1fr); }
+      .showcase { grid-template-columns: 1fr; gap: 26px; }
+      .showcase.rev .sc-media { order: 0; }
+      .lb-split { grid-template-columns: 1fr; }
+      .lb-aside { flex-direction: row; flex-wrap: wrap; }
+      .lb-aside .mini-card { flex: 1 1 200px; }
+      .price-grid { grid-template-columns: 1fr; max-width: 460px; margin: 0 auto; }
+      .reviews { grid-template-columns: 1fr; }
+      .notes-layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
     }
-    @media (max-width: 680px) {
+    @media (max-width: 640px) {
       .nav-links { display: none; }
-      .hero { padding-top: 46px; }
-      .grid-4, .links { grid-template-columns: 1fr; }
-      .tech-item { grid-template-columns: 1fr; gap: 5px; }
-      .popup-shell { transform: none; }
-      .wrap { width: min(100% - 22px, 1120px); }
-      h1 { font-size: clamp(42px, 15vw, 66px); }
+      .nav-cta .btn:not(.primary) { display: none; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .feat-grid { grid-template-columns: 1fr; }
+      .fc-grid { grid-template-columns: 1fr; }
+      .shots { grid-template-columns: 1fr; }
+      .lb-aside { flex-direction: column; }
+      .demo-body { padding: 16px; }
+      .demo-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .demo-tabs::-webkit-scrollbar { display: none; }
+      .demo-tab { flex: 0 0 auto; white-space: nowrap; padding: 8px 12px; font-size: 12.5px; }
+      .chip-float { display: none; }
+      .aurora { display: none; }
+      .brand span { display: none; }
+      .popup-shell { width: 100%; max-width: 360px; }
+      .mock-stage::before { inset: 8% 2% -4%; }
+      h1 { font-size: clamp(33px, 9.5vw, 52px); overflow-wrap: break-word; }
+      .lead { font-size: 16px; }
+      .section-head p { font-size: 15.5px; }
+      .actions { flex-direction: column; align-items: stretch; }
+      section { padding: 50px 0; }
+      #leaderboard, #pricing { padding: 56px 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+      .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
+      .aurora { display: none; }
+      .grad { background-position: 0 0; }
     }
   </style>
 </head>
 <body>
-  <nav class="nav">
+  <div class="scroll-prog" id="scrollProg" aria-hidden="true"></div>
+  <div class="bg-layer"></div>
+  <div class="bg-grid"></div>
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+
+  <!-- ── NAV ── -->
+  <nav class="nav" id="nav">
     <div class="wrap nav-inner">
-      <a class="brand" href="/Panopto-Extension/" aria-label="Panopto Custom Speed home">
-        <img src="/Panopto-Extension/icon.png" onerror="this.style.display='none'" alt="Panopto Custom Speed icon" />
-        <span>Panopto Custom Speed</span>
+      <a class="brand" href="#top">
+        <img src="icon.png" onerror="this.style.display='none'" alt="Panopto Custom Speed" />
+        <span>Panopto&nbsp;Custom&nbsp;Speed</span>
       </a>
       <div class="nav-links">
+        <a href="#ai">AI Tools</a>
         <a href="#features">Features</a>
-        <a href="#stats">Live stats</a>
-        <a href="#demo">Demo</a>
+        <a href="#leaderboard">Leaderboard</a>
+        <a href="#pricing">Pricing</a>
         <a href="#reviews">Reviews</a>
-        <a href="#links">Links</a>
+      </div>
+      <div class="nav-cta">
+        <a class="btn ghost sm" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Rate it</a>
+        <a class="btn primary sm" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Add to Chrome <span class="chev">→</span></a>
       </div>
     </div>
   </nav>
 
-  <main>
+  <main id="top">
+    <!-- ── HERO ── -->
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <div class="eyebrow"><span class="pulse"></span>Chrome extension for Panopto lectures</div>
-          <h1><span class="grad">Speed through Panopto</span> without fighting the player.</h1>
-          <p class="lead">A compact Chrome extension for lecture videos: custom playback speeds, startup speed, time-saved tracking, leaderboard opt-in, and a multilingual popup UI.</p>
-          <div class="actions">
-            <a class="btn primary" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Add to Chrome</a>
-            <a class="btn green" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Rate it</a>
+          <div class="eyebrow reveal"><span class="pulse"></span> Now with AI · Powered by Gemini</div>
+          <h1 class="reveal" style="transition-delay:.05s">Speed through Panopto.<br><span class="grad">Then let AI do your <span class="rotor" id="rotor">notes</span></span><span class="rotor-caret" aria-hidden="true"></span></h1>
+          <p class="lead reveal" style="transition-delay:.12s">Push past Panopto's 2× cap, then turn any lecture into clean <strong>AI notes</strong>, a deck of <strong>flashcards</strong> you can export to Anki, an <strong>AI tutor</strong> that cites the exact timestamp, and <strong>live translation</strong> — without leaving the player.</p>
+          <div class="actions reveal" style="transition-delay:.18s">
+            <a class="btn primary" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="9" fill="#fff"/><path fill="#fff" d="M24 4a20 20 0 0 1 17.3 10H24a10 10 0 0 0-9.2 6.1L7.3 9.6A20 20 0 0 1 24 4z" opacity=".95"/></svg>
+              Add to Chrome — Free
+            </a>
+            <a class="btn ghost" href="#demo">▶ Watch 60s demo</a>
           </div>
-          <div class="mini-meta">
-            <span class="pill">Works on *.panopto.com</span>
-            <span class="pill">Works on *.panopto.eu</span>
-            <span class="pill">Custom typed speeds</span>
-            <span class="pill">Time saved leaderboard</span>
+          <div class="trust reveal" style="transition-delay:.24s">
+            <div class="trust-item"><span class="trust-stars" aria-hidden="true">★★★★★</span> <strong style="color:#fff">4.7</strong> <span style="color:var(--muted)">· 20+ reviews</span></div>
+            <span class="trust-dot"></span>
+            <a class="trust-item" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><img src="https://img.shields.io/chrome-web-store/users/fnoppdfnaklabgfllejlefomclegmnam?label=Chrome%20users&color=11773D&labelColor=0b140e&style=flat-square" alt="Chrome Web Store users" onerror="this.style.display='none'" /></a>
+            <span class="trust-dot"></span>
+            <div class="trust-item">Works on *.panopto.com &amp; *.panopto.eu</div>
           </div>
         </div>
 
-        <div class="mock-stage" id="demo">
-          <div class="popup-shell" aria-label="Panopto Custom Speed popup mockup">
-            <div class="top-bar">
-              <span class="top-bar-title">🎬 Panopto Speed</span>
-              <select class="lang-select" id="languageSelect" aria-label="Language selector">
-                <option value="en">🇬🇧 English</option>
-                <option value="ko">🇰🇷 한국어</option>
-                <option value="zh">🇨🇳 中文</option>
-                <option value="he">🇮🇱 עברית</option>
-                <option value="uk">🇺🇦 Українська</option>
-              </select>
+        <div class="mock-stage reveal" style="transition-delay:.1s">
+          <span class="chip-float chip-a"><span class="ic">📝</span> AI Notes ready</span>
+          <span class="chip-float chip-b"><span class="ic">🏆</span> Rank #7 this week</span>
+          <span class="chip-float chip-c"><span class="ic">🃏</span> 24 flashcards → Anki</span>
+          <div class="popup-shell floaty" aria-label="Extension popup preview">
+            <div class="pop-top">
+              <span class="pop-title">🎬 Panopto Speed</span>
+              <div class="pop-top-right">
+                <span class="streak-chip">🔥 12</span>
+                <select class="lang-select" id="langSelect" aria-label="Language">
+                  <option value="en">🇬🇧 English</option>
+                  <option value="ko">🇰🇷 한국어</option>
+                  <option value="zh">🇨🇳 中文</option>
+                  <option value="he">🇮🇱 עברית</option>
+                  <option value="uk">🇺🇦 Українська</option>
+                </select>
+              </div>
             </div>
-            <div class="popup-card">
-              <div class="section-label" data-i18n="speedSection">Playback Speed</div>
+            <div class="pop-card">
+              <div class="slabel" data-i18n="speed">Playback Speed</div>
               <div class="speed-row">
-                <input class="slider" id="speedSlider" type="range" min="0.5" max="4" step="0.25" value="1.75" />
-                <div class="speed-badge-wrap"><span class="speed-badge" id="speedBadge" contenteditable="false">1.75x</span></div>
+                <input class="slider" id="speedSlider" type="range" min="0.5" max="4" step="0.25" value="2.5" aria-label="Playback speed" />
+                <div class="speed-badge-wrap"><span class="speed-badge" id="speedBadge" tabindex="0" role="textbox" aria-label="Playback speed — click to type a value">2.50x</span></div>
               </div>
-              <div class="edit-hint" data-i18n="editHint">✏️ Click the speed above to type any custom value</div>
-              <div class="warning" id="speedWarning">Time saved is not tracked above 3x speed</div>
-              <div class="divider"></div>
-              <label class="startup"><input type="checkbox" checked /> <span data-i18n="startup">Apply speed on startup</span></label>
-              <div class="saved"><span data-i18n="timeSavedLabel">Time saved:</span> <strong id="mockSaved">0s</strong></div>
-              <div class="small-note" data-i18n="warning">Changes only apply on Panopto pages.</div>
-              <div class="divider"></div>
-              <div class="section-label" data-i18n="leaderboardSection">Leaderboard</div>
+              <div class="edit-hint" data-i18n="editHint">✏️ Click the speed to type any custom value</div>
+              <div class="pop-divider"></div>
+              <div class="row-flex">
+                <input type="checkbox" id="startupChk" checked style="accent-color:#11773D" />
+                <label for="startupChk" style="font-size:12px;color:#374151;cursor:pointer" data-i18n="startup">Speed on startup</label>
+                <span class="saved-pill"><span data-i18n="saved">Saved:</span> <strong id="savedVal">0s</strong></span>
+              </div>
+              <div class="pop-divider"></div>
+              <div class="slabel" data-i18n="leaderboard">Leaderboard</div>
+              <div class="prize"><span style="font-size:14px">🏆</span> <span data-i18n="prize"><strong>#1 each week</strong> wins <strong>7 days Premium</strong> free</span></div>
               <div class="leader-row">
-                <span style="font-size:12px;color:#6b7280" data-i18n="signinPrompt">Sign in to see your leaderboard position</span>
-                <button class="google-btn" type="button">G <span data-i18n="signinBtn">Sign in</span></button>
+                <span style="font-size:12px;color:#374151"><span data-i18n="rankLabel">You are rank</span> <span class="rank">#7</span></span>
+                <a class="mock-link" href="#leaderboard" data-i18n="viewLb">View Leaderboard</a>
               </div>
-              <div class="leader-row">
-                <span style="font-size:13px;color:#374151"><span data-i18n="youAreRank">You are rank</span> <span class="rank">#7</span></span>
-                <a class="mock-link" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive" target="_blank" rel="noreferrer" data-i18n="viewLeaderboard">View Leaderboard</a>
+              <div class="ai-subhead">🤖 <span data-i18n="aiTools">AI Tools</span> <span class="ai-beta">BETA</span></div>
+              <div class="ai-row">
+                <button class="ai-btn" type="button" data-i18n="genNotes">Generate Notes</button>
+                <button class="ai-btn" type="button" data-i18n="aiChat">AI Chat</button>
+                <button class="ai-btn" type="button" data-i18n="genCards">Generate Flashcards</button>
               </div>
-              <div class="bottom-buttons">
-                <a class="coffee" href="https://buymeacoffee.com/harveychandler" target="_blank" rel="noreferrer">☕ <span data-i18n="coffee">Buy me a coffee</span></a>
-                <a class="rate" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">⭐ <span data-i18n="rate">Rate this extension</span></a>
+              <div style="text-align:center"><span class="prem-pill">✨ £1/mo Premium</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- language marquee -->
+      <div class="wrap reveal" style="margin-top:46px">
+        <div class="marquee" aria-hidden="true">
+          <div class="marquee-track" id="langMarquee"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── LIVE STATS ── -->
+    <section style="padding-top:18px">
+      <div class="wrap">
+        <div class="stats-band reveal">
+          <div class="stats-grid">
+            <div class="stat-cell"><div class="stat-num" data-count="4000" data-comma="1" data-suffix="+">0</div><div class="stat-label">Students</div></div>
+            <div class="stat-cell"><div class="stat-num" data-count="30000" data-comma="1" data-suffix="+">0</div><div class="stat-label">Hours saved</div></div>
+            <div class="stat-cell"><div class="stat-num"><span data-count="4">0</span>.<span data-count="7">0</span>★</div><div class="stat-label">4.7 from 20+ reviews</div></div>
+            <div class="stat-cell"><div class="stat-num" data-count="5">0</div><div class="stat-label">App languages</div></div>
+          </div>
+          <div class="shields">
+            <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><img src="https://img.shields.io/chrome-web-store/users/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Live%20users&color=11773D&labelColor=0b140e" alt="Live Chrome users" loading="lazy" /></a>
+            <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><img src="https://img.shields.io/chrome-web-store/stars/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Rating&color=f5d97a&labelColor=0b140e" alt="Live rating" loading="lazy" /></a>
+            <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer"><img src="https://img.shields.io/chrome-web-store/rating-count/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Reviews&color=4285f4&labelColor=0b140e" alt="Live review count" loading="lazy" /></a>
+            <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><img src="https://img.shields.io/chrome-web-store/v/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Version&color=34d878&labelColor=0b140e" alt="Live store version" loading="lazy" /></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── INTERACTIVE AI DEMO ── -->
+    <section id="ai">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">The AI study toolkit</span>
+          <h2>Your lecture, now interactive.</h2>
+          <p>Every AI tool reads the lecture's own captions — so notes, answers and flashcards are grounded in <em>your</em> recording. Try the tabs below.</p>
+        </div>
+
+        <div class="demo-wrap reveal">
+          <div class="demo-chrome">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="demo-chrome-title">AI Lecture Notes <small>— Computational Mathematics: Probability Distributions</small></span>
+            <span class="demo-gemini"><span class="spark">✨</span> Powered by Gemini</span>
+          </div>
+          <div class="demo-tabs" id="demoTabs">
+            <button class="demo-tab active" data-tab="notes"><span class="tdot" style="background:var(--glow)"></span> Generate Notes</button>
+            <button class="demo-tab" data-tab="chat"><span class="tdot" style="background:var(--blue)"></span> AI Chat</button>
+            <button class="demo-tab" data-tab="cards"><span class="tdot" style="background:var(--violet)"></span> Flashcards</button>
+            <button class="demo-tab" data-tab="dub"><span class="tdot" style="background:var(--gold-2)"></span> Translate &amp; Dub</button>
+          </div>
+          <div class="demo-body">
+            <!-- NOTES -->
+            <div class="demo-panel active" data-panel="notes">
+              <div class="notes-layout">
+                <aside class="toc">
+                  <div class="toc-label">Contents</div>
+                  <div class="toc-item act">Review of Probability Concepts</div>
+                  <div class="toc-item">Variance &amp; Standard Deviation</div>
+                  <div class="toc-item">Expectation &amp; Variance</div>
+                  <div class="toc-item">Covariance</div>
+                  <div class="toc-item">Continuous Distributions</div>
+                  <div class="toc-item">Central Limit Theorem</div>
+                </aside>
+                <div>
+                  <h3 class="notes-h">Probability Distributions &amp; Moments</h3>
+                  <div class="notes-meta">Powered by Gemini · 8 chapters · auto-captured lecture screenshots</div>
+                  <div class="save-callout">💾 Notes are cached in your browser — download the HTML to keep them forever. <span class="dl">⬇ Download</span></div>
+                  <span class="chap-tag">Chapter 01</span>
+                  <h4 class="chap-h">Review of Probability Concepts</h4>
+                  <div class="shots">
+                    <div class="shot"><span class="ts">06:14</span></div>
+                    <div class="shot board"><span class="ts">07:48</span></div>
+                  </div>
+                  <p class="notes-p">Recap of probability fundamentals: conditional probability, the law of total probability, and Bayes' theorem. The variance of a random variable measures how far values spread from the mean.</p>
+                  <div class="formula"><i>Var</i>(X) = E[X²] − (E[X])²</div>
+                  <span class="chap-tag">Chapter 02</span>
+                  <h4 class="chap-h">Variance &amp; Standard Deviation</h4>
+                  <div class="shots">
+                    <div class="shot"><span class="ts">11:02</span></div>
+                    <div class="shot board"><span class="ts">13:27</span></div>
+                  </div>
+                  <p class="notes-p">Standard deviation is the square root of the variance, giving spread in the same units as the data. For <strong>independent</strong> variables the variances add — the result the lecturer flags as exam-critical.</p>
+                  <div class="formula">σ = √<i>Var</i>(X)&nbsp;&nbsp;·&nbsp;&nbsp;<i>Var</i>(X+Y) = <i>Var</i>(X) + <i>Var</i>(Y)</div>
+                </div>
               </div>
-              <div class="total-time" id="totalTimeBox"><span data-i18n="totalTime">Time saved by all users:</span><strong id="totalTimeText">4,812 hours</strong><small id="totalHint">click to expand</small></div>
+            </div>
+
+            <!-- CHAT -->
+            <div class="demo-panel" data-panel="chat">
+              <div class="chat-log" id="chatLog">
+                <div class="bubble user pop-in">Does the lecture say anything about what will come up in the exam?</div>
+                <div class="bubble ai" id="chatAnswer"></div>
+              </div>
+              <div class="chat-inputbar">
+                <div class="chat-fakeinput">Ask anything about this lecture…</div>
+                <button class="chat-send" id="chatReplay" type="button">Replay</button>
+              </div>
+            </div>
+
+            <!-- CARDS -->
+            <div class="demo-panel" data-panel="cards">
+              <div class="fc-bar">
+                <span class="fc-tool" id="fcRevealAll">👁 Reveal all</span>
+                <span class="fc-tool">⬇ Download (.html)</span>
+                <span class="fc-tool anki">⬇ Export to Anki (.apkg)</span>
+                <span class="fc-tool">🔄 Regenerate</span>
+              </div>
+              <div class="fc-grid" id="fcGrid"></div>
+              <p style="text-align:center;color:var(--muted-2);font-size:13px;margin-top:16px">Tap a card to flip it · 24 cards generated from this lecture</p>
+            </div>
+
+            <!-- DUB / TRANSLATE -->
+            <div class="demo-panel" data-panel="dub">
+              <div class="tr-wrap">
+                <div class="tr-row">
+                  <div class="tr-langs">
+                    <span class="tr-pill from">🇬🇧 English</span>
+                    <span class="tr-arrow">→</span>
+                    <span class="tr-pill to" id="trTo">🇪🇸 Español</span>
+                  </div>
+                </div>
+                <div class="tr-card src">
+                  <div class="lab">Original caption · 12:30</div>
+                  <div class="txt">"The variance of the sum of two independent variables is the sum of their variances."</div>
+                </div>
+                <div class="tr-card dst">
+                  <div class="lab">Translated &amp; spoken in sync</div>
+                  <div class="txt" id="trText">"La varianza de la suma de dos variables independientes es la suma de sus varianzas."</div>
+                </div>
+                <div class="tr-row" style="margin-top:18px">
+                  <button class="tr-play" id="trPlay" type="button">🎧 Play dubbed lecture</button>
+                  <div class="tr-eq"><span class="tr-wave"><span></span><span></span><span></span><span></span><span></span></span> dubbing in real time</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="stats">
+    <!-- ── SCREENSHOT SHOWCASES (store assets) ── -->
+    <section id="showcase" style="padding-top:30px">
       <div class="wrap">
-        <div class="section-head">
-          <h2>Chrome Web Store stats.</h2>
-          <p>A quick snapshot of installs, ratings, and the current store version.</p>
+        <div class="showcase reveal">
+          <div class="sc-media"><div class="frame"><img src="img/notes.png" alt="AI-generated structured lecture notes with a table of contents and captured screenshots" loading="lazy" /></div></div>
+          <div>
+            <div class="sc-eyebrow"><span class="ic" aria-hidden="true">📝</span> AI Notes</div>
+            <h3>Your lecture, rewritten as notes worth keeping</h3>
+            <p>AI condenses your recording into clean, chaptered notes you can read, download and keep — complete with the formulas and screenshots from the board.</p>
+            <ul class="sc-list">
+              <li><span class="tick">✓</span> Auto table-of-contents &amp; chapter breakdown</li>
+              <li><span class="tick">✓</span> Real screenshots captured at the right moments</li>
+              <li><span class="tick">✓</span> Maths rendered properly with KaTeX</li>
+              <li><span class="tick">✓</span> Download as HTML — works offline, share with friends</li>
+            </ul>
+          </div>
         </div>
-        <div class="grid-4">
-          <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><span class="stat-label">Users</span><img src="https://img.shields.io/chrome-web-store/users/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Chrome%20users&color=11773D&labelColor=111827" alt="Live Chrome Web Store users" /></a>
-          <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><span class="stat-label">Rating</span><img src="https://img.shields.io/chrome-web-store/stars/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Rating&color=ffd166&labelColor=111827" alt="Live Chrome Web Store rating" /></a>
-          <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer"><span class="stat-label">Ratings</span><img src="https://img.shields.io/chrome-web-store/rating-count/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Ratings&color=4285f4&labelColor=111827" alt="Live Chrome Web Store rating count" /></a>
-          <a class="card stat" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer"><span class="stat-label">Store version</span><img src="https://img.shields.io/chrome-web-store/v/fnoppdfnaklabgfllejlefomclegmnam?style=for-the-badge&label=Store%20version&color=7fb0ff&labelColor=111827" alt="Live Chrome Web Store version" /></a>
+
+        <div class="showcase rev reveal">
+          <div class="sc-media"><div class="frame"><img src="img/tutor.png" alt="AI Chat tutor answering a question about the lecture" loading="lazy" /></div></div>
+          <div>
+            <div class="sc-eyebrow"><span class="ic" aria-hidden="true">💬</span> AI Tutor Chat</div>
+            <h3>An AI tutor that has actually read your lecture</h3>
+            <p>An AI tutor that answers straight from your recording — and grounds every reply in the lecture with <strong>timestamps you can jump to</strong>. Ask for exam questions, a summary, or "explain the bit around 12:30".</p>
+            <ul class="sc-list">
+              <li><span class="tick">✓</span> Answers cite the exact moment — e.g. <code style="color:#bff5d2">[00:43:58]</code></li>
+              <li><span class="tick">✓</span> "What might come up in the exam?" → grounded answers</li>
+              <li><span class="tick">✓</span> Chat right inside the Panopto player as you watch</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="showcase reveal">
+          <div class="sc-media"><div class="frame"><img src="img/flashcards.png" alt="A deck of AI-generated flashcards with Anki export" loading="lazy" /></div></div>
+          <div>
+            <div class="sc-eyebrow"><span class="ic" aria-hidden="true">🃏</span> Flashcards → Anki</div>
+            <h3>From lecture to a full Anki deck in one click</h3>
+            <p>Generate a whole deck from any lecture and test yourself before the exam. Flip to reveal, regenerate the weak ones, then export straight to <strong>Anki (.apkg)</strong> or HTML.</p>
+            <ul class="sc-list">
+              <li><span class="tick">✓</span> A full deck generated from the lecture in seconds</li>
+              <li><span class="tick">✓</span> One-click export to Anki (.apkg) or downloadable HTML</li>
+              <li><span class="tick">✓</span> Add your own topic cards &amp; regenerate any card</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="showcase rev reveal">
+          <div class="sc-media"><div class="frame"><img src="img/in-player-chat.png" alt="Chat overlay inside the Panopto player while watching a lecture" loading="lazy" /></div></div>
+          <div>
+            <div class="sc-eyebrow"><span class="ic" aria-hidden="true">⚡</span> All inside the player</div>
+            <h3>Study without ever switching tabs</h3>
+            <p>Notes, chat, flashcards and translation all happen right inside the Panopto player — alongside custom speeds well past the 2× cap. No copy-pasting transcripts, no second screen.</p>
+            <ul class="sc-list">
+              <li><span class="tick">✓</span> Any speed you want, typed in directly</li>
+              <li><span class="tick">✓</span> Auto-Skip Silence, Picture-in-Picture &amp; lecture download</li>
+              <li><span class="tick">✓</span> Time-saved tracking that feeds the leaderboard</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
 
+    <!-- ── FEATURE GRID ── -->
     <section id="features">
       <div class="wrap">
-        <div class="section-head">
-          <h2>Built for lecture speedrunning.</h2>
-          <p>The updated extension UI is less “landing page demo” and more polished product: compact, clearer, and focused on the actions users actually need.</p>
+        <div class="section-head reveal">
+          <span class="kicker">Everything in the box</span>
+          <h2>One extension. Your whole study workflow.</h2>
+          <p>From blowing past the speed cap to turning lectures into Anki decks — it all lives in one tidy Chrome popup.</p>
         </div>
-        <div class="grid-3">
-          <article class="card"><div class="feature-icon">⚡</div><h3>Custom playback speed</h3><p>Use the slider for normal changes, or click the green speed badge and type a custom value directly.</p></article>
-          <article class="card"><div class="feature-icon">🔁</div><h3>Startup speed</h3><p>Choose whether the saved speed should apply automatically when a Panopto page loads.</p></article>
-          <article class="card"><div class="feature-icon">⏱️</div><h3>Time saved tracking</h3><p>The extension tracks saved time while watching faster than normal, and avoids counting manual seeking as progress.</p></article>
-          <article class="card"><div class="feature-icon">🏆</div><h3>Leaderboard</h3><p>Users can sign in and opt into leaderboard logging to compare time saved with other students.</p></article>
-          <article class="card"><div class="feature-icon">🌍</div><h3>Multiple languages</h3><p>The popup supports English, Korean, Chinese, Hebrew, and Ukrainian UI labels.</p></article>
-          <article class="card"><div class="feature-icon">🧩</div><h3>Lightweight Chrome install</h3><p>Add it to Chrome and use it directly on Panopto without changing your normal workflow.</p></article>
+        <div class="feat-grid">
+          <div class="feat reveal"><div class="feat-ic">⚡</div><h4>Custom playback speed</h4><p>Slide, or click the badge and type any value — well past Panopto's 2× cap.</p></div>
+          <div class="feat reveal" style="transition-delay:.04s"><div class="feat-ic">🔁</div><h4>Speed on startup</h4><p>Your chosen speed applies automatically the moment a lecture loads.</p></div>
+          <div class="feat reveal" style="transition-delay:.08s"><div class="feat-ic">⏱️</div><h4>Time-saved tracking</h4><p>See exactly how much time you've saved — manual seeking never counts.</p></div>
+          <div class="feat reveal" style="transition-delay:.12s"><div class="feat-ic">📝</div><h4>AI Notes <span class="ai-beta">BETA</span></h4><p>Structured, chaptered notes with screenshots &amp; maths. Download &amp; keep.</p></div>
+          <div class="feat reveal"><div class="feat-ic">💬</div><h4>AI Tutor Chat <span class="ai-beta">BETA</span></h4><p>Ask anything; answers cite the exact lecture timestamp.</p></div>
+          <div class="feat reveal" style="transition-delay:.04s"><div class="feat-ic">🃏</div><h4>Flashcards → Anki</h4><p>Generate a deck and export to Anki (.apkg) or HTML in one click.</p></div>
+          <div class="feat reveal" style="transition-delay:.08s"><div class="feat-ic">🎧</div><h4>Translate &amp; Dub <span class="badge alpha" style="position:static">ALPHA</span></h4><p>Translate captions and hear the lecture dubbed in sync.</p></div>
+          <div class="feat reveal" style="transition-delay:.12s"><div class="feat-ic">🤫</div><h4>Auto-Skip Silence</h4><p>Automatically jumps the dead air, saving even more time.</p></div>
+          <div class="feat reveal"><div class="feat-ic">🪟</div><h4>Picture-in-Picture</h4><p>Pop the lecture out and keep watching while you take notes.</p></div>
+          <div class="feat reveal" style="transition-delay:.04s"><div class="feat-ic">⬇️</div><h4>Download Lecture <span class="badge new" style="position:static">NEW</span></h4><p>Save the video and captions for offline revision.</p></div>
+          <div class="feat reveal" style="transition-delay:.08s"><div class="feat-ic">🌙</div><h4>Dark theme &amp; chapters</h4><p>A calmer Panopto, plus a clean chapter list for every lecture.</p></div>
+          <div class="feat reveal" style="transition-delay:.12s"><div class="feat-ic">🌍</div><h4>5 languages</h4><p>English, 한국어, 中文, עברית and Українська UI out of the box.</p></div>
         </div>
       </div>
     </section>
 
-    <section>
-      <div class="wrap split">
-        <div>
-          <div class="section-head">
-            <h2>Watch the demo.</h2>
-            <p>A quick look at how the extension works.</p>
+    <!-- ── LEADERBOARD ── -->
+    <section id="leaderboard">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">Compete &amp; win</span>
+          <h2>Climb the time-saved leaderboard.</h2>
+          <p>Opt in, save time on your lectures, and race other students. The <strong>#1 each week wins 7 days of Premium</strong> — free.</p>
+        </div>
+        <div class="lb-split">
+          <div class="lb-card reveal">
+            <div class="lb-head">
+              <div class="lb-head-top">
+                <div>
+                  <div class="eyebrow2">🎬 Panopto Speed</div>
+                  <h3>Leaderboard</h3>
+                </div>
+                <span class="lb-prize">🏆 #1 this week wins 7 days Premium</span>
+              </div>
+              <div class="lb-tabs" id="lbTabs">
+                <button class="lb-tab active" data-period="week">This Week</button>
+                <button class="lb-tab" data-period="alltime">All Time</button>
+              </div>
+            </div>
+            <div class="lb-winner">
+              <span class="crown">👑</span>
+              <div>
+                <div class="lab">Last week's winner</div>
+                <div class="nm">quiet_quokka</div>
+              </div>
+              <span class="tm">18h 05m</span>
+            </div>
+            <div class="lb-list" id="lbList"></div>
+            <div class="lb-foot">
+              <span class="lb-streak">🔥 Keep a login streak going for bonus Premium</span>
+              <a class="btn ghost sm" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive" target="_blank" rel="noreferrer">Open live leaderboard →</a>
+            </div>
+          </div>
+          <div class="lb-aside">
+            <div class="mini-card reveal" style="transition-delay:.05s"><div class="ic">🏆</div><h4>Weekly prizes</h4><p>Finish #1 on the weekly board and Premium is on the house for 7 days.</p></div>
+            <div class="mini-card reveal" style="transition-delay:.1s"><div class="ic">🔥</div><h4>Login streaks</h4><p>Show up daily to build a streak and earn bonus Premium time.</p></div>
+            <div class="mini-card reveal" style="transition-delay:.15s"><div class="ic">🎁</div><h4>Refer friends</h4><p>Every friend who uses your code gives you <strong>5 days of Premium</strong>.</p></div>
           </div>
         </div>
-        <div class="video-box">
-          <iframe src="https://www.youtube.com/embed/DJ8a1dYxs5I" title="Panopto Custom Speed demo video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </section>
+
+    <!-- ── PRICING ── -->
+    <section id="pricing">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">Simple pricing</span>
+          <h2>Free to speed up. Tiny price to study smarter.</h2>
+          <p>The core extension is free forever. Premium unlocks the full AI toolkit — for less than a coffee.</p>
+        </div>
+        <div class="price-grid">
+          <div class="price reveal">
+            <div class="price-name">Free</div>
+            <div class="price-amt">£0</div>
+            <div class="price-sub">Forever. No account needed.</div>
+            <ul>
+              <li><span class="tick">✓</span> Unlimited custom playback speed</li>
+              <li><span class="tick">✓</span> Speed on startup &amp; time-saved tracking</li>
+              <li><span class="tick">✓</span> Leaderboard, streaks &amp; weekly prizes</li>
+              <li><span class="tick">✓</span> Dark theme, chapters &amp; 5 languages</li>
+              <li class="off"><span class="tick">✕</span> AI notes, chat, flashcards &amp; translation</li>
+            </ul>
+            <a class="btn ghost" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Add to Chrome</a>
+          </div>
+
+          <div class="price feat-plan reveal" style="transition-delay:.06s">
+            <div class="best">BEST VALUE</div>
+            <div class="price-name">Lifetime Premium</div>
+            <div class="price-amt">£12 <small>once</small></div>
+            <div class="price-sub">Pay once. Yours forever.</div>
+            <ul>
+              <li><span class="tick">✓</span> <strong>Everything in Free</strong>, plus…</li>
+              <li><span class="tick">✓</span> Unlimited AI Notes, Chat &amp; Flashcards</li>
+              <li><span class="tick">✓</span> Anki export, Translate &amp; Dub</li>
+              <li><span class="tick">✓</span> Auto-Skip Silence, PiP &amp; lecture download</li>
+              <li><span class="tick">✓</span> One payment — no subscription</li>
+            </ul>
+            <a class="btn primary" href="https://buy.stripe.com/bJe28jbpo45QegN1A81VK02" target="_blank" rel="noreferrer">Get Lifetime — £12</a>
+          </div>
+
+          <div class="price reveal" style="transition-delay:.12s">
+            <div class="price-name">Monthly Premium</div>
+            <div class="price-amt">£1 <small>/mo</small></div>
+            <div class="price-sub">Cancel anytime.</div>
+            <ul>
+              <li><span class="tick">✓</span> The entire AI study toolkit</li>
+              <li><span class="tick">✓</span> All premium speed &amp; download tools</li>
+              <li><span class="tick">✓</span> New AI features as they ship</li>
+              <li><span class="tick">✓</span> Cancel in one click, anytime</li>
+              <li><span class="tick">✓</span> Win it free as weekly #1</li>
+            </ul>
+            <a class="btn ghost" href="https://buy.stripe.com/dRm9ALbpoeKu7SpdiQ1VK01" target="_blank" rel="noreferrer">Start £1/mo</a>
+          </div>
+        </div>
+        <div class="promo reveal">
+          <span style="font-size:14px;color:#bff5d2;font-weight:700">🎁 New here? Get <strong>2 months of Premium free</strong> with code</span>
+          <span class="promo-code" id="promoCode">PANOPTO2M</span>
+          <button class="promo-copy" id="copyPromo" type="button">Copy code</button>
         </div>
       </div>
     </section>
 
+    <!-- ── DEMO VIDEO ── -->
+    <section id="demo">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">See it in action</span>
+          <h2>Watch the 60-second demo.</h2>
+        </div>
+        <div class="reveal video-box">
+          <iframe src="https://www.youtube.com/embed/DJ8a1dYxs5I" title="Panopto Custom Speed demo" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── REVIEWS ── -->
     <section id="reviews">
       <div class="wrap">
-        <div class="section-head">
-          <h2>Top student feedback.</h2>
-          <p>A few public reviews from students using the extension.</p>
+        <div class="section-head reveal">
+          <span class="kicker">Rated 4.7★ by 20+ students</span>
+          <h2>Loved by people cramming for exams.</h2>
         </div>
         <div class="reviews">
-          <article class="card review"><div><div class="stars">★★★★★</div><blockquote>“Super awesome extension!! Works great for rewatching lectures!!!”</blockquote></div><small>Paris Lewis · Feb 2026</small></article>
-          <article class="card review"><div><div class="stars">★★★★★</div><blockquote>Helpful custom typed speeds, including values above 3x when needed.</blockquote></div><small>Joshua Newberry · Feb 2026</small></article>
-          <article class="card review"><div><div class="stars">★★★★★</div><blockquote>“Works great, would recommend to anyone trying to cram before exams.”</blockquote></div><small>Alex Oda · Mar 2025</small></article>
-          <article class="card review"><div><div class="stars">★★★★★</div><blockquote>Saved more than three hours during exam revision and planned to keep it installed for the degree.</blockquote></div><small>Noam Atzmon · Feb 2025</small></article>
-          <article class="card review"><div><div class="stars">★★★★★</div><blockquote>“Great! Definitely helps with my slow-talking lecturers.”</blockquote></div><small>Steffi Harrison · Jan 2025</small></article>
-          <article class="card review"><div><div class="stars">★★★★★</div><blockquote>Simple feedback, but still a win: “thx!”</blockquote></div><small>YJ LIM · Oct 2025</small></article>
+          <div class="review reveal"><div class="stars">★★★★★</div><blockquote>"Super awesome extension!! Works great for rewatching lectures!!!"</blockquote><small>Paris Lewis · Feb 2026</small></div>
+          <div class="review reveal" style="transition-delay:.05s"><div class="stars">★★★★★</div><blockquote>Custom typed speeds are so helpful — including values above 3× when I need them.</blockquote><small>Joshua Newberry · Feb 2026</small></div>
+          <div class="review reveal" style="transition-delay:.1s"><div class="stars">★★★★★</div><blockquote>"Works great, would recommend to anyone trying to cram before exams."</blockquote><small>Alex Oda · Mar 2025</small></div>
+          <div class="review reveal"><div class="stars">★★★★★</div><blockquote>Saved more than three hours during exam revision — keeping it installed for the whole degree.</blockquote><small>Noam Atzmon · Feb 2025</small></div>
+          <div class="review reveal" style="transition-delay:.05s"><div class="stars">★★★★★</div><blockquote>"Great! Definitely helps with my slow-talking lecturers."</blockquote><small>Steffi Harrison · Jan 2025</small></div>
+          <div class="review reveal" style="transition-delay:.1s"><div class="stars">★★★★★</div><blockquote>Short and sweet: "thx!" — and a five-star rating to match.</blockquote><small>YJ LIM · Oct 2025</small></div>
         </div>
-        <div class="actions" style="margin-top:20px"><a class="btn" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Read latest Chrome reviews</a></div>
-      </div>
-    </section>
-
-    <section id="privacy">
-      <div class="wrap">
-        <div class="callout">
-          <h3>Privacy note</h3>
-          <p>The Chrome Web Store listing says the extension handles personally identifiable information and user activity. It also states the data is not sold, not used for unrelated purposes, and not used for creditworthiness or lending decisions. <a href="https://harvey.github.io/Panopto-Extension/panopto-privacy-policy.txt" target="_blank" rel="noreferrer" style="color:#9cc3ff;font-weight:850;">Read the full privacy policy →</a></p>
+        <div style="text-align:center;margin-top:26px" class="reveal">
+          <a class="btn ghost" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Read all Chrome reviews →</a>
         </div>
       </div>
     </section>
 
-    <section id="links">
+    <!-- ── FAQ ── -->
+    <section id="faq">
       <div class="wrap">
-        <div class="section-head">
-          <h2>Useful links.</h2>
-          <p>Install the extension, read reviews, or open the leaderboard.</p>
+        <div class="section-head reveal">
+          <span class="kicker">Good to know</span>
+          <h2>Questions, answered.</h2>
         </div>
-        <div class="links">
-          <article class="card link-card"><h3>Chrome Web Store</h3><p>Install the extension and view the public listing.</p><a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Open listing</a></article>
-          <article class="card link-card"><h3>Reviews</h3><p>Read recent feedback from Chrome Web Store users.</p><a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Open reviews</a></article>
-          <article class="card link-card"><h3>Leaderboard</h3><p>See the shared time-saved leaderboard.</p><a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive" target="_blank" rel="noreferrer">Open leaderboard</a></article>
+        <div class="faq">
+          <details class="q reveal" open><summary>Is it free? <span class="pm">+</span></summary><p>Yes — the core extension (custom speed, startup speed, time-saved tracking, the leaderboard, dark theme and all 5 languages) is free forever. The AI study toolkit is Premium: £1/month or £12 once for lifetime. You can also win Premium free by topping the weekly leaderboard, building login streaks, or referring friends.</p></details>
+          <details class="q reveal"><summary>How do the AI features work? <span class="pm">+</span></summary><p>The AI tools (notes, chat, flashcards and translation) are powered by Gemini and read your lecture's own captions, so everything stays grounded in your specific recording — answers even cite the exact timestamp you can jump to.</p></details>
+          <details class="q reveal"><summary>Can I export flashcards to Anki? <span class="pm">+</span></summary><p>Absolutely. Generate a deck from any lecture, then export it as a native Anki <code>.apkg</code> file (or a downloadable HTML deck) in one click.</p></details>
+          <details class="q reveal"><summary>Does it work on my university's Panopto? <span class="pm">+</span></summary><p>It works on any <code>*.panopto.com</code> and <code>*.panopto.eu</code> site, which covers the vast majority of university Panopto instances.</p></details>
+          <details class="q reveal"><summary>What about my privacy? <span class="pm">+</span></summary><p>Leaderboard data is opt-in and is never sold or used for unrelated purposes. You can opt out at any time. <a href="panopto-privacy-policy.txt" target="_blank" rel="noreferrer" style="color:#bff5d2">Read the full privacy policy →</a></p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FINAL CTA ── -->
+    <section style="padding-top:20px">
+      <div class="wrap">
+        <div class="cta-band reveal">
+          <h2>Stop watching lectures at 1×.</h2>
+          <p>Join thousands of students speeding through Panopto and letting AI handle the notes, flashcards and revision.</p>
+          <div class="actions" style="justify-content:center">
+            <a class="btn primary" href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Add to Chrome — Free <span class="chev">→</span></a>
+            <a class="btn ghost" href="https://buymeacoffee.com/harveychandler" target="_blank" rel="noreferrer">☕ Buy me a coffee</a>
+          </div>
         </div>
       </div>
     </section>
   </main>
 
   <footer>
-    <div class="wrap">
-      <strong>Panopto Custom Speed</strong><br />Built by Harvey Chandler. · <a href="https://harvey.github.io/Panopto-Extension/panopto-privacy-policy.txt" target="_blank" rel="noreferrer">Privacy Policy</a>
+    <div class="wrap foot-grid">
+      <div>
+        <div class="foot-brand"><img src="icon.png" onerror="this.style.display='none'" alt="" /> Panopto Custom Speed</div>
+        <p style="margin:12px 0 0;font-size:14px;max-width:320px">The AI study toolkit for Panopto lectures. Built by Harvey Chandler.</p>
+      </div>
+      <div class="foot-links">
+        <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam" target="_blank" rel="noreferrer">Chrome Web Store</a>
+        <a href="https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews" target="_blank" rel="noreferrer">Reviews</a>
+        <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQY7BsTK4TY5DLMUDF7kbf-dq1Eo0cgv95FKkemrwyIlHwxUNhC4Kz1qBYDrTF5IZ_NYerftRcRlB6q/pubchart?oid=1888302536&format=interactive" target="_blank" rel="noreferrer">Leaderboard</a>
+        <a href="https://buymeacoffee.com/harveychandler" target="_blank" rel="noreferrer">Buy me a coffee</a>
+        <a href="panopto-privacy-policy.txt" target="_blank" rel="noreferrer">Privacy Policy</a>
+      </div>
     </div>
+    <div class="wrap" style="margin-top:24px;font-size:13px;color:var(--muted-2)">© <span id="year">2026</span> Harvey Chandler · Not affiliated with Panopto.</div>
   </footer>
 
   <script>
-    const translations = {
-      en: { speedSection: 'Playback Speed', editHint: '✏️ Click the speed above to type any custom value', startup: 'Apply speed on startup', timeSavedLabel: 'Time saved:', warning: 'Changes only apply on Panopto pages.', leaderboardSection: 'Leaderboard', signinPrompt: 'Sign in to see your leaderboard position', signinBtn: 'Sign in', youAreRank: 'You are rank', viewLeaderboard: 'View Leaderboard', coffee: 'Buy me a coffee', rate: 'Rate this extension', totalTime: 'Time saved by all users:' },
-      ko: { speedSection: '재생 속도', editHint: '✏️ 속도를 클릭하면 직접 입력할 수 있어요', startup: '시작 시 속도 적용', timeSavedLabel: '절약된 시간:', warning: '파노프토 페이지에서만 적용됩니다.', leaderboardSection: '리더보드', signinPrompt: '로그인하면 리더보드 순위를 확인할 수 있어요', signinBtn: '로그인', youAreRank: '내 순위:', viewLeaderboard: '리더보드 보기', coffee: '커피 사주기', rate: '확장 프로그램 평가', totalTime: '전체 사용자 절약 시간:' },
-      zh: { speedSection: '播放速度', editHint: '✏️ 点击速度数字可输入任意值', startup: '启动时应用速度', timeSavedLabel: '节省的时间：', warning: '仅在 Panopto 页面上生效。', leaderboardSection: '排行榜', signinPrompt: '登录以查看您的排行榜位置', signinBtn: '登录', youAreRank: '您的排名：', viewLeaderboard: '查看排行榜', coffee: '请我喝咖啡', rate: '评价此扩展', totalTime: '所有用户节省的时间：' },
-      he: { speedSection: 'מהירות הפעלה', editHint: '✏️ לחצ/י על המספר כדי להקליד ערך מותאם', startup: 'החל מהירות בהפעלה', timeSavedLabel: ':זמן שנחסך', warning: '.השינויים חלים רק בדפי Panopto', leaderboardSection: 'לוח תוצאות', signinPrompt: 'התחבר/י כדי לראות את הדירוג שלך', signinBtn: 'התחבר', youAreRank: 'הדירוג שלך:', viewLeaderboard: 'הצג לוח תוצאות', coffee: 'קנה לי קפה', rate: 'דרג/י את ההרחבה', totalTime: ':זמן שנחסך על ידי כל המשתמשים' },
-      uk: { speedSection: 'Швидкість відтворення', editHint: '✏️ Натисніть на число, щоб ввести будь-яке значення', startup: 'Застосовувати швидкість при запуску', timeSavedLabel: 'Заощаджений час:', warning: 'Зміни діють лише на сторінках Panopto.', leaderboardSection: 'Таблиця лідерів', signinPrompt: 'Увійдіть, щоб побачити свою позицію', signinBtn: 'Увійти', youAreRank: 'Ваш ранг:', viewLeaderboard: 'Переглянути таблицю лідерів', coffee: 'Купити мені каву', rate: 'Оцінити розширення', totalTime: 'Час, заощаджений усіма:' }
-    };
+  (function () {
+    "use strict";
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const lang = document.getElementById('languageSelect');
-    function applyLanguage() {
-      const selected = lang.value;
-      document.querySelector('.popup-card').dir = selected === 'he' ? 'rtl' : 'ltr';
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        el.textContent = (translations[selected] && translations[selected][key]) || translations.en[key] || el.textContent;
+    /* ── nav shadow on scroll ── */
+    var nav = document.getElementById("nav");
+    var scrollProg = document.getElementById("scrollProg");
+    var docEl = document.documentElement;
+    function onScroll() {
+      if (nav) nav.classList.toggle("scrolled", window.scrollY > 12);
+      if (scrollProg) { var max = docEl.scrollHeight - docEl.clientHeight; scrollProg.style.transform = "scaleX(" + (max > 0 ? Math.min(1, window.scrollY / max) : 0) + ")"; }
+    }
+    onScroll(); window.addEventListener("scroll", onScroll, { passive: true });
+
+    /* ── year ── */
+    var y = document.getElementById("year"); if (y) y.textContent = String(new Date().getFullYear());
+
+    /* ── hide purely-decorative emoji from screen readers ── */
+    [].slice.call(document.querySelectorAll(".feat-ic, .mini-card .ic, .chip-float .ic, .lb-winner .crown, .tr-arrow, .tr-wave")).forEach(function (el) { el.setAttribute("aria-hidden", "true"); });
+
+    /* ── stagger reveals within grids ── */
+    [".feat-grid", ".reviews", ".price-grid", ".lb-aside"].forEach(function (sel) {
+      var c = document.querySelector(sel); if (!c) return;
+      [].slice.call(c.children).forEach(function (ch, i) {
+        if (ch.classList && ch.classList.contains("reveal")) ch.style.transitionDelay = (i * 0.06) + "s";
+      });
+    });
+
+    /* ── reveal on scroll ── */
+    var reveals = [].slice.call(document.querySelectorAll(".reveal"));
+    if (reduce || !("IntersectionObserver" in window)) {
+      reveals.forEach(function (el) { el.classList.add("in"); });
+    } else {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+      }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+      reveals.forEach(function (el) { io.observe(el); });
+    }
+
+    /* ── count-up ── */
+    function animateCount(el) {
+      var target = parseFloat(el.getAttribute("data-count")) || 0;
+      var suffix = el.getAttribute("data-suffix") || "";
+      var comma = el.getAttribute("data-comma");
+      if (reduce) { el.textContent = (comma ? target.toLocaleString() : target) + suffix; return; }
+      var dur = 1400, start = 0, t0 = null;
+      function fmt(n) { return comma ? Math.round(n).toLocaleString() : String(Math.round(n)); }
+      function step(ts) {
+        if (t0 === null) t0 = ts;
+        var p = Math.min((ts - t0) / dur, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmt(start + (target - start) * eased) + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    var counters = [].slice.call(document.querySelectorAll("[data-count]"));
+    if (!("IntersectionObserver" in window)) {
+      counters.forEach(animateCount);
+    } else {
+      var cio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { animateCount(e.target); cio.unobserve(e.target); } });
+      }, { threshold: 0.5 });
+      counters.forEach(function (el) { cio.observe(el); });
+    }
+
+    /* ── language marquee ── */
+    var langs = [
+      ["🇬🇧", "English"], ["🇰🇷", "한국어"], ["🇨🇳", "中文"], ["🇮🇱", "עברית"], ["🇺🇦", "Українська"],
+      ["⚡", "Custom speed"], ["📝", "AI Notes"], ["💬", "AI Tutor"], ["🃏", "Flashcards → Anki"],
+      ["🎧", "Translate & Dub"], ["🏆", "Weekly prizes"], ["🔥", "Login streaks"]
+    ];
+    var mq = document.getElementById("langMarquee");
+    if (mq) {
+      var html = "";
+      for (var pass = 0; pass < 2; pass++) {
+        langs.forEach(function (l) { html += '<span class="lang-chip">' + l[0] + " " + l[1] + "</span>"; });
+      }
+      mq.innerHTML = html;
+    }
+
+    /* ── typewriter rotor in the headline ── */
+    var rotor = document.getElementById("rotor");
+    if (rotor && !reduce) {
+      var rWords = ["notes", "flashcards", "revision", "exam prep", "translation"];
+      var rW = 0, rPos = rWords[0].length, rDir = -1;
+      var rStep = function () {
+        var w = rWords[rW];
+        if (rDir === 1 && rPos >= w.length) { rDir = -1; return setTimeout(rStep, 1300); }
+        if (rDir === -1 && rPos <= 0) { rDir = 1; rW = (rW + 1) % rWords.length; return setTimeout(rStep, 260); }
+        rPos += rDir;
+        rotor.textContent = rWords[rW].slice(0, rPos);
+        setTimeout(rStep, rDir === 1 ? 80 : 42);
+      };
+      setTimeout(rStep, 1500);
+    }
+
+    /* ── hero popup 3D tilt + chip parallax ── */
+    var tStage = document.querySelector(".mock-stage");
+    var tShell = document.querySelector(".popup-shell");
+    var tChips = [].slice.call(document.querySelectorAll(".chip-float"));
+    if (tStage && tShell && !reduce && window.matchMedia("(pointer:fine)").matches) {
+      tStage.addEventListener("pointermove", function (e) {
+        var r = tStage.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width - 0.5;
+        var py = (e.clientY - r.top) / r.height - 0.5;
+        tShell.style.animation = "none";
+        tShell.style.transform = "rotateY(" + (px * 11).toFixed(2) + "deg) rotateX(" + (-py * 11).toFixed(2) + "deg) translateY(" + (py * -6).toFixed(1) + "px)";
+        tChips.forEach(function (c, i) { c.style.animation = "none"; var f = (i + 1) * 7; c.style.transform = "translate(" + (px * f).toFixed(1) + "px," + (py * f).toFixed(1) + "px)"; });
+      });
+      tStage.addEventListener("pointerleave", function () {
+        tShell.style.animation = ""; tShell.style.transform = "";
+        tChips.forEach(function (c) { c.style.animation = ""; c.style.transform = ""; });
       });
     }
-    lang.addEventListener('change', applyLanguage);
 
-    const speedSlider = document.getElementById('speedSlider');
-    const speedBadge = document.getElementById('speedBadge');
-    const speedWarning = document.getElementById('speedWarning');
-    const mockSaved = document.getElementById('mockSaved');
-    let savedSeconds = 0;
-    let fraction = 0;
+    /* ── popup speed mock ── */
+    var slider = document.getElementById("speedSlider");
+    var badge = document.getElementById("speedBadge");
+    var savedVal = document.getElementById("savedVal");
+    function clean(raw) { var v = parseFloat(String(raw).replace(/[^\d.]/g, "")); return isFinite(v) ? Math.max(0.5, Math.min(6, v)) : 1; }
+    function setSpeed(v) {
+      var n = clean(v);
+      if (slider) { if (n > +slider.max) slider.max = String(n); slider.value = String(Math.min(n, +slider.max)); }
+      if (badge) badge.textContent = n.toFixed(2) + "x";
+    }
+    if (slider) slider.addEventListener("input", function () { setSpeed(slider.value); });
+    if (badge) {
+      badge.addEventListener("click", function () {
+        badge.textContent = badge.textContent.replace(/x/gi, "");
+        badge.contentEditable = "true"; badge.focus();
+        var r = document.createRange(); r.selectNodeContents(badge);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      });
+      badge.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); badge.blur(); } });
+      badge.addEventListener("blur", function () { badge.contentEditable = "false"; setSpeed(badge.textContent); });
+    }
+    /* time-saved ticker */
+    var saved = 0, frac = 0;
+    function fmtShort(t) {
+      t = Math.floor(t); var h = Math.floor(t / 3600); t %= 3600; var m = Math.floor(t / 60); var s = t % 60;
+      if (h) return h + "h " + m + "m"; if (m) return m + "m " + s + "s"; return s + "s";
+    }
+    if (!reduce && savedVal) {
+      setInterval(function () {
+        var sp = clean(badge ? badge.textContent : "2.5");
+        frac += Math.max(0, Math.min(sp, 4) - 1);
+        if (frac >= 1) { var inc = Math.floor(frac); saved += inc; frac -= inc; savedVal.textContent = fmtShort(saved); }
+      }, 1000);
+    } else if (savedVal) { savedVal.textContent = "2h 14m"; }
 
-    function cleanSpeed(raw) {
-      const val = parseFloat(String(raw).replace(/[^\d.]/g, ''));
-      return Number.isFinite(val) ? Math.max(.5, Math.min(6, val)) : 1;
+    /* ── popup i18n ── */
+    var I18N = {
+      en: { speed: "Playback Speed", editHint: "✏️ Click the speed to type any custom value", startup: "Speed on startup", saved: "Saved:", leaderboard: "Leaderboard", prize: "<strong>#1 each week</strong> wins <strong>7 days Premium</strong> free", rankLabel: "You are rank", viewLb: "View Leaderboard", aiTools: "AI Tools", genNotes: "Generate Notes", aiChat: "AI Chat", genCards: "Generate Flashcards" },
+      ko: { speed: "재생 속도", editHint: "✏️ 속도를 클릭해 직접 입력하세요", startup: "시작 시 속도 적용", saved: "절약:", leaderboard: "리더보드", prize: "매주 <strong>1위</strong>는 <strong>프리미엄 7일</strong> 무료", rankLabel: "내 순위", viewLb: "리더보드 보기", aiTools: "AI 도구", genNotes: "노트 생성", aiChat: "AI 채팅", genCards: "플래시카드 생성" },
+      zh: { speed: "播放速度", editHint: "✏️ 点击速度可输入任意值", startup: "启动时应用速度", saved: "已节省：", leaderboard: "排行榜", prize: "每周<strong>第一名</strong>赢取<strong>7天高级版</strong>", rankLabel: "你的排名", viewLb: "查看排行榜", aiTools: "AI 工具", genNotes: "生成笔记", aiChat: "AI 聊天", genCards: "生成抽认卡" },
+      he: { speed: "מהירות הפעלה", editHint: "✏️ לחצו על המהירות כדי להקליד ערך", startup: "החל מהירות בהפעלה", saved: "נחסך:", leaderboard: "לוח תוצאות", prize: "<strong>מקום 1</strong> כל שבוע מקבל <strong>7 ימי פרימיום</strong> חינם", rankLabel: "הדירוג שלך", viewLb: "הצג לוח תוצאות", aiTools: "כלי AI", genNotes: "צור הערות", aiChat: "צ׳אט AI", genCards: "צור כרטיסיות" },
+      uk: { speed: "Швидкість відтворення", editHint: "✏️ Натисніть на число, щоб ввести значення", startup: "Швидкість при запуску", saved: "Заощаджено:", leaderboard: "Таблиця лідерів", prize: "<strong>№1 щотижня</strong> отримує <strong>7 днів Premium</strong>", rankLabel: "Ваш ранг", viewLb: "Таблиця лідерів", aiTools: "AI-інструменти", genNotes: "Створити нотатки", aiChat: "AI-чат", genCards: "Створити картки" }
+    };
+    var langSelect = document.getElementById("langSelect");
+    if (langSelect) {
+      langSelect.addEventListener("change", function () {
+        var t = I18N[langSelect.value] || I18N.en;
+        var card = langSelect.closest(".popup-shell").querySelector(".pop-card");
+        if (card) card.dir = langSelect.value === "he" ? "rtl" : "ltr";
+        document.querySelectorAll("[data-i18n]").forEach(function (el) {
+          var k = el.getAttribute("data-i18n"); if (t[k] != null) el.innerHTML = t[k];
+        });
+      });
     }
-    function setSpeed(val) {
-      const n = cleanSpeed(val);
-      if (n > Number(speedSlider.max)) speedSlider.max = n;
-      speedSlider.value = Math.min(n, Number(speedSlider.max));
-      speedBadge.textContent = n.toFixed(2) + 'x';
-      speedWarning.style.display = n > 3 ? 'block' : 'none';
-    }
-    speedSlider.addEventListener('input', () => setSpeed(speedSlider.value));
-    speedBadge.addEventListener('click', () => {
-      speedBadge.textContent = speedBadge.textContent.replace(/x/gi, '');
-      speedBadge.contentEditable = 'true';
-      speedBadge.focus();
-      const r = document.createRange();
-      r.selectNodeContents(speedBadge);
-      const s = window.getSelection();
-      s.removeAllRanges();
-      s.addRange(r);
+
+    /* ── AI demo tabs ── */
+    var tabBtns = [].slice.call(document.querySelectorAll(".demo-tab"));
+    var panels = [].slice.call(document.querySelectorAll(".demo-panel"));
+    var chatPlayed = false;
+    var demoTablist = document.getElementById("demoTabs");
+    if (demoTablist) demoTablist.setAttribute("role", "tablist");
+    tabBtns.forEach(function (b) {
+      var nm = b.getAttribute("data-tab");
+      b.setAttribute("role", "tab");
+      b.id = "demotab-" + nm;
+      b.setAttribute("aria-controls", "demopanel-" + nm);
+      b.setAttribute("aria-selected", b.classList.contains("active") ? "true" : "false");
     });
-    speedBadge.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); speedBadge.blur(); } });
-    speedBadge.addEventListener('blur', () => { speedBadge.contentEditable = 'false'; setSpeed(speedBadge.textContent); });
-
-    function formatShort(total) {
-      total = Math.floor(total);
-      const h = Math.floor(total / 3600); total %= 3600;
-      const m = Math.floor(total / 60);
-      const s = total % 60;
-      if (h) return `${h}h ${m}m`;
-      if (m) return `${m}m ${s}s`;
-      return `${s}s`;
-    }
-    setInterval(() => {
-      const sp = cleanSpeed(speedBadge.textContent);
-      fraction += Math.max(0, Math.min(sp, 4) - 1);
-      if (fraction >= 1) {
-        const inc = Math.floor(fraction);
-        savedSeconds += inc;
-        fraction -= inc;
-        mockSaved.textContent = formatShort(savedSeconds);
-      }
-    }, 1000);
-
-    const totalBox = document.getElementById('totalTimeBox');
-    const totalText = document.getElementById('totalTimeText');
-    const totalHint = document.getElementById('totalHint');
-    let totalExpanded = false;
-    totalBox.addEventListener('click', () => {
-      totalExpanded = !totalExpanded;
-      totalText.textContent = totalExpanded ? '200 days, 12 hours' : '4,812 hours';
-      totalHint.textContent = totalExpanded ? 'click to collapse' : 'click to expand';
+    panels.forEach(function (p) {
+      var nm = p.getAttribute("data-panel");
+      p.setAttribute("role", "tabpanel");
+      p.id = "demopanel-" + nm;
+      p.setAttribute("aria-labelledby", "demotab-" + nm);
     });
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var name = btn.getAttribute("data-tab");
+        tabBtns.forEach(function (b) { var on = b === btn; b.classList.toggle("active", on); b.setAttribute("aria-selected", on ? "true" : "false"); });
+        panels.forEach(function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === name); });
+        if (name === "chat" && !chatPlayed) { typeChat(); chatPlayed = true; }
+      });
+    });
+
+    /* ── chat typing demo ── */
+    var chatAnswer = document.getElementById("chatAnswer");
+    var chatSegments = [
+      "Yes — the lecture flags a few things for the exam:<br><br>",
+      "<strong>Complex equations will be provided.</strong> The lecturer says you won't need to memorise them ",
+      '<span class="ts-chip">⏱ 00:43:58</span>.<br><br>',
+      "<strong>The Z-table will be given</strong>, so don't memorise it ",
+      '<span class="ts-chip">⏱ 00:51:04</span>.<br><br>',
+      "<strong>Next lecture covers</strong> joint distributions, confidence intervals and hypothesis testing ",
+      '<span class="ts-chip">⏱ 00:51:54</span>.'
+    ];
+    function typeChat() {
+      if (!chatAnswer) return;
+      if (reduce) { chatAnswer.innerHTML = chatSegments.join(""); chatAnswer.classList.add("pop-in"); return; }
+      chatAnswer.innerHTML = '<span class="caret"></span>';
+      chatAnswer.classList.add("pop-in");
+      var i = 0, acc = "";
+      (function next() {
+        if (i >= chatSegments.length) { chatAnswer.innerHTML = acc; return; }
+        acc += chatSegments[i]; i++;
+        chatAnswer.innerHTML = acc + '<span class="caret"></span>';
+        setTimeout(next, 340);
+      })();
+    }
+    var chatReplay = document.getElementById("chatReplay");
+    if (chatReplay) chatReplay.addEventListener("click", typeChat);
+
+    /* ── flashcards ── */
+    var cards = [
+      ["What does variance measure?", "How far a random variable's values spread from the mean."],
+      ["Formula for Var(X)?", "Var(X) = E[X²] − (E[X])²"],
+      ["When does Var(X+Y)=Var(X)+Var(Y)?", "When X and Y are independent."],
+      ["What is the Central Limit Theorem?", "Sample means approach a normal distribution as n grows."],
+      ["Define covariance.", "A measure of how two variables change together."],
+      ["What is a Bernoulli trial?", "An experiment with exactly two outcomes: success or failure."],
+      ["E[X] for a fair die?", "3.5 — the average of 1 through 6."],
+      ["Standard deviation is…", "The square root of the variance."]
+    ];
+    var fcGrid = document.getElementById("fcGrid");
+    if (fcGrid) {
+      var ch = "";
+      cards.forEach(function (c, i) {
+        ch += '<div class="fc" tabindex="0" role="button" aria-pressed="false" aria-label="Flashcard ' + (i + 1) + ': ' + c[0] + ' (activate to reveal answer)">'
+          + '<div class="fc-inner">'
+          + '<div class="fc-face fc-front"><div class="fc-cardno">Card ' + (i + 1) + '</div><div class="fc-q">' + c[0] + '</div><div class="fc-hint">Tap to flip ↻</div></div>'
+          + '<div class="fc-face fc-back"><div class="fc-cardno">Answer</div><div class="fc-a">' + c[1] + '</div><div class="fc-hint">Tap to flip ↻</div></div>'
+          + '</div></div>';
+      });
+      fcGrid.innerHTML = ch;
+      [].slice.call(fcGrid.querySelectorAll(".fc")).forEach(function (fc) {
+        function toggle() { var f = fc.classList.toggle("flip"); fc.setAttribute("aria-pressed", f ? "true" : "false"); }
+        fc.addEventListener("click", toggle);
+        fc.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      });
+      var revealAll = document.getElementById("fcRevealAll");
+      if (revealAll) revealAll.addEventListener("click", function () {
+        var all = [].slice.call(fcGrid.querySelectorAll(".fc"));
+        var anyUnflipped = all.some(function (f) { return !f.classList.contains("flip"); });
+        all.forEach(function (f) { f.classList.toggle("flip", anyUnflipped); });
+      });
+    }
+
+    /* ── translate cycle ── */
+    var trTargets = [
+      ["🇪🇸 Español", '"La varianza de la suma de dos variables independientes es la suma de sus varianzas."'],
+      ["🇨🇳 中文", '"两个独立变量之和的方差等于它们各自方差之和。"'],
+      ["🇫🇷 Français", '"La variance de la somme de deux variables indépendantes est la somme de leurs variances."'],
+      ["🇩🇪 Deutsch", '"Die Varianz der Summe zweier unabhängiger Variablen ist die Summe ihrer Varianzen."']
+    ];
+    var trTo = document.getElementById("trTo");
+    var trText = document.getElementById("trText");
+    var trPlay = document.getElementById("trPlay");
+    var trIdx = 0;
+    if (trPlay && trTo && trText) {
+      trPlay.addEventListener("click", function () {
+        trIdx = (trIdx + 1) % trTargets.length;
+        trTo.textContent = trTargets[trIdx][0];
+        trText.style.opacity = "0";
+        setTimeout(function () { trText.textContent = trTargets[trIdx][1]; trText.style.transition = "opacity .3s"; trText.style.opacity = "1"; }, 160);
+      });
+    }
+
+    /* ── leaderboard data + render ── */
+    var lbData = {
+      week: [
+        { n: "SpeedDemon_Jay", t: "14h 22m", tag: "prem" },
+        { n: "lecture_lord", t: "12h 47m" },
+        { n: "caffeine_cram", t: "11h 08m" },
+        { n: "night_owl_99", t: "9h 51m" },
+        { n: "Harvey", t: "9h 12m", tag: "dev" },
+        { n: "medic_marathon", t: "8h 30m" },
+        { n: "you", t: "7h 44m", you: true }
+      ],
+      alltime: [
+        { n: "Harvey", t: "9d 14h", tag: "dev" },
+        { n: "lecture_lord", t: "8d 02h", tag: "prem" },
+        { n: "exam_machine", t: "7d 19h" },
+        { n: "SpeedDemon_Jay", t: "6d 21h", tag: "prem" },
+        { n: "quiet_quokka", t: "6d 03h" },
+        { n: "thesis_thunder", t: "5d 16h" },
+        { n: "you", t: "2d 08h", you: true }
+      ]
+    };
+    var lbList = document.getElementById("lbList");
+    var lbCurrent = "week";
+    function medal(i) { return i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""; }
+    function badgeFor(p) {
+      if (p.you) return '<span class="lb-tag me">YOU</span>';
+      if (p.tag === "dev") return '<span class="lb-tag dev">DEV</span>';
+      if (p.tag === "prem") return '<span class="lb-tag prem">★ Premium</span>';
+      return "";
+    }
+    function renderLb(period) {
+      if (!lbList) return;
+      lbCurrent = period;
+      var rows = lbData[period] || lbData.week;
+      lbList.innerHTML = rows.map(function (p, i) {
+        var rcls = i < 3 ? " r" + (i + 1) : "";
+        if (p.you) rcls += " you";
+        var crown = i === 0 ? "👑" : (i + 1);
+        return '<div class="lb-row' + rcls + '" style="' + (reduce ? "" : "animation:popIn .45s var(--ease) both;animation-delay:" + (i * 0.05) + "s") + '">'
+          + '<div class="lb-badge ' + medal(i) + '">' + crown + '</div>'
+          + '<div class="lb-name"><span>' + p.n + '</span>' + badgeFor(p) + '</div>'
+          + '<div class="lb-time">' + p.t + '</div>'
+          + '</div>';
+      }).join("");
+    }
+    renderLb("week");
+    if (lbList) { lbList.setAttribute("role", "tabpanel"); lbList.setAttribute("aria-live", "polite"); }
+    var lbTablist = document.getElementById("lbTabs");
+    if (lbTablist) lbTablist.setAttribute("role", "tablist");
+    var lbTabs = [].slice.call(document.querySelectorAll(".lb-tab"));
+    lbTabs.forEach(function (tab) {
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", tab.classList.contains("active") ? "true" : "false");
+      tab.addEventListener("click", function () {
+        lbTabs.forEach(function (t) { var on = t === tab; t.classList.toggle("active", on); t.setAttribute("aria-selected", on ? "true" : "false"); });
+        renderLb(tab.getAttribute("data-period"));
+      });
+    });
+    /* replay the row cascade when the leaderboard scrolls into view */
+    var lbCardEl = document.querySelector("#leaderboard .lb-card");
+    if (lbCardEl && !reduce && "IntersectionObserver" in window) {
+      var lbReio = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { renderLb(lbCurrent); lbReio.unobserve(e.target); } }); }, { threshold: 0.25 });
+      lbReio.observe(lbCardEl);
+    }
+
+    /* ── copy promo ── */
+    var copyBtn = document.getElementById("copyPromo");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var code = (document.getElementById("promoCode") || {}).textContent || "PANOPTO2M";
+        var done = function () { var o = copyBtn.textContent; copyBtn.textContent = "Copied! ✓"; setTimeout(function () { copyBtn.textContent = o; }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).then(done).catch(done); }
+        else { done(); }
+      });
+    }
+  })();
   </script>
 </body>
 </html>
