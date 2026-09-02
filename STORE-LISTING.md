@@ -1,0 +1,142 @@
+# Chrome Web Store listing copy
+
+Two fields, two very different costs:
+
+| Field | Where | Cost to change |
+|---|---|---|
+| Title (75 max) | `manifest.json` `name` | **Package review** |
+| Short description (132 max) | `manifest.json` `description` | **Package review** |
+| Detailed description (16,000 max) | Developer dashboard → Store listing | **Instant, no review** |
+
+So the detailed description below can go live today. The title and short
+description ride along with the next release.
+
+There is **no keyword field** on the Chrome Web Store. Relevance comes from the
+title and the two descriptions, and ranking also weighs ratings and installs.
+
+---
+
+## Detailed description — paste this today
+
+> Panopto caps playback at 2x. This removes the cap, and then turns the lecture
+> you just watched into notes you can actually revise from.
+>
+> SPEED
+> • Any speed from 0.5x to 3x, typed in or dragged — not just the presets.
+> • Silence Skipper cuts the dead air between sentences. A rambling 60-minute
+>   lecture finishes in closer to 35.
+> • Your speed is remembered between lectures.
+> • Picture-in-picture, so the lecture follows you to another tab.
+>
+> AI STUDY TOOLS
+> • Lecture notes generated from the transcript in about 30 seconds, with
+>   screenshots of the slides pulled in at the right moments.
+> • Flashcards exported straight to Anki as a .apkg file. Import and revise.
+> • Ask questions about the lecture and get answers with timestamps, so you can
+>   jump back to the moment it was explained.
+> • Live caption translation and dubbing, for lectures that aren't in your first
+>   language.
+> • Transcripts and lecture downloads for offline revision.
+>
+> MADE FOR HEAVY LECTURE LOADS
+> Medical, pharmacy, dentistry, optometry, nursing, veterinary and law students
+> get through more recorded lecture than anyone. If you already live in Anki,
+> the flashcard export is the whole reason this exists — lecture in, deck out,
+> no retyping.
+>
+> International students: if lectures aren't in your first language, the
+> translation and dubbing turn a second listen into a first one.
+>
+> HOW TO START
+> 1. Install, then refresh your Panopto page.
+> 2. Open any recorded lecture.
+> 3. The speed control appears in the player's settings menu. Everything else
+>    is behind the extension icon in your toolbar.
+>
+> Some universities rebrand Panopto — if yours calls it Recap, uRewind, Echo,
+> or just "lecture capture", check the address bar for panopto and it will work.
+>
+> FREE AND PAID
+> Custom speed, Silence Skipper, picture-in-picture, dark mode and the
+> time-saved leaderboard are free forever. AI notes, flashcards, chat and
+> translation are limited on the free plan and unlimited on premium, from £12
+> a year with a free trial.
+>
+> IF IT DOESN'T WORK ON YOUR UNIVERSITY'S PANOPTO, EMAIL ME AND I WILL FIX IT.
+> I'm a student who built this for my own lectures and I reply the same day.
+>
+> Privacy: lecture text is sent to the AI provider only when you ask for notes,
+> flashcards, chat or translation. Nothing is recorded or sold.
+> Full policy: https://harveychandler.dev/Panopto-Extension/panopto-privacy-policy.txt
+>
+> Not affiliated with or endorsed by Panopto, Inc. Panopto is a trademark of
+> its owner.
+>
+> https://github.com/harvey/Panopto-Extension
+
+---
+
+## Short description — 132 max, ships with the next release
+
+```
+Watch Panopto lectures past the 2x cap, then turn any lecture into AI notes, Anki flashcards, transcripts or translation.
+```
+121 characters. The current one is 70, so this recovers 51 characters of the
+second-most-weighted field on the listing.
+
+## Title — 75 max, ships with the next release
+
+Keep it. `Panopto Custom Speed - AI Notes, Flashcards & Translation` (57) is
+already good: the head term is first, and you rank #1 for "panopto" in every
+locale tested, so there is nothing to gain and an existing anchor to lose.
+
+Do **not** put "download" or "downloader" in the title. Panopto shipped a native
+download in Aug 2026, and it is the feature most likely to attract a complaint
+from a university IT department.
+
+---
+
+## What changed and why
+
+**Dropped "Gemini & Claude powered".** Nobody searches for the model, it dates
+the listing every time you switch, and it spends the most valuable line in the
+description on an implementation detail. Also: free users are Gemini-only, so
+naming Claude up front oversells what most installers get.
+
+**Lead with the 2x cap, not "allows you to set custom speeds".** The cap is the
+thing people are annoyed about and the thing they describe when they search.
+
+**Anki promoted out of parentheses.** It was in brackets inside a sub-bullet.
+It is the single strongest hook you have for the audience you already have.
+
+**Added the audience explicitly.** Your own data says med-adjacent schools
+dominate: attach failures come from Loma Linda, KUMC, Jefferson, Johns Hopkins,
+Weill Cornell, FIU Med, Maryland School of Medicine and St George's London;
+account domains include salus.edu, neco.edu, usuhs.edu and my.rfums.org. You
+were never targeting them and they found you anyway.
+
+**Removed "Added Edge & Other Chromium Browser Support" and "Language support
+added".** Changelog lines, not reasons to install. The Edge line is also
+misleading — the Edge listing is on v2.2 from Feb 2025.
+
+**Kept the shouty support line.** It reads as a real person and your reviews
+show people value it. Moved it lower so it isn't competing with the pitch.
+
+**Added a privacy line and a trademark disclaimer.** The extension ships lecture
+transcripts to a server and on to an AI provider, and the package contains no
+privacy disclosure at all. Both are overdue and both reduce takedown risk.
+
+---
+
+## ⚠️ One line to decide on
+
+> Some universities rebrand Panopto — if yours calls it Recap, uRewind, Echo,
+> or just "lecture capture", check the address bar for panopto and it will work.
+
+You said you were blocked before for putting university names in the listing.
+This is deliberately **not** a list of universities — it is three product names
+in a sentence that answers a real question ("is this the thing my uni uses?").
+That is defensible where a list of 50 institutions is not.
+
+If you are at all unsure given the previous block, **delete the line.** It is
+worth a little long-tail traffic and nothing else. Do not extend it into a list.
