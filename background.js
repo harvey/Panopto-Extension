@@ -141,12 +141,14 @@ const refreshUninstallURL = async () => {
         params.set("host",     state.lastHost || "");
         params.set("v",        chrome.runtime.getManifest().version);
 
-        // Only report `days` when we actually know the install moment. Installs that
-        // predate this version have no installedAt and would otherwise all look like
-        // day-zero churn.
-        if (state.installedAt) {
-            params.set("days", String(Math.floor((Date.now() - state.installedAt) / 86400000)));
-        }
+        // `installedAt` only exists for people who installed fresh on a build that had
+        // it, so every user who predates it has no install moment to measure from.
+        // Omitting the param made the worker fall back to 0, which is indistinguishable
+        // from genuine day-zero churn and put 100% of uninstalls in the "<1 day" bucket.
+        // -1 means "unknown" and the dashboard counts it separately.
+        params.set("days", state.installedAt
+            ? String(Math.floor((Date.now() - state.installedAt) / 86400000))
+            : "-1");
 
         chrome.runtime.setUninstallURL(`${BACKEND}/uninstall?${params.toString()}`);
     } catch (e) {
@@ -218,10 +220,14 @@ const postAttachFailed = async (host) => {
     } catch (e) {}
 };
 
+// NB: sessionCount is deliberately NOT incremented here. content.js already bumps it
+// in reportAttachSuccess() before sending us `attach-ok`, so incrementing again counted
+// every attach twice and doubled the "sessions before leaving" chart. The content script
+// is the one guaranteed to run, so it owns the counter; this only mirrors the other two
+// keys and re-stamps the uninstall URL, which is a static snapshot that goes stale.
 const recordAttachSuccess = async (host) => {
     const state = await ensureUserId();
     await chrome.storage.local.set({
-        sessionCount: (parseInt(state.sessionCount, 10) || 0) + 1,
         everAttached: true,
         lastHost:     host || state.lastHost || ""
     });
