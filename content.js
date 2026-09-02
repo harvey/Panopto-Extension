@@ -103,9 +103,23 @@ function track() {
     let lastRealTime = Date.now();
     let isTracking = false;
 
+    // Nudge bookkeeping for this sitting. Local flags because showNudge()'s own gate
+    // is async — without them the milestone would fire on every tick until it resolved.
+    let sessionSaved = 0;
+    let savedNudged  = false;
+    let doneNudged   = false;
+
     const trackTimeSaved = () => {
         const currentRealTime = Date.now();
         const currentCurrentTime = video.currentTime;
+
+        // "Finished" is checked before the paused guard below, because a lecture that
+        // has run to the end is usually sitting paused on its last frame.
+        if (!doneNudged && video.duration > 0
+            && currentCurrentTime / video.duration >= NUDGE_DONE_FRAC) {
+            doneNudged = true;
+            showNudge('finished');
+        }
 
         // Reset markers if the video is paused.
         if (video.paused) {
@@ -127,6 +141,14 @@ function track() {
             const savedTime = currentTimeDelta - realTimeDelta;
 
             if (savedTime > 0) {
+                // Same figure the leaderboard counts, kept per-sitting so the nudge can
+                // quote what they actually earned on this lecture rather than all time.
+                sessionSaved += savedTime;
+                if (!savedNudged && sessionSaved >= NUDGE_SAVED_SECS) {
+                    savedNudged = true;
+                    showNudge('saved', { mins: Math.round(sessionSaved / 60) });
+                }
+
                 chrome.runtime.sendMessage(
                     { type: "updateSavedTime", savedTime },
                     (response) => {
@@ -522,6 +544,7 @@ function onVideoAttached(video) {
     applyStoredSpeed(video);
     reportAttachSuccess();
     maybeShowCoachMark();
+    watchRateForNudge(video);
 }
 
 function reportAttachSuccess() {
@@ -617,6 +640,154 @@ function showCoachMark() {
 
     document.documentElement.appendChild(tip);
     requestAnimationFrame(() => { tip.classList.add('__pcs-coach-in'); });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PREMIUM NUDGES
+//
+// The free half of the extension — speed, silence skip, PiP — all happens here on
+// the player. The paid half — AI notes, flashcards, chat, translation — lives in
+// the toolbar popup, which most people open once while installing and never open
+// again. These nudges are the only place the Panopto page ever says the rest of
+// the product exists.
+//
+// Deliberately quiet, because the alternative to a quiet nudge is an uninstall:
+// one per day at most across every variant, each variant on its own longer
+// cooldown, one per page load, and silenced for good once three have been ignored
+// in a row. Clicking one resets that counter, so people who engage keep seeing them.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NUDGE_GAP_MS     = 24 * 60 * 60 * 1000;   // never two nudges within a day
+const NUDGE_IGNORE_MAX = 3;                     // ignored this many times → stop asking
+const NUDGE_TIMEOUT_MS = 11000;                 // a little longer than the coach mark
+const NUDGE_SAVED_SECS = 600;                   // 10 minutes saved in one sitting
+const NUDGE_RATE_GRACE = 4000;                  // ignore the speed we restore on load
+const NUDGE_DONE_FRAC  = 0.97;                  // "finished" once this much has played
+
+const NUDGE_COPY = {
+    // Fired when the viewer changes speed themselves. They have just used the free
+    // feature, so this is the moment they are most receptive to there being more.
+    speed: {
+        cooldownMs: 7 * 24 * 60 * 60 * 1000,
+        title: 'Watching at {rate}×',
+        body:  'This lecture can also become AI notes, flashcards or an Anki deck.',
+    },
+    // Fired once they have banked real time. Leads with what they earned, not with a pitch.
+    saved: {
+        cooldownMs: 3 * 24 * 60 * 60 * 1000,
+        title: 'You’ve saved {mins} minutes on this lecture',
+        body:  'Want the notes as well? They’re generated from the transcript in about 30 seconds.',
+    },
+    // Fired at the end, when the "I need to revise this" instinct is strongest.
+    finished: {
+        cooldownMs: 3 * 24 * 60 * 60 * 1000,
+        title: 'Lecture finished',
+        body:  'Turn it into flashcards while it’s still fresh.',
+    },
+};
+
+let _nudgeShownThisPage = false;
+
+// Reads the nudge ledger and applies every gate. Calls back with (false) unless
+// this variant is genuinely due.
+function nudgeAllowed(variant, cb) {
+    if (_nudgeShownThisPage || !isPlayerFrame() || !NUDGE_COPY[variant]) return cb(false);
+    chrome.storage.local.get('pcsNudge', (r) => {
+        const st  = (r && r.pcsNudge) || {};
+        const now = Date.now();
+        if (st.off) return cb(false);                                    // dismissed for good
+        if ((st.ignored || 0) >= NUDGE_IGNORE_MAX) return cb(false);     // asked enough
+        if (st.last && now - st.last < NUDGE_GAP_MS) return cb(false);   // one a day
+        const seen = (st.shown && st.shown[variant]) || 0;
+        if (now - seen < NUDGE_COPY[variant].cooldownMs) return cb(false);
+        cb(true, st);
+    });
+}
+
+// Showing counts as an ignore until they click; nudgeClicked() clears it.
+function recordNudgeShown(variant, st) {
+    const now   = Date.now();
+    const shown = Object.assign({}, st.shown);
+    shown[variant] = now;
+    chrome.storage.local.set({
+        pcsNudge: Object.assign({}, st, { last: now, shown, ignored: (st.ignored || 0) + 1 })
+    });
+}
+
+function nudgeClicked() {
+    chrome.storage.local.get('pcsNudge', (r) => {
+        const st = (r && r.pcsNudge) || {};
+        chrome.storage.local.set({ pcsNudge: Object.assign({}, st, { ignored: 0 }) });
+    });
+    // chrome.action.openPopup() only exists on newer Chrome and can refuse; the
+    // service worker swallows that and the CTA copy still tells them where to click.
+    try {
+        chrome.runtime.sendMessage({ type: 'open-popup' }, () => { void chrome.runtime.lastError; });
+    } catch (e) {}
+}
+
+// Permanently silences nudges. The × is the honest alternative to people uninstalling
+// because a toast kept appearing.
+function nudgeSilence() {
+    chrome.storage.local.get('pcsNudge', (r) => {
+        const st = (r && r.pcsNudge) || {};
+        chrome.storage.local.set({ pcsNudge: Object.assign({}, st, { off: true }) });
+    });
+}
+
+function showNudge(variant, vars) {
+    nudgeAllowed(variant, (ok, st) => {
+        if (!ok || document.querySelector('.__pcs-nudge')) return;
+        _nudgeShownThisPage = true;
+        recordNudgeShown(variant, st);
+
+        const copy = NUDGE_COPY[variant];
+        const fill = (s) => s.replace(/\{(\w+)\}/g,
+            (m, k) => (vars && vars[k] != null) ? String(vars[k]) : m);
+
+        const el = document.createElement('div');
+        el.className = '__pcs-nudge';
+        el.innerHTML =
+            '<button class="__pcs-nudge-x" type="button" aria-label="Don’t show these again">×</button>' +
+            '<span class="__pcs-nudge-title"></span>' +
+            '<span class="__pcs-nudge-body"></span>' +
+            '<span class="__pcs-nudge-cta">Click the extension icon in your toolbar ↗</span>';
+        // textContent, not innerHTML — the lecture title and rate are page-derived.
+        el.querySelector('.__pcs-nudge-title').textContent = fill(copy.title);
+        el.querySelector('.__pcs-nudge-body').textContent  = fill(copy.body);
+
+        let timer = null;
+        const remove = () => {
+            if (timer) { clearTimeout(timer); timer = null; }
+            el.remove();   // removed rather than hidden, so it can never swallow a click
+        };
+
+        el.querySelector('.__pcs-nudge-x').addEventListener('click', (e) => {
+            e.stopPropagation();
+            nudgeSilence();
+            remove();
+        });
+        el.addEventListener('click', () => { nudgeClicked(); remove(); });
+
+        timer = setTimeout(remove, NUDGE_TIMEOUT_MS);
+        document.documentElement.appendChild(el);
+        requestAnimationFrame(() => { el.classList.add('__pcs-nudge-in'); });
+    });
+}
+
+// Speed trigger. A ratechange listener catches the change wherever it came from —
+// Panopto's own menu, our injected slider, or a keyboard shortcut — but the speed we
+// restore ourselves on load fires one too, so the first few seconds are ignored.
+function watchRateForNudge(video) {
+    if (!isPlayerFrame() || !video || video.__pcsRateNudge) return;
+    video.__pcsRateNudge = true;
+    const armedAt = Date.now() + NUDGE_RATE_GRACE;
+    video.addEventListener('ratechange', () => {
+        if (Date.now() < armedAt) return;
+        const r = video.playbackRate;
+        if (!(r > 1.05)) return;
+        showNudge('speed', { rate: String(Math.round(r * 100) / 100) });
+    });
 }
 
 startVideoWatch();

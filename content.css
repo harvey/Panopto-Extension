@@ -61,3 +61,96 @@
     color: #11773D;
     filter: brightness(1.6);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Premium nudges — the only mention of notes / flashcards / chat that ever appears
+   on the Panopto page itself. Same surface as the coach mark above so it reads as
+   the same extension, but with a dismiss affordance, because this one is a pitch
+   and the coach mark is help. See the NUDGE_* block in content.js for the gating.
+   ───────────────────────────────────────────────────────────────────────────── */
+.__pcs-nudge {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 2147483646;
+    width: 296px;
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    padding: 12px 30px 12px 14px;
+    background: #161b22;
+    color: #e6edf3;
+    border: 1px solid #262e38;
+    border-left: 3px solid #11773D;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.__pcs-nudge.__pcs-nudge-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.__pcs-nudge-title {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.__pcs-nudge-body {
+    display: block;
+    color: #8b949e;
+}
+
+.__pcs-nudge-cta {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #11773D;
+    filter: brightness(1.6);
+}
+
+/* Dismiss-for-good. Deliberately small and quiet: it is an escape hatch, not an
+   equal-weight choice against the CTA. */
+.__pcs-nudge-x {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    color: #6e7681;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.__pcs-nudge-x:hover {
+    background: #21262d;
+    color: #e6edf3;
+}
+
+.__pcs-nudge-x:focus-visible {
+    outline: 2px solid #11773D;
+    outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .__pcs-nudge { transition: none; }
+}

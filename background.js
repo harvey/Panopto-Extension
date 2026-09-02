@@ -282,6 +282,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ savedTime });
     }
 
+    // A premium nudge on the Panopto page was clicked. openPopup() only exists on
+    // Chrome 127+, and can still refuse when the click is too far from a user gesture,
+    // so every failure is swallowed — the nudge's own text tells them where the icon
+    // is, which is the fallback.
+    if (message.type === "open-popup") {
+        try {
+            if (chrome.action && typeof chrome.action.openPopup === "function") {
+                const p = chrome.action.openPopup();
+                if (p && typeof p.catch === "function") p.catch(() => {});
+            }
+        } catch (e) {}
+        sendResponse({ status: "ok" });
+    }
+
     if (message.type === "updateSilenceSavedTime") {
         silenceSavedTime += message.savedTime;
         saveTotalTime();
