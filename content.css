@@ -71,7 +71,11 @@
 .__pcs-nudge {
     position: fixed;
     right: 16px;
-    bottom: 16px;
+    /* Top-right, not bottom-right. Bottom-right sits directly on Panopto's own
+       "Chapters" pill, and 120px clears their AI Chat button above it. Verified
+       against a live viewer — covering a native control is how a helpful toast
+       becomes the reason someone uninstalls. */
+    top: 120px;
     z-index: 2147483646;
     width: 296px;
     max-width: calc(100vw - 32px);
@@ -89,7 +93,7 @@
     cursor: pointer;
     user-select: none;
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(-6px);
     transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
