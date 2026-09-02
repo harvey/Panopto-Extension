@@ -2637,9 +2637,65 @@ document.addEventListener("DOMContentLoaded", function () {
         window.open(chrome.runtime.getURL('leaderboard.html'), 'leaderboard', 'width=480,height=620');
     });
 
+    const STORE_REVIEWS_URL =
+        "https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews";
+
     document.getElementById('rate-button').addEventListener('click', () => {
-        window.open("https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews");
+        window.open(STORE_REVIEWS_URL);
     });
+
+    // ── Review prompt ─────────────────────────────────────────────────────────
+    // Ratings are one of the two Chrome Web Store ranking inputs, and this has never
+    // asked for one — 21 ratings across ~3,000 users. Asking at the right moment is
+    // the whole trick: after the extension has demonstrably done something for them,
+    // never while something is broken.
+    const RATE_MIN_SECONDS  = 3600;   // an hour genuinely banked
+    const RATE_MIN_SESSIONS = 3;      // across more than one sitting
+    const RATE_SNOOZE_MS    = 60 * 24 * 60 * 60 * 1000;   // "not now" means 60 days
+
+    function maybeShowRatePrompt() {
+        const el = document.getElementById('ratePrompt');
+        if (!el) return;
+
+        // Asked and answered: never ask this person again.
+        if (localStorage.getItem('ratePromptDone') === 'true') return;
+        const snoozedAt = parseInt(localStorage.getItem('ratePromptSnoozedAt') || '0', 10);
+        if (snoozedAt && Date.now() - snoozedAt < RATE_SNOOZE_MS) return;
+
+        chrome.storage.local.get(['sessionCount', 'everAttached'], (state) => {
+            // Never solicit a review from someone the extension has not worked for.
+            // They are exactly the people whose one-star reviews already say
+            // "doesn't work on my university's Panopto".
+            if (!state || !state.everAttached) return;
+            if ((parseInt(state.sessionCount, 10) || 0) < RATE_MIN_SESSIONS) return;
+
+            chrome.runtime.sendMessage({ type: "getSavedTime" }, (response) => {
+                const secs = response && response.savedTime;
+                if (secs == null || secs < RATE_MIN_SECONDS) return;
+
+                const hours = Math.floor(secs / 3600);
+                const label = hours >= 1
+                    ? (hours === 1 ? 'an hour' : `${hours} hours`)
+                    : 'an hour';
+                const hoursEl = document.getElementById('ratePromptHours');
+                if (hoursEl) hoursEl.textContent = label;
+                el.style.display = 'block';
+            });
+        });
+    }
+
+    document.getElementById('ratePromptYes')?.addEventListener('click', () => {
+        localStorage.setItem('ratePromptDone', 'true');
+        document.getElementById('ratePrompt').style.display = 'none';
+        window.open(STORE_REVIEWS_URL);
+    });
+
+    document.getElementById('ratePromptNo')?.addEventListener('click', () => {
+        localStorage.setItem('ratePromptSnoozedAt', String(Date.now()));
+        document.getElementById('ratePrompt').style.display = 'none';
+    });
+
+    maybeShowRatePrompt();
 
     document.getElementById('coffee-button').addEventListener('click', () => {
         if (_isPremium && _premiumType === 'lifetime') openLifetimePopup();

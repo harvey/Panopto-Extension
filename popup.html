@@ -732,6 +732,19 @@
       <span style="font-size:0.8rem; font-weight:700; color:#11773D; flex-shrink:0;" id="timeSaved">—</span>
     </div>
 
+    <!-- ── Review prompt ──────────────────────────────────────────────────────
+         Hidden by default; maybeShowRatePrompt() in popup.js reveals it once the
+         user has actually banked an hour across a few sessions. 21 ratings on
+         3,000 users is the store ranking input that has never been asked for. -->
+    <div id="ratePrompt" style="display:none; margin:6px 0 2px; padding:8px 9px; background:#f0fdf4; border:1px solid #bbf7d0; border-left:3px solid #11773D; border-radius:7px;">
+      <div style="font-size:0.71rem; color:#14532d; font-weight:600; margin-bottom:2px;" id="lbl-rate-prompt-title">You've saved <span id="ratePromptHours">an hour</span> so far.</div>
+      <div style="font-size:0.66rem; color:#3f6b4d; line-height:1.35; margin-bottom:6px;" id="lbl-rate-prompt-body">A rating helps other students find this. It takes about ten seconds.</div>
+      <div style="display:flex; gap:5px;">
+        <button id="ratePromptYes" style="flex:1; font-size:0.67rem; font-weight:600; padding:4px 6px; border:0; border-radius:5px; background:#11773D; color:#fff; cursor:pointer;">⭐ <span id="lbl-rate-prompt-yes">Rate it</span></button>
+        <button id="ratePromptNo" style="font-size:0.67rem; padding:4px 8px; border:1px solid #d1d5db; border-radius:5px; background:#fff; color:#6b7280; cursor:pointer;">Not now</button>
+      </div>
+    </div>
+
     <div class="divider"></div>
 
     <!-- ── Leaderboard ── -->
