@@ -1530,14 +1530,69 @@ if (document.readyState === "complete") {
     window.addEventListener("load", initExtension);
 }
 
-sleep(500).then(() => {
-    settingsButton = document.getElementById('reactCaptionsSettingsButton');
+// How long to keep waiting for Panopto's settings button before giving up. It only
+// appears once the player has booted, which on campus wifi is routinely well past
+// the 500ms this used to allow.
+const SETTINGS_WAIT_MS = 20000;
+
+// Resolves with the element as soon as it exists, or null at the timeout. A one-shot
+// sleep() cannot do this: miss the window and the feature is dead for the whole page
+// view, silently, which is what produced most of the attach_failures table.
+function waitForElement(selector, timeoutMs) {
+    return new Promise((resolve) => {
+        const immediate = document.querySelector(selector);
+        if (immediate) return resolve(immediate);
+
+        let obs = null;
+        let timer = null;
+        const done = (el) => {
+            if (obs)   { obs.disconnect(); obs = null; }
+            if (timer) { clearTimeout(timer); timer = null; }
+            resolve(el);
+        };
+        timer = setTimeout(() => done(document.querySelector(selector)), timeoutMs);
+        obs = new MutationObserver(() => {
+            const el = document.querySelector(selector);
+            if (el) done(el);
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+    });
+}
+
+// Picks the playback-speed entry out of Panopto's settings menu.
+//
+// This used to be a hardcoded d[1]. Two ways that broke: Panopto reordering or adding
+// a menu item pointed us at the wrong row, and a menu with exactly one item passed the
+// `d.length > 0` guard and then threw on d[1], killing the handler outright. Matching on
+// what the row says survives both. The label is localised, so the common translations
+// are checked too — the top attach-failure hosts are a Korean and a Hebrew tenant.
+function findSpeedMenuItem(items) {
+    const list = Array.from(items || []);
+    if (!list.length) return null;
+
+    const wanted = /speed|playback rate|geschwindigkeit|vitesse|velocidad|velocit|snelheid|hastighet|prędkoś|скорост|速度|배속|재생\s*속도|מהירות|سرعة/i;
+    const byLabel = list.find((li) => wanted.test(
+        (li.textContent || '') + ' ' + (li.getAttribute('aria-label') || '')
+    ));
+    if (byLabel) return byLabel;
+
+    // Historical position, but only when it actually exists.
+    return list.length > 1 ? list[1] : null;
+}
+
+waitForElement('#reactCaptionsSettingsButton', SETTINGS_WAIT_MS).then((foundSettingsButton) => {
+    settingsButton = foundSettingsButton;
     if (settingsButton) {
         settingsButton.addEventListener('click', function() {
             sleep(300).then(() => {
                 d = document.querySelectorAll("li[role='menuitem']");
-                if(d.length > 0){
-                    d[1].addEventListener('click', function() {
+                const speedMenuItem = findSpeedMenuItem(d);
+                if (!speedMenuItem) {
+                    console.warn('[PCS] No speed entry in the settings menu —',
+                                 d.length, 'items seen. Speed slider not injected.');
+                }
+                if (speedMenuItem) {
+                    speedMenuItem.addEventListener('click', function() {
                         // console.log('Speed settings button clicked');
                         sleep(1).then(() => {
                             asd = document.querySelector('ul[role="menu"]');
@@ -1711,8 +1766,11 @@ if(localStorage.getItem('panoptoExtSpeed')){
 
 
 finalSpan = document.createElement('span');
-finalSpan.innerHTML = "Please use the <a target='_blank' href='https://harvey.github.io/Panopto-Extension/pin_extension.html' style='font-weight: bold;'>extension popup window</a> to get all features.<br><br>" + 
-"<a target='_blank' href='https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam' style='font-weight: bold;'>Please rate this extension on the store</a>";
+// harvey.github.io 301-redirects to the custom domain, so link the destination
+// directly. The store link gets /reviews — the listing root makes people hunt for
+// the review box, and ratings are one of the two store ranking inputs Google names.
+finalSpan.innerHTML = "Please use the <a target='_blank' href='https://harveychandler.dev/Panopto-Extension/pin_extension.html' style='font-weight: bold;'>extension popup window</a> to get all features.<br><br>" +
+"<a target='_blank' href='https://chromewebstore.google.com/detail/panopto-custom-speed/fnoppdfnaklabgfllejlefomclegmnam/reviews' style='font-weight: bold;'>Please rate this extension on the store</a>";
 
 // Create startup container div
 const startupDiv = document.createElement("div");
