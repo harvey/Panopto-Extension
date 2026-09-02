@@ -1985,6 +1985,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 tier:         _aiTier,
                 budget:       _aiBudget,
             }));
+            // Lock state is only trustworthy now. Re-check whether it is a decent
+            // moment to ask for a rating.
+            maybeShowRatePrompt();
         } catch {}
     }
 
@@ -2653,14 +2656,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const RATE_MIN_SESSIONS = 3;      // across more than one sitting
     const RATE_SNOOZE_MS    = 60 * 24 * 60 * 60 * 1000;   // "not now" means 60 days
 
+    // True when a free user is currently looking at a locked feature. The popup's
+    // premium prompts are all lock-driven — silence at 3 min, PiP at 10 presses,
+    // notes at 1 generation — so a free user can easily have one on screen. Asking
+    // for five stars on the same screen that just took a feature away reads as a
+    // shakedown and is how you get a two-star review instead of a five.
+    function anyFreeLimitHit() {
+        if (_isPremium) return false;
+        const pipCount = parseInt(localStorage.getItem('pipPressCount') || '0', 10);
+        return _silenceSecs       >= FREE_SILENCE_LIMIT_SECS
+            || pipCount           >= FREE_PIP_LIMIT
+            || _notesLifetimeUsed >= NOTES_FREE_LIFETIME_LIMIT;
+    }
+
     function maybeShowRatePrompt() {
         const el = document.getElementById('ratePrompt');
-        if (!el) return;
+        if (!el || el.style.display === 'block') return;
 
         // Asked and answered: never ask this person again.
         if (localStorage.getItem('ratePromptDone') === 'true') return;
         const snoozedAt = parseInt(localStorage.getItem('ratePromptSnoozedAt') || '0', 10);
         if (snoozedAt && Date.now() - snoozedAt < RATE_SNOOZE_MS) return;
+        if (anyFreeLimitHit()) return;
 
         chrome.storage.local.get(['sessionCount', 'everAttached'], (state) => {
             // Never solicit a review from someone the extension has not worked for.
@@ -2695,7 +2712,13 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('ratePrompt').style.display = 'none';
     });
 
-    maybeShowRatePrompt();
+    // Deferred on purpose. _silenceSecs, _notesLifetimeUsed and _isPremium all land
+    // asynchronously, and anyFreeLimitHit() reading them at zero would show the
+    // prompt to exactly the locked-out user it is meant to skip. Running late also
+    // keeps it out of the popup's first paint. refreshNotesQuota() calls this again
+    // once the server quota resolves, and the display:block check makes that a no-op
+    // if it is already up.
+    setTimeout(maybeShowRatePrompt, 1500);
 
     document.getElementById('coffee-button').addEventListener('click', () => {
         if (_isPremium && _premiumType === 'lifetime') openLifetimePopup();
