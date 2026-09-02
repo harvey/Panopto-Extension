@@ -1,0 +1,63 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Panopto Custom Speed — styles for UI injected into the Panopto page.
+
+   Everything here is namespaced under __pcs- to match the ids content.js already
+   uses (__pcs-chat__, __pcs-chapters__, __pcs-dub__ …) so nothing can collide with
+   Panopto's own stylesheet. Colours are the same palette as the injected chat and
+   chapters panels: #161b22 surface, #262e38 border, #e6edf3 text, #11773D brand.
+
+   This file is declared in manifest.json's content_scripts entry, which is also
+   what lets background.js replay it through chrome.scripting.insertCSS into tabs
+   that were already open at install time.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* First-run coach mark — shown once, ever, on the first successful attach. */
+.__pcs-coach {
+    position: fixed;
+    z-index: 2147483646;
+    max-width: 268px;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    background: #161b22;
+    color: #e6edf3;
+    border: 1px solid #262e38;
+    border-left: 3px solid #11773D;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* Added on the next frame so the tooltip fades in rather than popping. */
+.__pcs-coach.__pcs-coach-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.__pcs-coach-title {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.__pcs-coach-body {
+    display: block;
+    color: #8b949e;
+}
+
+.__pcs-coach-dismiss {
+    display: block;
+    margin-top: 7px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #11773D;
+    filter: brightness(1.6);
+}

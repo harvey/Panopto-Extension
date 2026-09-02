@@ -1,0 +1,1081 @@
+<html class="h-auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="tailwind-script.js" nonce="TAILWIND"></script>
+  <script src="popup.js" nonce="POPUPSCRIPT"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 340px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #11773D;
+      padding: 4px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 6px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      padding: 0 1px;
+    }
+    .top-bar-title {
+      color: rgba(255,255,255,0.9);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.01em;
+    }
+    .lang-select {
+      background: rgba(0,0,0,0.2);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .lang-select option { color: #1f2937; background: white; }
+
+    /* Login-streak chip (top bar) + modal dots */
+    .streak-chip {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(0,0,0,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.25;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.15s;
+    }
+    .streak-chip:hover { background: rgba(0,0,0,0.34); }
+    .streak-dot { width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; flex-shrink: 0; }
+    .streak-dot.on { background: #11773D; }
+
+    .section-label {
+      font-size: 0.58rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #9ca3af;
+      margin-bottom: 2px;
+    }
+
+    .divider { height: 1px; background: #f0f0f0; margin: 3px 0; }
+
+    /* AI Tools sub-group header inside Premium Features */
+    .ai-subhead {
+      font-size: 0.55rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a855f7;
+      margin: 4px 0 1px;
+    }
+
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .speed-badge-wrap { flex-shrink: 0; width: 70px; overflow: hidden; }
+    .speed-badge {
+      display: block;
+      width: 100%;
+      background: #11773D;
+      color: white;
+      border-radius: 7px;
+      padding: 3px 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .speed-badge:hover  { background: #0d6332; border-color: #0a5028; }
+    .speed-badge:focus  { outline: none; border-color: #0a5028; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #d1d5db;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #11773D;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    input[type=checkbox] { accent-color: #11773D; cursor: pointer; }
+
+    /* Google sign-in */
+    .gsi-material-button {
+      user-select: none;
+      background-color: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 20px;
+      color: #3c4043;
+      cursor: pointer;
+      font-family: 'Roboto', arial, sans-serif;
+      font-size: 11px;
+      height: 27px;
+      padding: 0 10px;
+      transition: background-color .218s, box-shadow .218s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .gsi-material-button:hover { box-shadow: 0 1px 3px rgba(60,64,67,.3); background-color: #fff; }
+    .gsi-material-button-icon { height: 13px; margin-right: 6px; min-width: 13px; width: 13px; }
+    .gsi-material-button-content-wrapper { align-items: center; display: flex; height: 100%; }
+    .gsi-material-button-contents { font-weight: 500; font-family: 'Roboto', arial, sans-serif; }
+
+    .rank-badge {
+      display: inline-block;
+      background: #11773D;
+      color: white;
+      border-radius: 12px;
+      padding: 1px 8px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.9s linear infinite; display: inline-block; }
+
+    .btn-coffee {
+      flex: 1;
+      background: #11773D;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 5px 8px;
+      font-weight: 700;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-coffee:hover { background: #0d6332 !important; opacity: 1 !important; }
+    .btn-rate {
+      flex: 1;
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 5px 8px;
+      font-weight: 700;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-coffee:hover, .btn-rate:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .migration-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 8px;
+      margin-top: 4px;
+    }
+    .migration-box h3 { color: #92400e; font-weight: 700; text-align: center; margin-bottom: 5px; font-size: 0.78rem; }
+    .migration-input { width: 100%; padding: 4px 9px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.75rem; margin-bottom: 3px; }
+    .migration-input:focus { outline: 2px solid #11773D; }
+    .migration-confirm-btn { width: 100%; background: #11773D; color: white; border: none; border-radius: 6px; padding: 5px; font-weight: 700; font-size: 0.78rem; cursor: pointer; margin-top: 2px; }
+
+    .border-green  { border: 2px solid #22c55e !important; }
+    .border-red    { border: 2px solid #ef4444 !important; }
+    .border-orange { border: 2px solid #f97316 !important; }
+
+    .total-time-box {
+      background: #f3faf6;
+      border-radius: 6px;
+      padding: 4px 10px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .total-time-box:hover { background: #e8f5ef; }
+
+    /* Toggle switch */
+    .toggle-wrap { position: relative; display: inline-block; width: 34px; height: 19px; flex-shrink: 0; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-track { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 19px; transition: background .2s; }
+    .toggle-track:before { content: ""; position: absolute; width: 15px; height: 15px; left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: transform .2s; }
+    .toggle-wrap input:checked + .toggle-track { background: #11773D; }
+    .toggle-wrap input:checked + .toggle-track:before { transform: translateX(15px); }
+    .toggle-wrap input:disabled + .toggle-track { opacity: 0.45; cursor: not-allowed; }
+    .toggle-wrap.mini { width: 28px; height: 16px; }
+    .toggle-wrap.mini .toggle-track:before { width: 12px; height: 12px; }
+    .toggle-wrap.mini input:checked + .toggle-track:before { transform: translateX(12px); }
+
+    #newUsernameTextbox:focus { outline: 2px solid #11773D; }
+
+    /* pip-btn is shared between PiP buttons and download buttons */
+    .pip-btn {
+      background: #11773D;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .pip-btn:hover { background: #0d6332; }
+    .pip-btn.active { background: #065f27; outline: 2px solid #0a4d20; }
+
+    /* AI Tools — 3-column launcher row (Notes / Chat / Flashcards) */
+    .ai-beta-badge { font-size: 0.5rem; background: #a855f7; color: #fff; border-radius: 3px; padding: 1px 4px; font-weight: 700; letter-spacing: 0.03em; vertical-align: middle; }
+    .ai-tools-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 3px 0 2px; }
+    .ai-tool-btn {
+      background: #11773D; color: #fff; border: none; border-radius: 6px;
+      padding: 8px 4px; font-size: 0.6rem; font-weight: 700; line-height: 1.2;
+      text-align: center; cursor: pointer; transition: background 0.15s;
+      white-space: nowrap;   /* keep each label on a single line */
+    }
+    .ai-tool-btn:hover:not(:disabled) { background: #0d6332; }
+
+    /* Opt-in tooltip */
+    .opt-in-row { position: relative; }
+    .tooltip-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #e5e7eb; color: #9ca3af;
+      font-size: 0.55rem; font-weight: 800; font-style: normal;
+      cursor: default; flex-shrink: 0; line-height: 1; user-select: none;
+    }
+    .tooltip-box {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 5px);
+      left: 0;
+      width: 218px;
+      background: #1f2937;
+      color: #d1d5db;
+      font-size: 0.62rem;
+      line-height: 1.5;
+      border-radius: 7px;
+      padding: 7px 10px;
+      z-index: 200;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      pointer-events: none;
+    }
+    .opt-in-row:hover .tooltip-box { display: block; }
+
+    /* ── Premium plan modal ── */
+    #premiumModal,
+    #lifetimeModal,
+    #milestoneModal,
+    #rewardModal,
+    #streakModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+    #premiumModal.open,
+    #lifetimeModal.open,
+    #milestoneModal.open,
+    #rewardModal.open,
+    #streakModal.open { display: flex; }
+    .plan-modal-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px 14px 14px;
+      width: 100%;
+      position: relative;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    }
+    .plan-modal-close {
+      position: absolute; top: 9px; right: 11px;
+      background: none; border: none;
+      font-size: 1rem; color: #9ca3af; cursor: pointer; line-height: 1;
+    }
+    .plan-modal-close:hover { color: #374151; }
+    .plan-modal-title {
+      text-align: center; font-weight: 800; font-size: 0.92rem;
+      color: #1f2937; margin-bottom: 12px;
+    }
+    .plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 11px; }
+    .plan-card {
+      border: 2px solid #e5e7eb; border-radius: 10px;
+      padding: 11px 8px 10px; text-align: center; position: relative;
+    }
+    .plan-card.featured { border-color: #11773D; }
+    .plan-best-badge {
+      position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+      background: #11773D; color: #fff;
+      font-size: 0.48rem; font-weight: 800; padding: 2px 8px;
+      border-radius: 999px; white-space: nowrap; letter-spacing: 0.05em;
+    }
+    .plan-name {
+      font-size: 0.65rem; font-weight: 700; color: #6b7280;
+      text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px;
+    }
+    .plan-price {
+      font-size: 1.5rem; font-weight: 800; color: #11773D; line-height: 1;
+    }
+    .plan-price-sub {
+      font-size: 0.6rem; color: #9ca3af; margin-bottom: 9px;
+    }
+    .plan-buy-btn {
+      width: 100%; background: #11773D; color: #fff; border: none;
+      border-radius: 6px; padding: 6px 4px; font-weight: 700;
+      font-size: 0.72rem; cursor: pointer; transition: background 0.15s;
+    }
+    .plan-buy-btn:hover { background: #0d6332; }
+    /* The trial's own button, spanning both plan cards. Outlined rather than solid so
+       it reads as the secondary/no-risk path next to the two green buy buttons. */
+    .plan-trial-btn {
+      width: 100%; margin: 9px 0 10px;
+      background: #eaf7ef; color: #0d5c30;
+      border: 1.5px solid #11773D; border-radius: 8px;
+      padding: 7px 6px; font-weight: 800; font-size: 0.7rem;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .plan-trial-btn:hover { background: #d7efe0; }
+
+    /* Free-trial banner above the plan cards — the "no card needed" bit is the
+       single strongest reason someone starts, so it gets the green treatment. */
+    .trial-banner {
+      background: #eaf7ef; border: 1px solid #b7e2c6; border-radius: 8px;
+      padding: 7px 10px; margin-bottom: 10px;
+    }
+    .trial-banner p {
+      margin: 0; font-size: 0.62rem; line-height: 1.5; color: #11773D; text-align: center;
+    }
+    .trial-banner strong { color: #0d5c30; }
+    .cancel-note {
+      background: #f9fafb; border-radius: 8px; padding: 8px 10px;
+    }
+    .cancel-note p {
+      font-size: 0.61rem; color: #6b7280; line-height: 1.55; margin: 0;
+    }
+    .cancel-note a { color: #11773D; }
+
+    /* Compact premium feature rows */
+    .prem-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1px;
+    }
+    .prem-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.74rem;
+      color: #374151;
+      font-weight: 500;
+    }
+    .prem-meta {
+      font-size: 0.6rem;
+      margin-bottom: 2px;
+      display: none;
+    }
+
+    /* ── Premium feature spotlight animation ── */
+    @keyframes featureGlow {
+      0%   { background: transparent; }
+      30%  { background: #dcfce7; border-radius: 4px; }
+      70%  { background: #dcfce7; border-radius: 4px; }
+      100% { background: transparent; }
+    }
+    .feature-glow { animation: featureGlow 0.9s ease-in-out; }
+
+    /* ── Promo code banner ── */
+    @keyframes promoSlideIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .promo-strip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(90deg, #f0fdf4, #ecfdf5);
+      border: 1px solid #86efac;
+      border-radius: 7px;
+      padding: 5px 8px;
+      margin-bottom: 4px;
+      animation: promoSlideIn 0.35s ease-out;
+    }
+    .promo-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.61rem;
+      color: #166534;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .promo-badge {
+      font-family: 'Courier New', monospace;
+      font-weight: 800;
+      font-size: 0.67rem;
+      background: #11773D;
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 7px;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+    .promo-copy-btn {
+      font-size: 0.55rem;
+      background: none;
+      border: 1px solid #22c55e;
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: #15803d;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .promo-copy-btn:hover { background: #dcfce7; }
+
+    /* ── Refer friends ── */
+    .referral-code-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f0fdf4;
+      border: 1px dashed #86efac;
+      border-radius: 6px;
+      padding: 2px 3px 2px 8px;
+    }
+    .referral-code {
+      flex: 1;
+      min-width: 0;
+      font-family: 'Courier New', monospace;
+      font-weight: 800;
+      font-size: 0.88rem;
+      letter-spacing: 0.16em;
+      text-align: center;
+      color: #11773D;
+      user-select: all;
+    }
+    .referral-copy {
+      flex-shrink: 0;
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: #11773D;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 3px 9px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .referral-copy:hover { background: #0d6332; }
+    .referral-btn {
+      flex-shrink: 0;
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: #11773D;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .referral-btn:hover { background: #0d6332; }
+    .referral-input {
+      flex: 1;
+      min-width: 0;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
+    .referral-input:focus { outline: 2px solid #11773D; }
+
+    /* ── Premium section glint ── */
+    @keyframes premGlint {
+      from { transform: translateX(-100%) skewX(-15deg); }
+      to   { transform: translateX(600%) skewX(-15deg); }
+    }
+    #premiumSectionWrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+    }
+    #premiumSectionWrap::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 30%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.52), transparent);
+      pointer-events: none;
+      z-index: 50;
+      animation: premGlint 0.75s ease-in-out 0.5s both;
+    }
+
+    /* ── Premium gold shimmer (draws the eye without consuming any layout space) ── */
+    /* Green text with a gold highlight sweeping across — recolors existing text
+       only, so it adds zero size in a tight popup. */
+    @keyframes premShimmer {
+      0%   { background-position: 130% 0; }
+      100% { background-position: -30% 0; }
+    }
+
+    /* "Premium Features" heading: gold sweep over green, so it pops out from the
+       other (gray) section headers. */
+    #lbl-premium-section {
+      background: linear-gradient(100deg,
+        #11773D 0%, #11773D 40%, #f5d97a 50%, #11773D 60%, #11773D 100%);
+      background-size: 250% 100%;
+      -webkit-background-clip: text;
+              background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: premShimmer 4.5s linear infinite;
+    }
+
+    /* "🔒 Get Premium" links: the same gentle gold shimmer; underline stays green. */
+    #getPremiumLink, #inPageChatLock {
+      background: linear-gradient(100deg,
+        #11773D 0%, #11773D 42%, #f5d97a 50%, #11773D 58%, #11773D 100%);
+      background-size: 250% 100%;
+      -webkit-background-clip: text;
+              background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-decoration-color: #11773D;
+      animation: premShimmer 4.5s linear infinite 0.7s;
+    }
+
+    /* Free-trial CTA → gradient pill with a moving diagonal sheen. The gold stop is
+       pushed past the pill (180%) so the visible body stays dark green and the
+       white label keeps contrast; the text-shadow is a safety net. */
+    #monthlyPremiumBtn {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 8px;
+      border-radius: 999px;
+      color: #fff !important;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+      text-decoration: none;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+      background: linear-gradient(135deg, #11773D 0%, #0d6332 45%, #d4af37 180%);
+      box-shadow: 0 1px 2px rgba(13,99,50,0.30), inset 0 0 0 0.5px rgba(252,211,77,0.45);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    #monthlyPremiumBtn:hover {
+      box-shadow: 0 2px 5px rgba(13,99,50,0.35), inset 0 0 0 1px rgba(252,211,77,0.70);
+      transform: translateY(-0.5px);
+    }
+    #monthlyPremiumBtn::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 45%;
+      height: 100%;
+      pointer-events: none;
+      background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+      transform: translateX(-160%) skewX(-18deg);
+      animation: pillSheen 3.4s ease-in-out infinite;
+    }
+    @keyframes pillSheen {
+      0%        { transform: translateX(-160%) skewX(-18deg); }
+      55%, 100% { transform: translateX(320%)  skewX(-18deg); }
+    }
+
+    /* ✨ sparkle — a sibling span OUTSIDE the pill's overflow so it isn't clipped */
+    .prem-sparkle {
+      display: inline-block;
+      font-size: 0.6rem;
+      line-height: 1;
+      margin-right: 1px;
+      filter: drop-shadow(0 0 1px rgba(245,179,1,0.6));
+      animation: premSparkle 2.8s ease-in-out infinite;
+    }
+    @keyframes premSparkle {
+      0%, 100% { opacity: 0.55; transform: scale(0.9) rotate(0deg); }
+      50%      { opacity: 1;    transform: scale(1.12) rotate(8deg); }
+    }
+
+    /* Bottom "Buy Premium" CTA — a subtler, slower matching sheen so it whispers
+       rather than competing with the pill. Background is left alone (its :hover
+       sets #0d6332 !important). */
+    .btn-coffee { position: relative; overflow: hidden; }
+    .btn-coffee::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 40%;
+      height: 100%;
+      pointer-events: none;
+      background: linear-gradient(100deg, transparent, rgba(255,255,255,0.30), transparent);
+      transform: translateX(-180%) skewX(-18deg);
+      animation: pillSheen 5s ease-in-out 1.5s infinite;
+    }
+
+    /* Respect reduced-motion: stop all sweeps; keep the heading/links solid green
+       (still stands out from the gray headers) and the pill static. */
+    @media (prefers-reduced-motion: reduce) {
+      #lbl-premium-section, #getPremiumLink, #inPageChatLock {
+        animation: none;
+        background: none;
+        -webkit-text-fill-color: #11773D;
+      }
+      #monthlyPremiumBtn::after { animation: none; opacity: 0; }
+      .prem-sparkle { animation: none; opacity: 0.85; transform: none; }
+      .btn-coffee::after { animation: none; opacity: 0; }
+    }
+
+    /* ── Recovery panel ──
+       Shown instead of the normal UI when the service worker has flagged this tab
+       as one the content script never attached to. Same green CTA as everywhere
+       else so it does not read as an error page. */
+    #recoveryPanel { display: none; padding: 12px 12px 14px; }
+    #recoveryPanel .rec-title {
+      font-size: 0.86rem; font-weight: 700; color: #1f2937; margin-bottom: 5px;
+    }
+    #recoveryPanel .rec-body {
+      font-size: 0.72rem; color: #6b7280; line-height: 1.45; margin-bottom: 10px;
+    }
+    #recoveryPanel .rec-foot {
+      font-size: 0.62rem; color: #9ca3af; margin-top: 8px; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Recovery panel — hidden unless background.js flagged this tab (see popup.js
+       initRecoveryPanel). Kept first in the body so it leads when it is shown. -->
+  <div class="card" id="recoveryPanel">
+    <div class="rec-title" id="lbl-recovery-title">This page needs a reload</div>
+    <div class="rec-body" id="lbl-recovery-body">
+      The speed control could not start on this lecture. Chrome does not add it to pages that
+      were already open, so reloading fixes it.
+    </div>
+    <button id="recoveryReloadBtn" style="width:100%; background:#11773D; color:#fff; border:none; border-radius:7px; padding:8px; font-weight:700; font-size:0.8rem; cursor:pointer; transition:background 0.15s;">
+      <span id="lbl-recovery-btn">Reload this page</span>
+    </button>
+    <div class="rec-foot" id="lbl-recovery-foot">Still nothing after reloading? Email harveychandler235@gmail.com</div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <span class="top-bar-title">🎬 Panopto Speed</span>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button id="streakChip" class="streak-chip" style="display:none;" title="Your login streak">🔥&nbsp;<span id="streakChipCount">0</span></button>
+      <select id="languageSelect" class="lang-select">
+        <option value="en">🇬🇧 English</option>
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="zh">🇨🇳 中文</option>
+        <option value="he">🇮🇱 עברית</option>
+        <option value="uk">🇺🇦 Українська</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+
+    <!-- ── Speed ── -->
+    <div class="section-label" id="lbl-speed-section">Playback Speed</div>
+    <div class="speed-row">
+      <input type="range" id="dynamicSlider" min="0.5" max="3" value="1" step="0.25">
+      <div class="speed-badge-wrap">
+        <span id="sliderValue" class="speed-badge">1.00x</span>
+      </div>
+    </div>
+    <div id="speedWarning" style="display:none; text-align:center; font-size:0.59rem; color:#dc2626; margin-bottom:1px;">Time saved not tracked above 3x</div>
+
+    <div class="divider"></div>
+
+    <!-- Startup + Time saved on one row -->
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:1px;">
+      <input type="checkbox" id="startupSpeed" style="width:13px;height:13px; flex-shrink:0;">
+      <label for="startupSpeed" style="font-size:0.71rem; color:#374151; cursor:pointer; flex:1;" id="lbl-startup">Speed on startup</label>
+      <span style="font-size:0.67rem; color:#6b7280; flex-shrink:0;" id="lbl-time-saved-label">Saved:</span>
+      <span style="font-size:0.8rem; font-weight:700; color:#11773D; flex-shrink:0;" id="timeSaved">—</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ── Leaderboard ── -->
+    <div class="section-label" id="lbl-leaderboard-section">Leaderboard</div>
+
+    <!-- Weekly prize callout -->
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:4px 7px; margin-bottom:3px;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:0.9rem; flex-shrink:0;">🏆</span>
+        <span id="lbl-weekly-prize" style="font-size:0.62rem; color:#166534; line-height:1.45;"><strong>#1 on the leaderboard</strong> each week wins <strong>7 days Premium</strong> free</span>
+      </div>
+      <button id="optInNudgeBtn" style="display:none; margin-top:4px; width:100%; background:rgba(22,101,52,0.08); border:1px solid #bbf7d0; border-radius:4px; padding:3px 6px; font-size:0.6rem; font-weight:600; color:#166534; cursor:pointer; text-align:center; transition:background 0.15s;">Make sure to opt into leaderboard logging</button>
+    </div>
+
+    <!-- Logged-out: prompt + button on same row -->
+    <div id="loggedOutView">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+        <p style="font-size:0.68rem; color:#6b7280;" id="lbl-signin-prompt">Sign in to see your leaderboard rank</p>
+        <button class="gsi-material-button" id="signInWithGoogle">
+          <div class="gsi-material-button-content-wrapper">
+            <div class="gsi-material-button-icon">
+              <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="display:block;">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <path fill="none" d="M0 0h48v48H0z"/>
+              </svg>
+            </div>
+            <span class="gsi-material-button-contents" id="lbl-signin-btn">Sign in</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Logged-in -->
+    <div id="loggedInView" style="display:none;">
+      <!-- Email + logout -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+        <div style="display:flex; align-items:center; gap:3px; min-width:0;">
+          <span style="font-size:0.65rem; color:#6b7280; white-space:nowrap;" id="lbl-logged-in-as">Logged in as</span>
+          <span style="font-size:0.73rem; font-weight:700; color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100px;" id="email"></span>
+          <span id="premiumUserBadge" style="display:none; font-size:0.5rem; background:#11773D; color:white; border-radius:3px; padding:1px 4px; font-weight:700; white-space:nowrap; flex-shrink:0;">★ Premium</span>
+          <span id="premiumDaysLeft" style="display:none; font-size:0.5rem; color:#9ca3af; white-space:nowrap; flex-shrink:0;"></span>
+        </div>
+        <span id="logout" style="font-size:0.63rem; color:#dc2626; cursor:pointer; text-decoration:underline; white-space:nowrap; margin-left:6px;">Log out</span>
+      </div>
+
+      <!-- Rank + View Leaderboard on same row -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+        <div id="optedInContainer" style="display:flex; align-items:center; gap:4px;">
+          <span style="font-size:0.73rem; color:#374151;" id="lbl-you-are-rank">You are rank</span>
+          <span id="user-rank" class="rank-badge"></span>
+          <svg id="loader" class="spin" style="width:11px;height:11px;flex-shrink:0;" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#11773D" stroke-width="7" stroke-dasharray="80 20"/>
+          </svg>
+          <svg id="tick" style="width:11px;height:11px;flex-shrink:0;display:none;" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" fill="#22c55e"/>
+            <path d="M7 12l4 4 6-7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <a id="leaderboard-popup" href="#" style="font-size:0.68rem; color:#11773D; text-decoration:underline; cursor:pointer; white-space:nowrap;">
+          <span id="lbl-lb-popup">View Leaderboard</span>
+        </a>
+      </div>
+
+      <!-- Opt-in + auto-refresh on same row -->
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div id="optInContainer" class="opt-in-row" style="display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="userDataOptIn" style="width:12px;height:12px; flex-shrink:0;">
+          <label for="userDataOptIn" style="font-size:0.67rem; color:#6b7280; cursor:pointer;" id="lbl-opt-in">Opt into leaderboard</label>
+          <i class="tooltip-icon">i</i>
+          <div class="tooltip-box">Records your Google email and time-saved data for leaderboard rankings, time sync across devices, abuse prevention, and winner notifications. You can opt out anytime.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+          <label class="toggle-wrap mini">
+            <input type="checkbox" id="autoRefreshToggle" checked>
+            <span class="toggle-track"></span>
+          </label>
+          <label for="autoRefreshToggle" style="font-size:0.59rem; color:#9ca3af; cursor:pointer; white-space:nowrap;" id="lbl-auto-refresh">Auto-login</label>
+        </div>
+      </div>
+      <!-- Show lecture chapters + Dark theme on one row -->
+      <div style="display:flex; align-items:center; gap:14px; margin-top:3px; flex-wrap:wrap;">
+        <span style="display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="chaptersToggle" checked style="width:12px;height:12px; flex-shrink:0;">
+          <label for="chaptersToggle" style="font-size:0.67rem; color:#6b7280; cursor:pointer;" id="lbl-chapters-toggle">Show lecture chapters</label>
+        </span>
+        <span style="display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="darkThemeToggle" style="width:12px;height:12px; flex-shrink:0;">
+          <label for="darkThemeToggle" style="font-size:0.67rem; color:#6b7280; cursor:pointer;" id="lbl-dark-theme">🌙 Dark theme</label>
+        </span>
+      </div>
+    </div>
+
+    <!-- Migration -->
+    <div id="migrationContainer" class="migration-box" style="display:none;">
+      <h3 id="lbl-migrating-title">Usernames are migrating!</h3>
+      <input id="oldUsernameTextbox" type="text" disabled class="migration-input" style="background:#f9fafb; color:#6b7280;" value="user_abcdefg"/>
+      <small style="color:#9ca3af; font-size:0.65rem; display:block; margin-bottom:5px;" id="lbl-old-username">Your old username</small>
+      <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="New username" class="migration-input"/>
+      <button id="newUsernameButton" disabled class="migration-confirm-btn">Confirm</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ── Premium Features ── -->
+    <div id="premiumSectionWrap">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+      <span class="section-label" style="margin-bottom:0;" id="lbl-premium-section">Premium Features</span>
+      <!-- Non-premium: show both pricing options -->
+      <div id="getPremiumOptions" style="display:flex; gap:4px; align-items:center;">
+        <span class="prem-sparkle" aria-hidden="true">✨</span>
+        <a id="monthlyPremiumBtn" href="#" title="7-day free trial — no card needed" style="font-size:0.59rem; white-space:nowrap;">Free trial →</a>
+        <span style="color:#d1d5db; font-size:0.6rem;">|</span>
+        <a id="lifetimePremiumBtn" href="#" style="font-size:0.59rem; color:#9ca3af; text-decoration:none; white-space:nowrap;">£12/yr</a>
+      </div>
+      <!-- Premium: badge + optional expiry + cancel -->
+      <div id="premiumBadgeGroup" style="display:none; align-items:center; gap:4px;">
+        <span id="premiumBadge" style="font-size:0.59rem; background:#11773D; color:white; border-radius:4px; padding:1px 7px; font-weight:700;">★ Premium</span>
+        <span id="premiumExpiry" style="font-size:0.55rem; color:#9ca3af;"></span>
+        <a id="cancelSubBtn" href="#" style="display:none; font-size:0.52rem; color:#dc2626; text-decoration:underline; white-space:nowrap; cursor:pointer;">Cancel</a>
+      </div>
+    </div>
+
+    <!-- Promo code banner — visible for non-premium users -->
+    <div id="promoBanner" class="promo-strip" style="display:none;">
+      <span class="promo-text" id="lbl-promo-text">🎁 <strong>7-day free trial</strong> — no card needed</span>
+    </div>
+
+    <!-- Auto-Skip Silence -->
+    <div class="prem-row" id="premRowSilence">
+      <div class="prem-label">
+        <span id="lbl-auto-skip">Auto-Skip Silence</span>
+      </div>
+      <a id="getPremiumLink" href="#" style="font-size:0.63rem; color:#11773D; text-decoration:underline; white-space:nowrap;">🔒 Get Premium</a>
+      <label id="autoSkipToggle" class="toggle-wrap" style="display:none;">
+        <input type="checkbox" id="autoSkipCheckbox">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+    <div id="silenceSavedDisplay" style="display:none; font-size:0.59rem; color:#11773D; margin-bottom:1px;">
+      <span id="lbl-silence-saved">Silence skip saved:</span> <span id="silenceSavedSpan">—</span>
+    </div>
+    <div id="silenceFreeUsage" class="prem-meta"></div>
+    <div id="checkPremiumRow" style="display:none; margin-bottom:2px;">
+      <a id="checkPremiumBtn" href="#" style="font-size:0.59rem; color:#6b7280; text-decoration:underline; cursor:pointer;">Already purchased? Check Premium</a>
+    </div>
+
+    <!-- Picture in Picture -->
+    <div class="prem-row" id="premRowPip" style="margin-top:3px;">
+      <div class="prem-label" id="lbl-pip">Picture in Picture</div>
+      <div id="pipButtons" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+        <span id="pipPlaceholder" style="font-size:0.6rem; color:#9ca3af;">Open a Panopto page</span>
+      </div>
+    </div>
+    <div id="pipFreeUsage" class="prem-meta"></div>
+
+    <!-- Download Lecture -->
+    <div class="prem-row" id="premRowDownload" style="margin-top:3px;">
+      <div class="prem-label">
+        <span id="lbl-download-lecture">Download Lecture</span>
+        <span id="lbl-new-badge" style="font-size:0.5rem; background:#4285f4; color:white; border-radius:3px; padding:1px 4px; font-weight:700;">NEW</span>
+      </div>
+      <div id="downloadButtons" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+        <button id="downloadVideoBtn" class="pip-btn">⬇ Video</button>
+        <button id="downloadCaptionsBtn" class="pip-btn" style="display:none;">⬇ Captions</button>
+      </div>
+    </div>
+    <div id="downloadFreeUsage" class="prem-meta"></div>
+
+    <!-- ── AI Tools: Notes · Chat · Flashcards (+ Dub) ── -->
+    <div class="ai-subhead">🤖 <span id="lbl-ai-tools">AI Tools</span> <span class="ai-beta-badge">BETA</span></div>
+
+    <!-- Each button fetches the lecture captions and opens the AI Notes window to that view. -->
+    <div class="prem-row" id="premRowNotes" style="display:block;">
+      <div class="ai-tools-row">
+        <button id="generateNotesBtn" class="ai-tool-btn"><span id="lbl-generate-notes">Generate Notes</span></button>
+        <button id="aiChatBtn" class="ai-tool-btn"><span id="lbl-ai-chat">AI Chat</span></button>
+        <button id="generateFlashcardsBtn" class="ai-tool-btn"><span id="lbl-generate-flashcards">Generate Flashcards</span></button>
+      </div>
+    </div>
+    <div id="notesFreeUsage" class="prem-meta"></div>
+
+    <!-- Dubbed Lecture — translate captions + speak them in sync (opens on the lecture page) -->
+    <div class="prem-row" id="premRowDub" style="margin-top:2px;">
+      <div class="prem-label">
+        <span id="lbl-dub">Dubbed Lecture</span>
+        <span id="lbl-dub-alpha" style="font-size:0.5rem; background:#f59e0b; color:#1b1b1b; border-radius:3px; padding:1px 4px; font-weight:800; letter-spacing:.03em;">ALPHA</span>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+        <button id="dubLectureBtn" class="pip-btn">🎧 <span id="lbl-dub-btn">Dub</span></button>
+      </div>
+    </div>
+    <div id="dubHint" class="prem-meta"></div>
+    </div><!-- end premiumSectionWrap -->
+
+    <!-- ── Refer Friends (logged-in only) ── -->
+    <div id="referralSection" style="display:none;">
+      <div class="divider"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:3px;">
+        <span class="section-label" style="margin-bottom:0;" id="lbl-referral-section">Refer Friends</span>
+        <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+          <span id="referralStat" style="font-size:0.59rem; color:#11773D; font-weight:700; white-space:nowrap;"></span>
+          <label for="referralToggle" style="font-size:0.59rem; color:#9ca3af; cursor:pointer; white-space:nowrap;" id="lbl-referral-show">Show</label>
+          <label class="toggle-wrap mini" title="Show referral panel">
+            <input type="checkbox" id="referralToggle" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+      <div id="referralBody">
+        <div id="lbl-referral-blurb" style="font-size:0.6rem; color:#6b7280; line-height:1.4; margin-bottom:4px;">
+          Each friend who uses your code gives you <strong>5 days of Premium</strong>.
+        </div>
+        <div class="referral-code-row">
+          <span class="referral-code" id="referralCode">······</span>
+          <button class="referral-copy" id="copyReferralBtn">Copy</button>
+        </div>
+        <div id="redeemRow" style="display:none; margin-top:6px;">
+          <div id="lbl-redeem-prompt" style="font-size:0.58rem; color:#9ca3af; margin-bottom:2px;">Got a friend's code? Apply it to give them 5 days of Premium.</div>
+          <div style="display:flex; gap:5px;">
+            <input id="redeemCodeInput" type="text" maxlength="8" placeholder="CODE" class="referral-input"/>
+            <button id="redeemBtn" class="referral-btn">Apply</button>
+          </div>
+          <div id="redeemMsg" style="display:none; font-size:0.59rem; margin-top:3px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Bottom buttons -->
+    <div style="display:flex; gap:6px; margin-bottom:3px;">
+      <button id="coffee-button" class="btn-coffee">★ <span id="lbl-coffee">Buy Premium</span></button>
+      <button id="rate-button" class="btn-rate">⭐ <span id="lbl-rate">Rate this extension</span></button>
+    </div>
+
+    <!-- Terms of Service (opens the bundled terms.html in a new tab) -->
+    <div style="text-align:center; margin-bottom:3px;">
+      <a href="terms.html" target="_blank" style="font-size:0.62rem; color:#9ca3af; text-decoration:underline;">Terms of Service &amp; Refund Policy</a>
+    </div>
+
+    <!-- Total time saved -->
+    <div id="timingDiv" class="total-time-box" style="display:none;" title="Click to expand">
+      <span style="font-size:0.66rem; color:#4b7a5e;" id="lbl-total-time">Time saved by all users:</span>
+      <span style="font-size:0.82rem; font-weight:700; color:#11773D; margin-left:4px;" id="timingSpan"></span>
+      <span style="font-size:0.58rem; color:#9ca3af; margin-left:3px;" id="timingToggleHint">(click to expand)</span>
+    </div>
+
+  </div>
+
+  <!-- ── Premium plan picker modal ── -->
+  <div id="premiumModal">
+    <div class="plan-modal-card">
+      <button class="plan-modal-close" id="premiumModalClose">✕</button>
+      <div class="plan-modal-title" id="lbl-premium-modal-title">✨ Get Premium</div>
+
+      <!-- The trial is the headline: Stripe collects no card for it, so say so loudly
+           and put it above the prices where it can't be missed. -->
+      <div class="trial-banner">
+        <p id="lbl-plan-trial-note">🎁 <strong>7-day free trial</strong> on the 2-month plan — <strong>no card or payment details needed</strong>. Cancel any time.</p>
+      </div>
+
+      <div class="plan-grid">
+        <!-- £3 every 2 months (carries the 7-day free trial) -->
+        <div class="plan-card">
+          <div class="plan-name" id="lbl-plan-monthly-label">2 Months</div>
+          <div class="plan-price" id="plan2moPrice">£3</div>
+          <div class="plan-price-sub" id="lbl-plan-monthly-sub">every 2 months</div>
+          <button class="plan-buy-btn" id="monthlyModalBtn">Subscribe →</button>
+        </div>
+        <!-- £12 per year -->
+        <div class="plan-card featured">
+          <div class="plan-best-badge" id="lbl-plan-best-value">BEST VALUE</div>
+          <div class="plan-name" id="lbl-plan-lifetime-label">1 Year</div>
+          <div class="plan-price" id="planYearPrice">£12</div>
+          <div class="plan-price-sub" id="lbl-plan-lifetime-sub">per year</div>
+          <button class="plan-buy-btn" id="lifetimeModalBtn">Subscribe →</button>
+        </div>
+      </div>
+
+      <!-- One trial entry point under both plans. Hidden once the trial is spent. -->
+      <button class="plan-trial-btn" id="trialModalBtn">🎁 Start 7-day free trial — no card needed</button>
+
+      <div class="cancel-note">
+        <p id="lbl-cancel-info">To cancel your subscription there is a cancel button in the extension which generates your cancel link. If you cannot access it, email <a href="mailto:harveychandler235@gmail.com">harveychandler235@gmail.com</a> and I will cancel it for you. Cancelling during the free trial costs you nothing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Lifetime premium info popup ── -->
+  <div id="lifetimeModal">
+    <div class="plan-modal-card" style="max-width:240px;">
+      <button class="plan-modal-close" id="lifetimeModalClose">✕</button>
+      <div style="text-align:center; padding:10px 4px 6px;">
+        <div style="font-size:1.8rem; margin-bottom:6px; color:#11773D;">★</div>
+        <div id="lbl-lifetime-modal-title" style="font-weight:800; font-size:0.92rem; color:#1f2937; margin-bottom:8px;">Lifetime Premium</div>
+        <div id="lbl-lifetime-modal-body" style="font-size:0.71rem; color:#6b7280; line-height:1.65;">You have lifetime access to all premium features. Thank you for supporting Panopto Speed!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2-hour milestone modal ── -->
+  <div id="milestoneModal">
+    <div class="plan-modal-card" style="max-width:260px; text-align:center;">
+      <button class="plan-modal-close" id="milestoneModalClose">✕</button>
+      <div style="font-size:2rem; margin-bottom:6px;">🎉</div>
+      <div id="lbl-milestone-title" style="font-weight:800; font-size:0.92rem; color:#14532d; margin-bottom:6px;">You've saved over 2 hours!</div>
+      <div id="lbl-milestone-msg" style="font-size:0.72rem; color:#374151; line-height:1.65; margin-bottom:14px;">Nice work speeding through your lectures. Want to save even more? Check out Premium features like <strong>Auto-Skip Silence</strong> and <strong>AI Notes</strong>.</div>
+      <button id="milestoneExploreBtn" style="width:100%; background:#11773D; color:#fff; border:none; border-radius:7px; padding:8px; font-weight:700; font-size:0.8rem; cursor:pointer; transition:background 0.15s; margin-bottom:6px;">Explore Premium →</button>
+      <button id="milestoneLaterBtn" style="width:100%; background:none; border:none; color:#9ca3af; font-size:0.67rem; cursor:pointer; padding:2px;">Maybe later</button>
+    </div>
+  </div>
+
+  <!-- ── Login-streak info modal ── -->
+  <div id="streakModal">
+    <div class="plan-modal-card" style="max-width:258px; text-align:center;">
+      <button class="plan-modal-close" id="streakModalClose">✕</button>
+      <div style="font-size:2rem; margin-bottom:4px;">🔥</div>
+      <div id="streakModalTitle" style="font-weight:800; font-size:0.95rem; color:#14532d; margin-bottom:10px;">0 day streak</div>
+      <div id="streakDots" style="display:flex; justify-content:center; gap:6px; margin-bottom:12px;"></div>
+      <div id="streakModalMsg" style="font-size:0.73rem; color:#374151; line-height:1.6; margin-bottom:14px;"></div>
+      <button id="streakModalBtn" style="width:100%; background:#11773D; color:#fff; border:none; border-radius:7px; padding:8px; font-weight:700; font-size:0.8rem; cursor:pointer; transition:background 0.15s;">Got it</button>
+    </div>
+  </div>
+
+  <!-- ── Premium reward modal (trials, streaks, milestones, referrals) ── -->
+  <div id="rewardModal">
+    <div class="plan-modal-card" style="max-width:265px; text-align:center;">
+      <button class="plan-modal-close" id="rewardModalClose">✕</button>
+      <div style="font-size:2rem; margin-bottom:6px;">🎉</div>
+      <div id="rewardModalTitle" style="font-weight:800; font-size:0.92rem; color:#14532d; margin-bottom:8px;">You earned Premium!</div>
+      <div id="rewardModalMsg" style="font-size:0.72rem; color:#374151; line-height:1.6; margin-bottom:14px;"></div>
+      <button id="rewardModalBtn" style="width:100%; background:#11773D; color:#fff; border:none; border-radius:7px; padding:8px; font-weight:700; font-size:0.8rem; cursor:pointer; transition:background 0.15s;">Nice!</button>
+    </div>
+  </div>
+
+  <!-- Hidden stubs -->
+  <span style="display:none;" id="POST">POST</span>
+  <span style="display:none;" id="leaderboardText"></span>
+  <span style="display:none;" id="loginText"></span>
+  <span style="display:none;" id="anonymous-user"></span>
+  <span style="display:none;" id="anon-container"></span>
+
+</body>
+</html>

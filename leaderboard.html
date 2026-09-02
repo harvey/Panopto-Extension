@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard — Panopto Speed</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0d1117;
+      --surface:      #161b22;
+      --surface2:     #21262d;
+      --border:       #30363d;
+      --text:         #e6edf3;
+      --muted:        #8b949e;
+      --green:        #11773D;
+      --green-bright: #22c55e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0a3d22 0%, var(--green) 100%);
+      padding: 16px 18px 13px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-eyebrow {
+      font-size: 0.68rem;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .header h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .header-sub {
+      font-size: 0.69rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 3px;
+    }
+
+    /* ── States ── */
+    .state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 24px;
+      gap: 14px;
+      text-align: center;
+    }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green-bright);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    .state-text { font-size: 0.82rem; color: var(--muted); }
+
+    /* Error */
+    .error-emoji { font-size: 2rem; }
+    .error-msg {
+      font-size: 0.84rem;
+      color: #f87171;
+      line-height: 1.5;
+    }
+    .retry-btn {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .retry-btn:hover { background: var(--border); border-color: #6e7681; }
+
+    /* Empty */
+    .empty-emoji { font-size: 1.8rem; opacity: 0.45; }
+    .empty-msg { font-size: 0.82rem; color: var(--muted); }
+
+    /* ── List ── */
+    .list { padding: 10px 10px 24px; }
+
+    /* ── Row ── */
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 10px 13px;
+      border-radius: 9px;
+      margin-bottom: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .row:hover { background: var(--surface2); }
+
+    /* Top-3 accent rows */
+    .row.rank-1 {
+      background: rgba(245,158,11,0.07);
+      border-color: rgba(245,158,11,0.35);
+    }
+    .row.rank-2 {
+      background: rgba(148,163,184,0.06);
+      border-color: rgba(148,163,184,0.3);
+    }
+    .row.rank-3 {
+      background: rgba(180,83,9,0.07);
+      border-color: rgba(180,83,9,0.3);
+    }
+    .row.rank-1:hover { background: rgba(245,158,11,0.12); }
+    .row.rank-2:hover { background: rgba(148,163,184,0.10); }
+    .row.rank-3:hover { background: rgba(180,83,9,0.11); }
+
+    /* ── Rank badge ── */
+    .rank-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .rank-badge.gold   {
+      background: rgba(245,158,11,0.15);
+      color: #f59e0b;
+      border-color: rgba(245,158,11,0.45);
+      font-size: 1rem;
+    }
+    .rank-badge.silver {
+      background: rgba(148,163,184,0.12);
+      color: #94a3b8;
+      border-color: rgba(148,163,184,0.45);
+      font-size: 1rem;
+    }
+    .rank-badge.bronze {
+      background: rgba(180,83,9,0.12);
+      color: #d97706;
+      border-color: rgba(180,83,9,0.4);
+      font-size: 1rem;
+    }
+
+    /* ── Username ── */
+    .username {
+      flex: 1;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .row.rank-1 .username { color: #fde68a; }
+    .row.rank-2 .username { color: #e2e8f0; }
+    .row.rank-3 .username { color: #fdba74; }
+
+    /* ── Time saved ── */
+    .time-saved {
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+      color: var(--green-bright);
+    }
+    .row.rank-1 .time-saved { color: #fbbf24; }
+    .row.rank-2 .time-saved { color: #94a3b8; }
+    .row.rank-3 .time-saved { color: #fb923c; }
+
+    /* ── Developer badge ── */
+    .dev-badge {
+      font-size: 0.59rem;
+      font-weight: 700;
+      background: #dc2626;
+      color: #fff;
+      border-radius: 4px;
+      padding: 1px 7px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    /* ── Premium badge ── */
+    .prem-badge {
+      font-size: 0.59rem;
+      font-weight: 700;
+      background: #11773D;
+      color: #fff;
+      border-radius: 4px;
+      padding: 1px 7px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    /* ── Last week winner card ── */
+    .last-winner-wrap {
+      padding: 10px 10px 0;
+    }
+    .last-winner-card {
+      background: rgba(255,215,0,0.07);
+      border: 1px solid rgba(255,215,0,0.28);
+      border-radius: 9px;
+      padding: 10px 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .lw-crown { font-size: 1.15rem; flex-shrink: 0; }
+    .lw-info  { flex: 1; min-width: 0; }
+    .lw-label {
+      font-size: 0.62rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+    .lw-username {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #fde68a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lw-time {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fbbf24;
+      flex-shrink: 0;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-top: 12px;
+    }
+    .tab {
+      flex: 1;
+      background: rgba(0,0,0,0.25);
+      color: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      padding: 5px 0;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s, color 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .tab:hover { background: rgba(0,0,0,0.35); color: rgba(255,255,255,0.8); }
+    .tab.active {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      border-color: rgba(255,255,255,0.35);
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-eyebrow">🎬 Panopto Speed</div>
+  <h1 id="lbl-lb-title">Leaderboard</h1>
+  <div class="header-sub" id="period-range"></div>
+  <div class="tabs">
+    <button class="tab active" data-period="week" id="lbl-tab-week">This Week</button>
+    <button class="tab" data-period="alltime" id="lbl-tab-alltime">All Time</button>
+  </div>
+</div>
+
+<div id="last-winner" class="last-winner-wrap" style="display:none;">
+  <div class="last-winner-card">
+    <span class="lw-crown">👑</span>
+    <div class="lw-info">
+      <div class="lw-label" id="lbl-lw-label">Last week's winner</div>
+      <div class="lw-username" id="lw-username"></div>
+    </div>
+    <div class="lw-time" id="lw-time"></div>
+  </div>
+</div>
+
+<div id="loading" class="state">
+  <div class="spinner"></div>
+  <p class="state-text" id="lbl-lb-loading">Loading leaderboard…</p>
+</div>
+
+<div id="error" class="state" style="display:none;">
+  <span class="error-emoji">⚠️</span>
+  <p class="error-msg" id="lbl-lb-error">Failed to load leaderboard.<br>Check your connection and try again.</p>
+  <button class="retry-btn" id="retryBtn">Retry</button>
+</div>
+
+<div id="list" class="list" style="display:none;"></div>
+
+<script src="leaderboard.js"></script>
+</body>
+</html>

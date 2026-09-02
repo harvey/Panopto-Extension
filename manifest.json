@@ -1,0 +1,65 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+    "manifest_version": 3,
+    "name": "Panopto Custom Speed - AI Notes, Flashcards & Translation",
+    "version": "4.5.0",
+    "description": "Allows you to set custom speeds on Panopto. New AI features available.",
+    "icons": {
+        "512": "icon.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.panopto.com/*",
+                "https://*.panopto.eu/*"
+            ],
+            "js": [
+                "darktheme.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://*.panopto.com/*",
+                "https://*.panopto.eu/*"
+            ],
+            "js": [
+                "vtt-utils.js",
+                "katex/katex.min.js",
+                "content.js"
+            ],
+            "css": [
+                "content.css"
+            ],
+            "all_frames": true
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    },
+    "permissions": [
+        "activeTab",
+        "storage",
+        "unlimitedStorage",
+        "identity",
+        "downloads",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://*.panopto.com/*",
+        "https://*.panopto.eu/*"
+    ],
+    "oauth2": {
+        "client_id": "226457587386-qg8stvnq9j3fs772lvghutrkk05icc7v.apps.googleusercontent.com",
+        "scopes": [
+            "email"
+        ]
+    }
+}
