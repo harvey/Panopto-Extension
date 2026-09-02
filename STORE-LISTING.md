@@ -1,22 +1,29 @@
 # Chrome Web Store listing copy
 
-Two fields, two very different costs:
+Three fields, two very different costs:
 
 | Field | Where | Cost to change |
 |---|---|---|
+| **Overview** (16,000 max) | Developer dashboard → Store listing | **Instant, no review** |
 | Title (75 max) | `manifest.json` `name` | **Package review** |
 | Short description (132 max) | `manifest.json` `description` | **Package review** |
-| Detailed description (16,000 max) | Developer dashboard → Store listing | **Instant, no review** |
 
-So the detailed description below can go live today. The title and short
-description ride along with the next release.
+The Overview is the long body on your listing page — everything from
+"SET CUSTOM SPEED ON PANOPTO VIDEOS" down to the GitHub link. **The replacement
+below is the whole thing; paste it over the entire current Overview.** It goes
+live as soon as you save.
+
+Note that your Overview currently opens with the same sentence as the manifest
+short description ("Allows you to set custom speeds on Panopto. New AI features
+available."). Those are two separate fields that happen to hold the same text.
+The Overview copy is yours to change today; the manifest one needs a release.
 
 There is **no keyword field** on the Chrome Web Store. Relevance comes from the
 title and the two descriptions, and ranking also weighs ratings and installs.
 
 ---
 
-## Detailed description — paste this today
+## Overview — paste this over the whole current Overview, today
 
 > Panopto caps playback at 2x. This removes the cap, and then turns the lecture
 > you just watched into notes you can actually revise from.
