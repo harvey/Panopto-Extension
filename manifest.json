@@ -3,8 +3,8 @@
 
     "manifest_version": 3,
     "name": "Panopto Custom Speed - AI Notes, Flashcards & Translation",
-    "version": "4.5.0",
-    "description": "Allows you to set custom speeds on Panopto. New AI features available.",
+    "version": "4.6.0",
+    "description": "Watch Panopto lectures past the 2x cap, then turn any lecture into AI notes, Anki flashcards, transcripts or translation.",
     "icons": {
         "512": "icon.png"
     },
