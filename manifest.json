@@ -1,6 +1,4 @@
 {
-"update_url": "https://clients2.google.com/service/update2/crx",
-
     "manifest_version": 3,
     "name": "Panopto Custom Speed - AI Notes, Flashcards & Translation",
     "version": "4.6.0",
