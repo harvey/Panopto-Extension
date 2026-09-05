@@ -205,16 +205,20 @@ const clearTabFailed = async (tabId) => {
 };
 
 // Fire-and-forget; the extension must never be held up by the analytics call.
-const postAttachFailed = async (host) => {
+const postAttachFailed = async (host, frameTop, hadVideo) => {
     try {
         const state = await ensureUserId();
         await fetch(`${BACKEND}/attach-failed`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                uid:     state.userId,
-                host:    host || "",
-                version: chrome.runtime.getManifest().version
+                uid:      state.userId,
+                host:     host || "",
+                version:  chrome.runtime.getManifest().version,
+                // Lets the dashboard separate a genuinely broken viewer from an
+                // embedded player nobody opened.
+                frameTop: frameTop === true,
+                hadVideo: hadVideo === true
             })
         });
     } catch (e) {}
@@ -234,17 +238,19 @@ const recordAttachSuccess = async (host) => {
     await refreshUninstallURL();
 };
 
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === "install") {
-        // Written once, here only — an update must never reset the clock.
-        chrome.storage.local.get("installedAt", (r) => {
-            if (r.installedAt == null) chrome.storage.local.set({ installedAt: Date.now() });
-        });
+        // Written once, here only — an update must never reset the clock. Awaited,
+        // because refreshUninstallURL() below reads installedAt: firing them in the
+        // same turn stamped a fresh install's uninstall URL with days=-1 (unknown)
+        // and it stayed that way until the next attach or popup open re-stamped it.
+        const r = await chrome.storage.local.get("installedAt");
+        if (r.installedAt == null) await chrome.storage.local.set({ installedAt: Date.now() });
     }
     if (details.reason === "install" || details.reason === "update") {
         backfillContentScripts();
     }
-    refreshUninstallURL();
+    await refreshUninstallURL();
 });
 
 chrome.runtime.onStartup.addListener(() => {
@@ -271,7 +277,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === "attach-failed") {
         markTabFailed(tabId, message.host);
-        postAttachFailed(message.host);
+        postAttachFailed(message.host, message.frameTop, message.hadVideo);
         sendResponse({ status: "success" });
         return;
     }

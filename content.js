@@ -10,6 +10,20 @@
 if (!window.__pcsContentLoaded__) {
 window.__pcsContentLoaded__ = true;
 
+// Every playbackRate write the extension makes itself is stamped here first. The
+// 'speed' nudge listens on `ratechange`, which cannot tell a user dragging the slider
+// from the silence skipper writing the rate dozens of times a minute — without this,
+// auto-skip users burn their one-nudge-a-day budget on a speed they never chose.
+let _lastProgrammaticRateAt = 0;
+function setRate(video, rate) {
+    if (!video) return;
+    _lastProgrammaticRateAt = Date.now();
+    video.playbackRate = rate;
+}
+function rateChangeWasOurs() {
+    return Date.now() - _lastProgrammaticRateAt < 150;
+}
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -87,7 +101,7 @@ function updateSpeed() {
     const video = document.querySelector('video');
 
     if (video && speed) {
-        video.playbackRate = speed;
+        setRate(video, speed);
     } else {
         console.log("Took too long to find video on page, assuming no video.");
     }
@@ -108,14 +122,17 @@ function track() {
     let sessionSaved = 0;
     let savedNudged  = false;
     let doneNudged   = false;
+    let hasPlayed    = false;
 
     const trackTimeSaved = () => {
         const currentRealTime = Date.now();
         const currentCurrentTime = video.currentTime;
 
         // "Finished" is checked before the paused guard below, because a lecture that
-        // has run to the end is usually sitting paused on its last frame.
-        if (!doneNudged && video.duration > 0
+        // has run to the end is usually sitting paused on its last frame. It does need
+        // evidence of actually watching, though: without hasPlayed and !isSeeking this
+        // fires when someone scrubs to the end, or reopens a lecture at a saved position.
+        if (!doneNudged && hasPlayed && !isSeeking && video.duration > 0
             && currentCurrentTime / video.duration >= NUDGE_DONE_FRAC) {
             doneNudged = true;
             showNudge('finished');
@@ -180,6 +197,10 @@ function track() {
         isTracking = false;
         trackTimeSaved(); // Final update when paused.
     });
+
+    // Evidence that this sitting actually watched something, as opposed to opening
+    // the lecture and scrubbing. Gates the 'finished' nudge.
+    video.addEventListener("play", () => { hasPlayed = true; });
 
     // Reset markers as soon as seeking starts so the 1-second interval can't
     // fire between the seek and the seeked event and report a false spike.
@@ -299,7 +320,7 @@ function startSilenceSkipper() {
         _silenceTimer = setInterval(() => {
             if (video.paused || video.ended) {
                 silenceStart = null; silenceVideoStart = null;
-                if (inScanMode) { inScanMode = false; video.playbackRate = parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'); }
+                if (inScanMode) { inScanMode = false; setRate(video, parseFloat(localStorage.getItem('panoptoExtSpeed') || '1')); }
                 return;
             }
 
@@ -317,7 +338,7 @@ function startSilenceSkipper() {
                         // Near end of video — give up, resume normally
                         inScanMode = false;
                         silenceStart = null; silenceVideoStart = null;
-                        video.playbackRate = userSpeed;
+                        setRate(video, userSpeed);
                         return;
                     }
                     scanPhase = 'settle'; scanTicks = 0; confirmTicks = 0; sampleTicks = 0; noiseStart = null;
@@ -333,7 +354,7 @@ function startSilenceSkipper() {
                             video.currentTime = Math.max(0, (lastSilentPos || 0) + SPEECH_PRE_ROLL_S);
                             inScanMode = false;
                             silenceStart = null; silenceVideoStart = null; _lastSilenceTick = null;
-                            video.playbackRate = userSpeed;
+                            setRate(video, userSpeed);
                             return;
                         }
                     } else {
@@ -358,15 +379,15 @@ function startSilenceSkipper() {
                         // Long silence — switch to seek-scan mode
                         inScanMode = true;
                         scanPhase = 'seek'; scanTicks = 0; confirmTicks = 0; sampleTicks = 0; noiseStart = null;
-                        if (video.playbackRate !== userSpeed) video.playbackRate = userSpeed;
+                        if (video.playbackRate !== userSpeed) setRate(video, userSpeed);
                     } else {
                         const target = Math.max(SILENCE_SPEED, userSpeed);
-                        if (video.playbackRate !== target) video.playbackRate = target;
+                        if (video.playbackRate !== target) setRate(video, target);
                     }
                 }
             } else if (avg > resumeThreshold) {
                 silenceStart = null; silenceVideoStart = null; _lastSilenceTick = null;
-                if (video.playbackRate !== userSpeed) video.playbackRate = userSpeed;
+                if (video.playbackRate !== userSpeed) setRate(video, userSpeed);
             }
             // Between the two thresholds: hold current state — prevents rapid toggling
 
@@ -392,7 +413,7 @@ function stopSilenceSkipper() {
     if (_silenceTimer) { clearInterval(_silenceTimer); _silenceTimer = null; }
     _noiseFloor = null;
     const video = document.querySelector('video');
-    if (video) video.playbackRate = parseFloat(localStorage.getItem('panoptoExtSpeed') || '1');
+    if (video) setRate(video, parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -480,6 +501,20 @@ function looksLikePanoptoViewer() {
         || !!document.querySelector('video');
 }
 
+// Stricter than looksLikePanoptoViewer: is this frame a page whose whole job is to
+// play one lecture? An `id` param alone is not enough — it appears on Embed.aspx
+// thumbnails that legitimately have no <video> until clicked, and on pages across
+// www.panopto.com. A course page carrying five unplayed embeds was reporting five
+// attach failures per load, which is most of what the attach_failures table contains.
+function isPrimaryViewerPage() {
+    return /\/Pages\/Viewer\.aspx/i.test(location.pathname)
+        && !!new URLSearchParams(location.search).get('id');
+}
+
+// Whether this frame has ever held a <video>. Distinguishes "the player never
+// appeared" from "an embed nobody clicked".
+let _everSawVideo = false;
+
 // Only the frame that actually owns the player reports a session. On a viewer
 // embedded in Canvas/Moodle/Blackboard that is the Panopto iframe rather than the
 // page around it; on a normal viewer page it is the top frame. Nested side frames
@@ -493,7 +528,7 @@ function isPlayerFrame() {
 function applyStoredSpeed(video) {
     if (localStorage.getItem('speedOnStartup') !== "true") return;
     const speed = parseFloat(localStorage.getItem('panoptoExtSpeed'));
-    if (!isNaN(speed) && speed > 0) video.playbackRate = speed;
+    if (!isNaN(speed) && speed > 0) setRate(video, speed);
 }
 
 function scanForVideos() {
@@ -509,6 +544,7 @@ function scanForVideos() {
     document.querySelectorAll('video').forEach((video) => {
         if (_seenVideos.has(video)) return;
         _seenVideos.add(video);
+        _everSawVideo = true;
         onVideoAttached(video);
     });
 }
@@ -577,17 +613,29 @@ function reportAttachSuccess() {
 // the hostname so the failures are a list rather than a guess.
 function startAttachWatchdog() {
     if (_attachWatchdog || _attachReported) return;
-    if (window.top !== window.self && !new URLSearchParams(location.search).get('id')) return;
+    // Only a page that exists to play one lecture can meaningfully "fail to attach".
+    if (!isPrimaryViewerPage()) return;
 
     _attachWatchdog = setTimeout(() => {
         _attachWatchdog = null;
         if (_attachReported || !looksLikePanoptoViewer()) return;
         try {
             chrome.runtime.sendMessage(
-                { type: "attach-failed", host: location.hostname },
+                {
+                    type:  "attach-failed",
+                    host:  location.hostname,
+                    // Sent so the two populations in attach_failures can finally be told
+                    // apart: a top-frame viewer with no player is a real breakage; a
+                    // sub-frame that never held a <video> is usually an unopened embed.
+                    frameTop: window.top === window.self,
+                    hadVideo: _everSawVideo
+                },
                 () => { void chrome.runtime.lastError; }
             );
         } catch (e) {}
+        // Without this, every user who never attaches uninstalls with an empty host —
+        // which is exactly the population worth locating.
+        try { chrome.storage.local.set({ lastHost: location.hostname }); } catch (e) {}
     }, ATTACH_WATCHDOG_MS);
 }
 
@@ -687,12 +735,15 @@ const NUDGE_COPY = {
 };
 
 let _nudgeShownThisPage = false;
+let _nudgeCleanup = null;   // detaches the fullscreen listeners for the live toast
 
 // Reads the nudge ledger and applies every gate. Calls back with (false) unless
 // this variant is genuinely due.
 function nudgeAllowed(variant, cb) {
     if (_nudgeShownThisPage || !isPlayerFrame() || !NUDGE_COPY[variant]) return cb(false);
-    chrome.storage.local.get('pcsNudge', (r) => {
+    chrome.storage.local.get(['pcsNudge', 'pcsAuth'], (r) => {
+        // Never pitch the paid features at someone who already pays for them.
+        if (r && r.pcsAuth && r.pcsAuth.premium) return cb(false);
         const st  = (r && r.pcsNudge) || {};
         const now = Date.now();
         if (st.off) return cb(false);                                    // dismissed for good
@@ -739,7 +790,6 @@ function showNudge(variant, vars) {
     nudgeAllowed(variant, (ok, st) => {
         if (!ok || document.querySelector('.__pcs-nudge')) return;
         _nudgeShownThisPage = true;
-        recordNudgeShown(variant, st);
 
         const copy = NUDGE_COPY[variant];
         const fill = (s) => s.replace(/\{(\w+)\}/g,
@@ -759,6 +809,7 @@ function showNudge(variant, vars) {
         let timer = null;
         const remove = () => {
             if (timer) { clearTimeout(timer); timer = null; }
+            if (_nudgeCleanup) { _nudgeCleanup(); _nudgeCleanup = null; }
             el.remove();   // removed rather than hidden, so it can never swallow a click
         };
 
@@ -770,7 +821,26 @@ function showNudge(variant, vars) {
         el.addEventListener('click', () => { nudgeClicked(); remove(); });
 
         timer = setTimeout(remove, NUDGE_TIMEOUT_MS);
-        document.documentElement.appendChild(el);
+
+        // In fullscreen the browser paints only the fullscreened element's subtree, so
+        // a toast parented to <html> is invisible — getChapterTip() below already does
+        // this dance for the same reason. Re-parent on every fullscreen change so a
+        // toast that is up when the user enters or leaves fullscreen follows them.
+        const host = () => document.fullscreenElement
+                        || document.webkitFullscreenElement
+                        || document.documentElement;
+        const reparent = () => { if (el.isConnected || !timer) host().appendChild(el); };
+        document.addEventListener('fullscreenchange', reparent);
+        document.addEventListener('webkitfullscreenchange', reparent);
+        _nudgeCleanup = () => {
+            document.removeEventListener('fullscreenchange', reparent);
+            document.removeEventListener('webkitfullscreenchange', reparent);
+        };
+
+        host().appendChild(el);
+        // Only now has it actually been shown, so only now does it cost a slot. The
+        // old order spent the once-a-day budget even when nothing was painted.
+        recordNudgeShown(variant, st);
         requestAnimationFrame(() => { el.classList.add('__pcs-nudge-in'); });
     });
 }
@@ -784,6 +854,7 @@ function watchRateForNudge(video) {
     const armedAt = Date.now() + NUDGE_RATE_GRACE;
     video.addEventListener('ratechange', () => {
         if (Date.now() < armedAt) return;
+        if (rateChangeWasOurs()) return;   // silence skipper / applyStoredSpeed, not the user
         const r = video.playbackRate;
         if (!(r > 1.05)) return;
         showNudge('speed', { rate: String(Math.round(r * 100) / 100) });
@@ -1570,7 +1641,11 @@ function findSpeedMenuItem(items) {
     const list = Array.from(items || []);
     if (!list.length) return null;
 
-    const wanted = /speed|playback rate|geschwindigkeit|vitesse|velocidad|velocit|snelheid|hastighet|prędkoś|скорост|速度|배속|재생\s*속도|מהירות|سرعة/i;
+    // Bare 속도 matters most: Panopto's Korean label is 속도, not 재생 속도, and requiring
+    // the 재생 prefix is why ewha.ap — 156 users, the worst host in attach_failures —
+    // fell through to the positional fallback. The Korean rows this could collide with
+    // are 자막 (captions), 오디오 설명 (audio description) and 품질 (quality); none contain 속도.
+    const wanted = /speed|playback rate|geschwindigkeit|vitesse|velocidad|velocit|snelheid|hastighet|hastighed|prędkoś|скорост|h[ıi]z|ความเร็ว|速度|배속|속도|מהירות|سرعة/i;
     const byLabel = list.find((li) => wanted.test(
         (li.textContent || '') + ' ' + (li.getAttribute('aria-label') || '')
     ));
