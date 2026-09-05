@@ -913,11 +913,15 @@ function renderMarkdown(md) {
 
         // Pipe table: `| a | b |\n| --- | --- |\n| 1 | 2 |`
         if (/^\s*\|.+\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}.*\|/.test(lines[i + 1])) {
+            const tableStart = i;
             const rows = [];
             while (i < lines.length && /^\s*\|.+\|\s*$/.test(lines[i])) {
                 rows.push(lines[i]);
                 i++;
             }
+            // Not a table after all: give the header line back so the paragraph
+            // branch below renders it instead of silently deleting it.
+            if (rows.length < 2) i = tableStart;
             if (rows.length >= 2) {
                 const splitRow = (r) => r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
                 const header = splitRow(rows[0]);
@@ -966,8 +970,14 @@ function renderMarkdown(md) {
             i++; continue;
         }
 
-        // Paragraph — gather consecutive non-empty, non-special lines
-        const para = [];
+        // Paragraph — gather consecutive non-empty, non-special lines.
+        // The current line is consumed unconditionally. It used to be subject to the
+        // same exclusion test as the lines after it, so a pipe-wrapped line that the
+        // table branch declined (a header with no separator row, an ASCII box diagram,
+        // a truncated drug/dose table) matched nothing, `i` never advanced, and the
+        // notes window spun forever with no error. Reproduced on 11 malformed inputs.
+        const para = [lines[i]];
+        i++;
         while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|>|\s*[-*+]\s|\s*\d+\.\s|\s*-{3,}\s*$|\s*\|.+\|\s*$)/.test(lines[i])) {
             para.push(lines[i]);
             i++;

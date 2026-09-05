@@ -241,10 +241,25 @@ const SILENCE_RATIO          = 0.4;   // speed UP when amplitude drops below 40%
 const RESUME_RATIO           = 0.65;  // restore speed when amplitude rises above 65% of noise floor
 const CALIBRATION_MS         = 2000;  // how long to sample the noise floor on start
 
+// Skipper bookkeeping added alongside the seek/calibration fixes below.
+let _skipperSeek        = null;   // { video, onSeek } so stopSilenceSkipper can detach
+let _silenceRetry       = null;   // pending re-calibration timer
+let _silenceRetries     = 0;
+let _lastSkipperSeekAt  = 0;      // our own scan seeks must not look like user scrubs
+const MIN_NOISE_FLOOR       = 3;  // below this the analyser was reading a dead context
+const SILENCE_RETRY_MS      = 3000;
+const SILENCE_RETRY_MAX     = 40; // ~2 minutes of trying before giving up quietly
+
 function initAudioAnalyser(video) {
     if (_analyser) return true;
     try {
         _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // A context created before the page has had a user gesture starts SUSPENDED,
+        // and Chrome does not auto-resume it when the gesture arrives later. Every
+        // analyser read is then zero, the noise floor calibrates to 0, both thresholds
+        // clamp to 1, and auto-skip silently never fires for the whole session —
+        // checkbox on, nothing happening. resume() is a no-op when already running.
+        try { const p = _audioCtx.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
         try {
             // Primary: reroute through AudioContext (requires same-origin media)
             const src = _audioCtx.createMediaElementSource(video);
@@ -273,32 +288,62 @@ function initAudioAnalyser(video) {
 
 // Samples audio for CALIBRATION_MS to measure the noise floor of this recording,
 // then calls callback(noiseFloor) with the average amplitude observed.
-function calibrateNoiseFloor(callback) {
+function calibrateNoiseFloor(video, callback) {
     const data    = new Uint8Array(_analyser.frequencyBinCount);
     const samples = [];
     const start   = Date.now();
 
     const interval = setInterval(() => {
-        _analyser.getByteFrequencyData(data);
-        samples.push(data.reduce((a, b) => a + b, 0) / data.length);
+        // Only samples taken while audio is actually flowing mean anything. A paused
+        // element or a suspended context reads as flat zero and would calibrate a
+        // floor of 0, which latches thresholds nothing real ever crosses.
+        const ctxRunning = !_audioCtx || _audioCtx.state === 'running';
+        if (!video.paused && !video.ended && ctxRunning) {
+            _analyser.getByteFrequencyData(data);
+            samples.push(data.reduce((a, b) => a + b, 0) / data.length);
+        }
 
         if (Date.now() - start >= CALIBRATION_MS) {
             clearInterval(interval);
-            const floor = samples.reduce((a, b) => a + b, 0) / samples.length;
+            const floor = samples.length
+                ? samples.reduce((a, b) => a + b, 0) / samples.length
+                : 0;
+            if (samples.length < 5 || floor < MIN_NOISE_FLOOR) {
+                console.log(`[SilenceSkipper] Calibration unusable (floor ${floor.toFixed(2)}, ${samples.length} samples) — will retry`);
+                callback(null);
+                return;
+            }
             console.log(`[SilenceSkipper] Noise floor calibrated: ${floor.toFixed(2)}`);
             callback(floor);
         }
     }, 80);
 }
 
+let _silenceCalibrating = false;
+
 function startSilenceSkipper() {
-    if (_silenceTimer) return;
+    // _silenceTimer is only set once calibration finishes, ~2s in, so the old guard
+    // was fully re-entrant during that window: toggling twice leaked an interval.
+    if (_silenceTimer || _silenceCalibrating) return;
     const video = document.querySelector('video');
     if (!video || !initAudioAnalyser(video)) return;
 
     console.log('[SilenceSkipper] Calibrating noise floor...');
+    _silenceCalibrating = true;
 
-    calibrateNoiseFloor((floor) => {
+    calibrateNoiseFloor(video, (floor) => {
+        _silenceCalibrating = false;
+        // The user may have switched it off while we were sampling.
+        if (localStorage.getItem('autoSkipSilence') !== 'true') return;
+        if (floor == null) {
+            // Nothing usable yet (paused, or the context has not resumed). Try again
+            // shortly rather than latching a dead threshold for the session.
+            if (_silenceRetries++ < SILENCE_RETRY_MAX) {
+                _silenceRetry = setTimeout(() => { _silenceRetry = null; startSilenceSkipper(); }, SILENCE_RETRY_MS);
+            }
+            return;
+        }
+        _silenceRetries = 0;
         _noiseFloor = floor;
         const silenceThreshold = Math.max(floor * SILENCE_RATIO, 1);
         const resumeThreshold  = Math.max(floor * RESUME_RATIO,  1);
@@ -317,6 +362,21 @@ function startSilenceSkipper() {
         let noiseStart    = null;    // video.currentTime when noise first appeared in sample window
         let lastSilentPos = null;    // video.currentTime just before the last scan seek
 
+        // A user scrub used to be invisible here. silenceVideoStart kept the OLD
+        // position, so the next tick saw "silence elapsed" = the whole jump, tripped
+        // the 10s long-silence rule instantly, and seek-scan mode ran the video away
+        // from wherever the user had just clicked. Our own scan seeks are stamped in
+        // _lastSkipperSeekAt so they are not mistaken for the user's.
+        const userSpeedNow = () => parseFloat(localStorage.getItem('panoptoExtSpeed') || '1');
+        const onUserSeek = () => {
+            if (Date.now() - _lastSkipperSeekAt < 500) return;
+            silenceStart = null; silenceVideoStart = null; _lastSilenceTick = null;
+            if (inScanMode) { inScanMode = false; setRate(video, userSpeedNow()); }
+        };
+        video.addEventListener('seeking', onUserSeek);
+        video.addEventListener('seeked',  onUserSeek);
+        _skipperSeek = { video, onUserSeek };
+
         _silenceTimer = setInterval(() => {
             if (video.paused || video.ended) {
                 silenceStart = null; silenceVideoStart = null;
@@ -333,6 +393,7 @@ function startSilenceSkipper() {
                 if (scanPhase === 'seek') {
                     lastSilentPos = video.currentTime;
                     if (video.currentTime + SCAN_CHUNK_S < (video.duration || Infinity)) {
+                        _lastSkipperSeekAt = Date.now();
                         video.currentTime += SCAN_CHUNK_S;
                     } else {
                         // Near end of video — give up, resume normally
@@ -351,6 +412,7 @@ function startSilenceSkipper() {
                         if (noiseStart === null) noiseStart = video.currentTime;
                         if (++confirmTicks >= SCAN_SPEECH_TICKS) {
                             // Sustained audio confirmed as speech — land just after last silent position
+                            _lastSkipperSeekAt = Date.now();
                             video.currentTime = Math.max(0, (lastSilentPos || 0) + SPEECH_PRE_ROLL_S);
                             inScanMode = false;
                             silenceStart = null; silenceVideoStart = null; _lastSilenceTick = null;
@@ -375,6 +437,14 @@ function startSilenceSkipper() {
                 if (!silenceStart) { silenceStart = Date.now(); silenceVideoStart = video.currentTime; }
                 if (Date.now() - silenceStart >= SILENCE_DELAY_MS) {
                     const videoSilenceElapsed = video.currentTime - silenceVideoStart;
+                    // Belt and braces for the seek listeners above: video time cannot
+                    // advance faster than wall time × rate. If it did, the position
+                    // jumped under us — re-arm from here instead of scanning away.
+                    const wallElapsed = (Date.now() - silenceStart) / 1000;
+                    if (videoSilenceElapsed > wallElapsed * video.playbackRate * 1.5 + 1) {
+                        silenceStart = Date.now(); silenceVideoStart = video.currentTime;
+                        return;
+                    }
                     if (videoSilenceElapsed >= LONG_SILENCE_VIDEO_S) {
                         // Long silence — switch to seek-scan mode
                         inScanMode = true;
@@ -411,6 +481,14 @@ function startSilenceSkipper() {
 
 function stopSilenceSkipper() {
     if (_silenceTimer) { clearInterval(_silenceTimer); _silenceTimer = null; }
+    if (_silenceRetry) { clearTimeout(_silenceRetry); _silenceRetry = null; }
+    _silenceCalibrating = false;   // a calibration in flight checks the flag and bails
+    _silenceRetries = 0;
+    if (_skipperSeek) {
+        _skipperSeek.video.removeEventListener('seeking', _skipperSeek.onUserSeek);
+        _skipperSeek.video.removeEventListener('seeked',  _skipperSeek.onUserSeek);
+        _skipperSeek = null;
+    }
     _noiseFloor = null;
     const video = document.querySelector('video');
     if (video) setRate(video, parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'));
@@ -1581,9 +1659,18 @@ function initExtension() {
         });
     }
     track();
-    // Resume silence skipper if it was active before page reload
+    // Resume silence skipper if it was active before page reload. Started on the
+    // first PLAY rather than a fixed 1.5s: playing is the moment the page is
+    // guaranteed to have had a gesture, so the AudioContext can actually run and
+    // calibration samples real audio instead of a suspended context's zeros.
     if (localStorage.getItem('autoSkipSilence') === 'true') {
-        sleep(1500).then(() => startSilenceSkipper());
+        const armSkipper = () => {
+            const v = document.querySelector('video');
+            if (!v) { setTimeout(armSkipper, 1500); return; }
+            if (v.paused) v.addEventListener('play', () => startSilenceSkipper(), { once: true });
+            else startSilenceSkipper();
+        };
+        sleep(1500).then(armSkipper);
     }
 
     // Watch for the player rather than sweeping once: it can arrive long after load

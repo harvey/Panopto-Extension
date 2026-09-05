@@ -2780,15 +2780,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!refreshed) clientLogout();
     }
 
-    async function logoutThenReloginExpiredToken() {
-        const logoutButton = document.getElementById('logout');
-        if (logoutButton) logoutButton.click();
-        else clientLogout();
-
-        // Let the existing logout button path clear local and Chrome-cached auth.
-        await sleep(250);
-        const reloggedIn = await loginWithChromeIdentity(false);
-        if (!reloggedIn) showLoggedOut();
+    // A Google ACCESS token lasts about an hour and nothing here ever refreshes it,
+    // so isTokenExpired() is true on essentially every popup open after the first.
+    // This used to click #logout FIRST and only then try a silent re-login — and on
+    // Brave/Edge/Opera, or offline, that silent attempt cannot succeed, so people
+    // were dumped to the anonymous view every hour with no explanation. Verify
+    // before destroying: try to get a replacement token with the session untouched,
+    // and only if that fails show the sign-in view — keeping the stored identity so
+    // a single click on Sign in restores everything.
+    async function refreshExpiredSession() {
+        const refreshed = await loginWithChromeIdentity(false);
+        if (!refreshed) showLoggedOut();
     }
 
     const savedEmail = localStorage.getItem('email');
@@ -2796,12 +2798,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // Never logged in — show sign-in button
         showLoggedOut();
     } else if (isTokenExpired()) {
-        if (localStorage.getItem('autoRefreshLogin') !== 'false') {
-            // Previously logged in: use the logout button path, then silently log back in.
-            logoutThenReloginExpiredToken();
-        } else {
-            clientLogout();
-        }
+        // Silent refresh is harmless on every browser, so try it regardless of the
+        // Auto-login preference; that switch only ever gated a destructive path.
+        refreshExpiredSession();
     } else {
         // Valid session
         clientLogin();
