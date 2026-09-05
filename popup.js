@@ -31,7 +31,7 @@ const TRANSLATIONS = {
         timeSavedLabel: "Time saved:",
         warning: "Changes only apply on Panopto pages.",
         leaderboardSection: "Leaderboard",
-        signinPrompt: "Sign in to see your leaderboard position",
+        signinPrompt: "Sign in to unlock AI notes and Anki flashcards — free, no card needed",
         signinBtn: "Sign in with Google",
         loggedInAs: "Logged in as",
         logout: "Log out",
@@ -141,7 +141,7 @@ const TRANSLATIONS = {
         timeSavedLabel: "절약된 시간:",
         warning: "파노프토 페이지에서만 적용됩니다.",
         leaderboardSection: "리더보드",
-        signinPrompt: "로그인하면 리더보드 순위를 확인할 수 있어요",
+        signinPrompt: "로그인하면 AI 노트와 Anki 플래시카드를 무료로 사용할 수 있어요 — 카드 등록 없음",
         signinBtn: "Google로 로그인",
         loggedInAs: "로그인됨:",
         logout: "로그아웃",
@@ -236,7 +236,7 @@ const TRANSLATIONS = {
         timeSavedLabel: "节省的时间：",
         warning: "仅在 Panopto 页面上生效。",
         leaderboardSection: "排行榜",
-        signinPrompt: "登录以查看您的排行榜位置",
+        signinPrompt: "登录即可免费使用 AI 笔记和 Anki 抽认卡 — 无需信用卡",
         signinBtn: "使用 Google 登录",
         loggedInAs: "已登录为",
         logout: "退出登录",
@@ -331,7 +331,7 @@ const TRANSLATIONS = {
         timeSavedLabel: ":זמן שנחסך",
         warning: ".השינויים חלים רק בדפי Panopto",
         leaderboardSection: "לוח תוצאות",
-        signinPrompt: "התחבר/י כדי לראות את הדירוג שלך",
+        signinPrompt: "התחבר/י כדי לפתוח סיכומי AI וכרטיסיות Anki — בחינם, ללא כרטיס אשראי",
         signinBtn: "התחבר עם Google",
         loggedInAs: ":מחובר/ת כ",
         logout: "התנתק/י",
@@ -426,7 +426,7 @@ const TRANSLATIONS = {
         timeSavedLabel: "Заощаджений час:",
         warning: "Зміни діють лише на сторінках Panopto.",
         leaderboardSection: "Таблиця лідерів",
-        signinPrompt: "Увійдіть, щоб побачити свою позицію",
+        signinPrompt: "Увійдіть, щоб відкрити AI-нотатки та картки Anki — безкоштовно, без картки",
         signinBtn: "Увійти через Google",
         loggedInAs: "Увійшли як",
         logout: "Вийти",
@@ -648,7 +648,7 @@ let _aiBudget           = null;   // budget tier: { pctLeft, exhausted, resetAt,
 const FREE_SILENCE_LIMIT_SECS = 180; // 3 minutes
 const FREE_PIP_LIMIT          = 10;  // PiP button presses
 const FREE_DOWNLOAD_LIMIT     = 3;   // lecture downloads
-const NOTES_DAILY_LIMIT_PREMIUM = 3; // premium users — N generations per day (must match server)
+const NOTES_DAILY_LIMIT_PREMIUM = 15; // promo-premium users — N generations per day. MUST match cf/worker.js (it was 3 here and 15 there, so the lock string advertised "3/day")
 const NOTES_FREE_LIFETIME_LIMIT = 1; // non-premium — total free generations (must match server)
 const NOTES_QUOTA_CACHE_TTL_MS  = 60_000; // refetch quota at most every minute
 
@@ -1550,6 +1550,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         try {
             const res  = await fetch(`${BACKEND}/check?email=${encodeURIComponent(email)}`);
+            // A 5xx from the worker (KV hiccup, deploy in progress) used to be cached
+            // as an authoritative "not premium" for the next hour, locking a paying
+            // user out. Treat it like a network failure: keep whatever we knew.
+            if (!res.ok) throw new Error(`check ${res.status}`);
             const data = await res.json();
             localStorage.setItem('premiumCache', JSON.stringify({
                 email, checkedAt: Date.now(),
@@ -2566,9 +2570,17 @@ document.addEventListener("DOMContentLoaded", function () {
         const email = localStorage.getItem('email');
         const token = localStorage.getItem('authToken');
         if (!email || !token) {
-            btn.title = 'Sign in with Google first';
-            btn.textContent = '⚠ Sign in';
-            setTimeout(() => { restore(); btn.title = ''; }, 2500);
+            // This used to flash "⚠ Sign in" for 2.5s and give up — while the label
+            // underneath said "1 free trial available — try it now". The popup invited
+            // the click and then refused it. Start the sign-in instead; on success the
+            // user clicks the same button again with the session in place.
+            btn.disabled    = true;
+            btn.textContent = 'Signing in…';
+            loginWithChromeIdentity(true).then((ok) => {
+                restore();
+                if (ok) { btn.title = ''; launchAiNotes(btn, targetTab); }
+                else    { btn.title = 'Sign-in was cancelled'; setTimeout(() => { btn.title = ''; }, 2500); }
+            });
             return;
         }
 
@@ -2622,7 +2634,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         width:  1280,
                         height: 900,
                     });
-                    logPremiumFeature('ai_notes');
+                    // One event per tool, not three tools under 'ai_notes' — otherwise
+                    // the dashboard cannot say whether people want notes, chat or decks.
+                    logPremiumFeature(targetTab === 'cards' ? 'ai_flashcards'
+                                    : targetTab === 'chat'  ? 'ai_chat'
+                                    :                          'ai_notes');
                     // Invalidate the cached quota — next popup open will refetch and
                     // reflect the increment.
                     localStorage.removeItem('notesQuotaCache');

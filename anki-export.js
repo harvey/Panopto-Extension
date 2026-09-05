@@ -259,7 +259,12 @@
                 const back  = mdToAnki(cards[i] && cards[i].answer);
                 if (!front && !back) continue;
                 const flds = front + FIELD_SEP + back;
-                const guid = await sha1Hex(deckId + FIELD_SEP + flds);
+                // Anki matches notes on guid. Hashing the answer in too meant every
+                // regenerated deck produced fresh guids, so a re-import created
+                // duplicates instead of updating the existing cards — the most
+                // infuriating thing you can do to someone with a 5,000-card collection.
+                // The question is the identity; the answer is allowed to improve.
+                const guid = await sha1Hex(deckId + FIELD_SEP + front);
 
                 let noteId = seenGuid.get(guid);
                 if (noteId === undefined) {

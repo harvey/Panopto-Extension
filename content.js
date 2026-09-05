@@ -33,6 +33,7 @@ function sleep(ms) {
 let _screenshotOverlay    = null;
 let _screenshotProgressEl = null;
 let _screenshotCancelCb   = null;
+let _screenshotRunning  = false;   // one capture at a time — see the getScreenshots guard
 
 function showScreenshotOverlay(total) {
     removeScreenshotOverlay();
@@ -1227,8 +1228,6 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 
         const debug = [];
 
-        showScreenshotOverlay(times.length);
-
         // sendResponse can only fire once; protect against that.
         let responded = false;
         const respond = (data) => {
@@ -1238,6 +1237,19 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
             removeScreenshotOverlay();
             try { sendResponse(data); } catch {}
         };
+
+        // Two captures at once was possible (notes + flashcards fired together, or a
+        // fast double-click). The second run snapshotted wasMuted while the first had
+        // already muted the video, so whichever finished last "restored" muted=true —
+        // and the seek-back restored the first run's mid-capture position. The lecture
+        // came back silent at a random timestamp. One capture at a time.
+        if (_screenshotRunning) {
+            respond({ shots: times.map(() => []), error: 'capture_busy', debug: ['a capture is already running'] });
+            return true;
+        }
+        _screenshotRunning = true;
+
+        showScreenshotOverlay(times.length);
 
         (async () => {
             const videos = findVideos();
@@ -1372,6 +1384,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
                     try { s.el.muted  = s.wasMuted;  } catch {}
                     try { s.el.volume = s.originalVolume; } catch {}
                 }
+                _screenshotRunning = false;
                 respond({ shots, debug });
             }
         })();

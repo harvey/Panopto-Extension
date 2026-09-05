@@ -226,20 +226,35 @@ async function generate() {
         const allSections = [];
         const modelsUsed = new Set();
         let aiTitle = null;
+        let partial = false;
         for (let i = 0; i < chunks.length; i++) {
-            const data = await callSummarize({
-                token: authToken,
-                email,
-                captionsCleaned: chunks[i],
-                lang: lang || 'en',
-                title,
-            });
+            let data;
+            try {
+                data = await callSummarize({
+                    token: authToken,
+                    email,
+                    captionsCleaned: chunks[i],
+                    lang: lang || 'en',
+                    title,
+                });
+            } catch (e) {
+                // The server charges the quota per chunk. If the first chunk failed
+                // nothing was spent and the normal error path is right; but if a LATER
+                // chunk fails, throwing away the chunks that already succeeded meant a
+                // free user's single credit was gone and they got nothing for it.
+                // Keep what we have and say so.
+                if (i === 0 || !allSections.length) throw e;
+                partial = true;
+                console.warn('[AI Notes] chunk', i + 1, 'of', chunks.length, 'failed — rendering the rest:', e?.code || e?.message);
+                break;
+            }
             allSections.push(...extractSections(data));
             if (!aiTitle && data?.title) aiTitle = data.title;
             if (data?.model) modelsUsed.add(data.model);
         }
         const merged = mergeSections(allSections);
         if (!merged.length) return showError('The AI returned no notes. Try again.');
+        if (partial) _state.partialNotice = 'The last part of this lecture couldn’t be summarised — these notes cover the first part only.';
         if (aiTitle) _state.title = aiTitle;
         _state.sections = merged;
         // Show the model(s) the server actually used (it varies per request), not a
@@ -366,7 +381,8 @@ function render() {
 
     $('header-title').textContent = _state.title;
     const poweredBy = _state.model ? `Powered by ${_state.model}` : 'Powered by Gemini';
-    $('header-sub').textContent   = `${poweredBy} · ${_state.sections.length} sections`;
+    $('header-sub').textContent   = `${poweredBy} · ${_state.sections.length} sections`
+        + (_state.partialNotice ? ` · ⚠ ${_state.partialNotice}` : '');
 
     const list    = $('list');
     const tocList = $('tocList');
@@ -1715,6 +1731,19 @@ async function downloadApkg(cards, btn) {
         document.body.appendChild(a);
         a.click();
         a.remove();
+        // The .apkg download is the conversion event that matters for this audience,
+        // and it logged nothing — so the dashboard could not tell an Anki user from a
+        // chat user. Fire-and-forget; a failure here must never touch the download.
+        try {
+            const c = (_state && _state.context) || {};
+            if (c.email && c.authToken) {
+                fetch(`${BACKEND}/logPremiumFeature`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: c.authToken, email: c.email, featureClicked: 'anki_export' }),
+                }).catch(() => {});
+            }
+        } catch {}
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         if (btn) { btn.disabled = false; btn.textContent = orig; }
     } catch {
