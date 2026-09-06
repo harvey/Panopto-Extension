@@ -693,7 +693,8 @@ function writeAiAuth() {
         const email = localStorage.getItem('email');
         const token = localStorage.getItem('authToken');
         if (email && token && token !== 'null') {
-            chrome.storage.local.set({ pcsAuth: { email, token, premium: !!_isPremium, ts: Date.now() } });
+            const tokenExpiry = parseInt(localStorage.getItem('tokenExpiry') || '0', 10) || 0;
+            chrome.storage.local.set({ pcsAuth: { email, token, tokenExpiry, premium: !!_isPremium, ts: Date.now() } });
         } else {
             chrome.storage.local.remove('pcsAuth');
         }
@@ -2880,17 +2881,38 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const savedEmail = localStorage.getItem('email');
-    if (!savedEmail) {
-        // Never logged in — show sign-in button
-        showLoggedOut();
-    } else if (isTokenExpired()) {
-        // Silent refresh is harmless on every browser, so try it regardless of the
-        // Auto-login preference; that switch only ever gated a destructive path.
-        refreshExpiredSession();
-    } else {
-        // Valid session
-        clientLogin();
+
+    // background.js refreshes the token on a 45-minute alarm and parks it in
+    // chrome.storage.local.pcsAuth. If that copy is for the same account and
+    // fresher than ours, take it — then the expiry branch below is rarely hit.
+    async function adoptBackgroundToken() {
+        if (!savedEmail) return;
+        try {
+            const { pcsAuth } = await chrome.storage.local.get('pcsAuth');
+            if (!pcsAuth || !pcsAuth.token || !pcsAuth.tokenExpiry) return;
+            if (String(pcsAuth.email || '').toLowerCase() !== savedEmail.toLowerCase()) return;
+            const ours = parseInt(localStorage.getItem('tokenExpiry') || '0', 10) || 0;
+            if (pcsAuth.tokenExpiry <= Date.now() || pcsAuth.tokenExpiry <= ours) return;
+            localStorage.setItem('authToken',   pcsAuth.token);
+            localStorage.setItem('oauthToken',  pcsAuth.token);
+            localStorage.setItem('tokenExpiry', String(pcsAuth.tokenExpiry));
+        } catch {}
     }
+
+    (async () => {
+        await adoptBackgroundToken();
+        if (!savedEmail) {
+            // Never logged in — show sign-in button
+            showLoggedOut();
+        } else if (isTokenExpired()) {
+            // Silent refresh is harmless on every browser, so try it regardless of the
+            // Auto-login preference; that switch only ever gated a destructive path.
+            refreshExpiredSession();
+        } else {
+            // Valid session
+            clientLogin();
+        }
+    })();
 
     // Show rank immediately from cache if we know who the user is
     if (savedEmail && !isTokenExpired()) {

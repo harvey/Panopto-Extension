@@ -251,10 +251,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         backfillContentScripts();
     }
     await refreshUninstallURL();
+    scheduleAuthRefresh();
 });
 
 chrome.runtime.onStartup.addListener(() => {
     refreshUninstallURL();
+    scheduleAuthRefresh();
+    refreshAuthToken("startup");
 });
 
 // The popup refreshes pcsAuth on every open, so this keeps `premium` honest without
@@ -345,3 +348,124 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ status: "success" });
     }
 });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BACKGROUND TOKEN REFRESH
+//
+// A Google access token lasts about an hour. Until now nothing refreshed it, so
+// the popup found it expired on almost every open and had to recover on the
+// spot — and on browsers where a silent recovery can't work, the user landed on
+// the sign-in view. This keeps the token fresh from the service worker instead,
+// on a 45-minute alarm and at browser startup, so the popup rarely sees an
+// expired one at all.
+//
+// The worker cannot touch the popup's localStorage, so the fresh token goes into
+// chrome.storage.local.pcsAuth (which the popup already mirrors its auth into).
+// popup.js adopts it on open when it is newer than what it holds.
+//
+// Rules: never interactive (no UI can come from here); never switch accounts —
+// a token whose email differs from the signed-in one is discarded; and if there
+// is no signed-in email at all (never signed in, or logged out) do nothing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AUTH_REFRESH_ALARM   = "pcs-auth-refresh";
+const AUTH_REFRESH_MINUTES = 45;
+// Same "Web application" OAuth client the popup uses for the web flow.
+const WEB_OAUTH_CLIENT_ID  = "226457587386-4ppmltjpvb2177b6qhh24pmvrah03p1n.apps.googleusercontent.com";
+
+function scheduleAuthRefresh() {
+    try {
+        if (!chrome.alarms) return;
+        chrome.alarms.get(AUTH_REFRESH_ALARM, (a) => {
+            if (!a) chrome.alarms.create(AUTH_REFRESH_ALARM, { periodInMinutes: AUTH_REFRESH_MINUTES, delayInMinutes: 1 });
+        });
+    } catch (e) {}
+}
+
+if (chrome.alarms && chrome.alarms.onAlarm) {
+    chrome.alarms.onAlarm.addListener((alarm) => {
+        if (alarm && alarm.name === AUTH_REFRESH_ALARM) refreshAuthToken("alarm");
+    });
+}
+
+// Chrome's own identity cache, silently. Resolves null on any failure or if the
+// API never calls back (Brave, some managed profiles).
+function bgGetAuthTokenNative() {
+    return new Promise((resolve) => {
+        let settled = false;
+        const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+        const timer = setTimeout(() => done(null), 8000);
+        try {
+            if (!chrome.identity || typeof chrome.identity.getAuthToken !== "function") { clearTimeout(timer); return done(null); }
+            chrome.identity.getAuthToken({ interactive: false }, (token) => {
+                clearTimeout(timer);
+                if (chrome.runtime.lastError || !token) return done(null);
+                done(token);
+            });
+        } catch (e) { clearTimeout(timer); done(null); }
+    });
+}
+
+// The web flow with prompt=none: succeeds only if Google already has a session
+// for this browser. No UI is ever shown. Used where getAuthToken is unavailable.
+function bgGetAuthTokenWeb() {
+    return new Promise((resolve) => {
+        try {
+            if (!chrome.identity || typeof chrome.identity.launchWebAuthFlow !== "function") return resolve(null);
+            const manifest    = chrome.runtime.getManifest();
+            const scopes      = (manifest.oauth2 && manifest.oauth2.scopes) || ["email"];
+            const redirectUri = chrome.identity.getRedirectURL();
+            const url =
+                "https://accounts.google.com/o/oauth2/v2/auth" +
+                "?client_id="     + encodeURIComponent(WEB_OAUTH_CLIENT_ID) +
+                "&response_type=token" +
+                "&redirect_uri="  + encodeURIComponent(redirectUri) +
+                "&scope="         + encodeURIComponent(scopes.join(" ")) +
+                "&prompt=none";
+            chrome.identity.launchWebAuthFlow({ url, interactive: false }, (redirectUrl) => {
+                if (chrome.runtime.lastError || !redirectUrl) return resolve(null);
+                const m = /[#&]access_token=([^&]+)/.exec(redirectUrl);
+                resolve(m ? decodeURIComponent(m[1]) : null);
+            });
+        } catch (e) { resolve(null); }
+    });
+}
+
+let _authRefreshInFlight = false;
+async function refreshAuthToken(reason) {
+    if (_authRefreshInFlight) return;
+    _authRefreshInFlight = true;
+    try {
+        const { pcsAuth } = await chrome.storage.local.get("pcsAuth");
+        if (!pcsAuth || !pcsAuth.email) return;                 // never signed in, or logged out
+
+        // Still comfortably valid: leave it alone. (Older popups wrote no expiry —
+        // treat those as due.)
+        const expiry = Number(pcsAuth.tokenExpiry) || 0;
+        if (expiry - Date.now() > 20 * 60 * 1000) return;
+
+        let token = await bgGetAuthTokenNative();
+        if (!token) token = await bgGetAuthTokenWeb();
+        if (!token) return;
+
+        // Validate, and make sure it is the same person. Silently swapping the
+        // signed-in account would be far worse than an expired token.
+        let info = null;
+        try {
+            const resp = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`);
+            if (resp.ok) info = await resp.json();
+        } catch (e) {}
+        if (!info || !info.email || info.error_description) return;
+        if (String(info.email).toLowerCase() !== String(pcsAuth.email).toLowerCase()) return;
+
+        const expiresIn = parseInt(info.expires_in, 10) || 3600;
+        await chrome.storage.local.set({
+            pcsAuth: { ...pcsAuth, token, tokenExpiry: Date.now() + expiresIn * 1000, ts: Date.now(), refreshedBy: reason }
+        });
+    } catch (e) {
+        // Never let a refresh failure surface anywhere; the popup still has its own path.
+    } finally {
+        _authRefreshInFlight = false;
+    }
+}
