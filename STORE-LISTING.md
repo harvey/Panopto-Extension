@@ -46,22 +46,17 @@ title and the two descriptions, and ranking also weighs ratings and installs.
 > • Transcripts and lecture downloads for offline revision.
 >
 > MADE FOR HEAVY LECTURE LOADS
-> Medical, pharmacy, dentistry, optometry, nursing, veterinary and law students
-> get through more recorded lecture than anyone. If you already live in Anki,
-> the flashcard export is the whole reason this exists — lecture in, deck out,
-> no retyping.
+> If your course records everything and you revise from Anki, the flashcard
+> export is the whole reason this exists — lecture in, deck out, no retyping.
 >
-> International students: if lectures aren't in your first language, the
-> translation and dubbing turn a second listen into a first one.
+> If lectures aren't in your first language, the translation and dubbing turn
+> a second listen into a first one.
 >
 > HOW TO START
 > 1. Install, then refresh your Panopto page.
 > 2. Open any recorded lecture.
 > 3. The speed control appears in the player's settings menu. Everything else
 >    is behind the extension icon in your toolbar.
->
-> Some universities rebrand Panopto — if yours calls it Recap, uRewind, Echo,
-> or just "lecture capture", check the address bar for panopto and it will work.
 >
 > FREE AND PAID
 > Custom speed, Silence Skipper, picture-in-picture, dark mode and the
@@ -116,11 +111,12 @@ thing people are annoyed about and the thing they describe when they search.
 **Anki promoted out of parentheses.** It was in brackets inside a sub-bullet.
 It is the single strongest hook you have for the audience you already have.
 
-**Added the audience explicitly.** Your own data says med-adjacent schools
-dominate: attach failures come from Loma Linda, KUMC, Jefferson, Johns Hopkins,
-Weill Cornell, FIU Med, Maryland School of Medicine and St George's London;
-account domains include salus.edu, neco.edu, usuhs.edu and my.rfums.org. You
-were never targeting them and they found you anyway.
+**Audience stated without a discipline list.** The first version named seven
+disciplines in one sentence and the store rejected it as keyword spam
+(violation "Yellow Argon", 6 Sept 2026). The audience is now implied by the
+behaviour ("if your course records everything and you revise from Anki") rather
+than enumerated. Do not reintroduce a list of subjects, universities, or
+product names — that is exactly the pattern the reviewer flags.
 
 **Removed "Added Edge & Other Chromium Browser Support" and "Language support
 added".** Changelog lines, not reasons to install. The Edge line is also
@@ -135,15 +131,9 @@ privacy disclosure at all. Both are overdue and both reduce takedown risk.
 
 ---
 
-## ⚠️ One line to decide on
+## Rejection history
 
-> Some universities rebrand Panopto — if yours calls it Recap, uRewind, Echo,
-> or just "lecture capture", check the address bar for panopto and it will work.
-
-You said you were blocked before for putting university names in the listing.
-This is deliberately **not** a list of universities — it is three product names
-in a sentence that answers a real question ("is this the thing my uni uses?").
-That is defensible where a list of 50 institutions is not.
-
-If you are at all unsure given the previous block, **delete the line.** It is
-worth a little long-tail traffic and nothing else. Do not extend it into a list.
+- **6 Sept 2026 — "Keyword spam" (ref Yellow Argon).** Flagged line: *"Medical,
+  pharmacy, dentistry, optometry, nursing, veterinary and law students"*. Removed,
+  along with the Recap/uRewind rebrand sentence as the same category of risk.
+  Resubmit the Overview above as-is.
