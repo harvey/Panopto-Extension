@@ -673,6 +673,21 @@ function reconcileTimeOwner(email) {
 
 // Publish auth + premium to chrome.storage so content.js (the in-page lecture chat)
 // can make authenticated calls. The popup is the only place with a fresh OAuth token.
+// The username dialog can be dismissed. While the account still has no username,
+// a "Set username" link sits in the header so it can be reopened without waiting
+// for the next popup open.
+function setNeedsUsername(needs) {
+    const link = document.getElementById('setUsernameLink');
+    if (link) link.style.display = needs ? 'inline' : 'none';
+}
+function openUsernameDialog() {
+    const modal = document.getElementById('migrationContainer');
+    if (!modal) return;
+    modal.classList.add('open');
+    const box = document.getElementById('newUsernameTextbox');
+    if (box) setTimeout(() => box.focus(), 50);
+}
+
 function writeAiAuth() {
     try {
         const email = localStorage.getItem('email');
@@ -1140,6 +1155,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('loggedOutView').style.display  = 'block';
         document.getElementById('loggedInView').style.display   = 'none';
         document.getElementById('migrationContainer').classList.remove('open');
+        setNeedsUsername(false);
         const referralSection = document.getElementById('referralSection');
         if (referralSection) referralSection.style.display = 'none';
         const streakChip = document.getElementById('streakChip');
@@ -1176,7 +1192,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (oldUSR) {
             // Legacy migration path
-            document.getElementById('migrationContainer').classList.add('open');
+            setNeedsUsername(true);
+            openUsernameDialog();
             document.getElementById('oldUsernameTextbox').value = oldUSR;
             attachMigrationListener();
         } else {
@@ -1186,13 +1203,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     .then(r => r.text())
                     .then(text => {
                         if (text === '{username not found}') {
-                            document.getElementById('migrationContainer').classList.add('open');
+                            setNeedsUsername(true);
+                            openUsernameDialog();
                             document.getElementById('oldUsernameTextbox').value = '(unknown)';
                             attachMigrationListener();
                         } else if (text.length <= 16) {
                             localStorage.setItem('username', text);
                             document.getElementById('email').textContent = text;
                             document.getElementById('migrationContainer').classList.remove('open');
+                            setNeedsUsername(false);
                             getRank();
                         }
                     })
@@ -1486,6 +1505,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const modal = document.getElementById('migrationContainer');
         const close = () => modal.classList.remove('open');
         document.getElementById('usernameModalClose')?.addEventListener('click', close);
+        document.getElementById('setUsernameLink')?.addEventListener('click', (e) => { e.preventDefault(); openUsernameDialog(); });
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
         // Enter in the box submits when the name has validated.
         document.getElementById('newUsernameTextbox')?.addEventListener('keydown', (e) => {
