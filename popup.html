@@ -293,7 +293,8 @@
     #lifetimeModal,
     #milestoneModal,
     #rewardModal,
-    #streakModal {
+    #streakModal,
+    #migrationContainer {
       display: none;
       position: fixed;
       inset: 0;
@@ -307,7 +308,8 @@
     #lifetimeModal.open,
     #milestoneModal.open,
     #rewardModal.open,
-    #streakModal.open { display: flex; }
+    #streakModal.open,
+    #migrationContainer.open { display: flex; }
     .plan-modal-card {
       background: #fff;
       border-radius: 14px;
@@ -841,13 +843,22 @@
     </div>
 
     <!-- Migration -->
-    <div id="migrationContainer" class="migration-box" style="display:none;">
-      <h3 id="lbl-migrating-title">Set up a username to use features</h3>
-      <!-- Legacy migration inputs kept in the DOM (clientLogin still writes to them) but never shown. -->
-      <input id="oldUsernameTextbox" type="text" disabled class="migration-input" style="display:none;" value=""/>
-      <small style="display:none;" id="lbl-old-username">Your old username</small>
-      <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="Choose a username" class="migration-input" autocomplete="off"/>
-      <button id="newUsernameButton" disabled class="migration-confirm-btn">Submit</button>
+    <!-- Username dialog. Opened by clientLogin() when the account has no username.
+         Same overlay/card classes as the premium + reward modals so it looks like
+         one product. Element ids are unchanged: validateUsername/updateUsername
+         in popup.js still drive #newUsernameTextbox / #newUsernameButton. -->
+    <div id="migrationContainer">
+      <div class="plan-modal-card" style="max-width:265px; text-align:center;">
+        <button class="plan-modal-close" id="usernameModalClose" title="Not now">✕</button>
+        <div style="font-size:1.7rem; margin-bottom:4px;">👋</div>
+        <h3 id="lbl-migrating-title" style="font-weight:800; font-size:0.92rem; color:#14532d; margin-bottom:4px;">Set up a username to use features</h3>
+        <div style="font-size:0.68rem; color:#6b7280; line-height:1.5; margin-bottom:10px;">Letters and numbers only, up to 16 characters. This is what the leaderboard shows.</div>
+        <!-- Legacy migration inputs kept in the DOM (clientLogin still writes to them) but never shown. -->
+        <input id="oldUsernameTextbox" type="text" disabled style="display:none;" value=""/>
+        <small style="display:none;" id="lbl-old-username">Your old username</small>
+        <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="Choose a username" class="migration-input" autocomplete="off" style="text-align:center; font-size:0.85rem; padding:7px 10px; margin-bottom:8px;"/>
+        <button id="newUsernameButton" disabled style="width:100%; background:#11773D; color:#fff; border:none; border-radius:7px; padding:8px; font-weight:700; font-size:0.8rem; cursor:pointer; transition:background 0.15s;">Submit</button>
+      </div>
     </div>
 
     <div class="divider"></div>

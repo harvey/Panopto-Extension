@@ -1139,7 +1139,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function showLoggedOut() {
         document.getElementById('loggedOutView').style.display  = 'block';
         document.getElementById('loggedInView').style.display   = 'none';
-        document.getElementById('migrationContainer').style.display = 'none';
+        document.getElementById('migrationContainer').classList.remove('open');
         const referralSection = document.getElementById('referralSection');
         if (referralSection) referralSection.style.display = 'none';
         const streakChip = document.getElementById('streakChip');
@@ -1176,7 +1176,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (oldUSR) {
             // Legacy migration path
-            document.getElementById('migrationContainer').style.display = 'block';
+            document.getElementById('migrationContainer').classList.add('open');
             document.getElementById('oldUsernameTextbox').value = oldUSR;
             attachMigrationListener();
         } else {
@@ -1186,13 +1186,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     .then(r => r.text())
                     .then(text => {
                         if (text === '{username not found}') {
-                            document.getElementById('migrationContainer').style.display = 'block';
+                            document.getElementById('migrationContainer').classList.add('open');
                             document.getElementById('oldUsernameTextbox').value = '(unknown)';
                             attachMigrationListener();
                         } else if (text.length <= 16) {
                             localStorage.setItem('username', text);
                             document.getElementById('email').textContent = text;
-                            document.getElementById('migrationContainer').style.display = 'none';
+                            document.getElementById('migrationContainer').classList.remove('open');
                             getRank();
                         }
                     })
@@ -1481,6 +1481,19 @@ document.addEventListener("DOMContentLoaded", function () {
         btn.textContent = t('confirmBtn');
         clientLogin();
     }
+
+    (function wireUsernameModal() {
+        const modal = document.getElementById('migrationContainer');
+        const close = () => modal.classList.remove('open');
+        document.getElementById('usernameModalClose')?.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        // Enter in the box submits when the name has validated.
+        document.getElementById('newUsernameTextbox')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('newUsernameButton').disabled) {
+                document.getElementById('newUsernameButton').click();
+            }
+        });
+    })();
 
     document.getElementById('newUsernameButton').addEventListener('click', () => {
         if (currentValid && !document.getElementById('newUsernameButton').disabled) {
