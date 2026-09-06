@@ -842,11 +842,12 @@
 
     <!-- Migration -->
     <div id="migrationContainer" class="migration-box" style="display:none;">
-      <h3 id="lbl-migrating-title">Usernames are migrating!</h3>
-      <input id="oldUsernameTextbox" type="text" disabled class="migration-input" style="background:#f9fafb; color:#6b7280;" value="user_abcdefg"/>
-      <small style="color:#9ca3af; font-size:0.65rem; display:block; margin-bottom:5px;" id="lbl-old-username">Your old username</small>
-      <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="New username" class="migration-input"/>
-      <button id="newUsernameButton" disabled class="migration-confirm-btn">Confirm</button>
+      <h3 id="lbl-migrating-title">Set up a username to use features</h3>
+      <!-- Legacy migration inputs kept in the DOM (clientLogin still writes to them) but never shown. -->
+      <input id="oldUsernameTextbox" type="text" disabled class="migration-input" style="display:none;" value=""/>
+      <small style="display:none;" id="lbl-old-username">Your old username</small>
+      <input id="newUsernameTextbox" type="text" maxlength="16" placeholder="Choose a username" class="migration-input" autocomplete="off"/>
+      <button id="newUsernameButton" disabled class="migration-confirm-btn">Submit</button>
     </div>
 
     <div class="divider"></div>

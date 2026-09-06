@@ -44,9 +44,9 @@ const TRANSLATIONS = {
         coffee: "Buy Premium",
         rate: "Rate this extension",
         totalTime: "Time saved by all users:",
-        migratingTitle: "Usernames are migrating!",
+        migratingTitle: "Set up a username to use features",
         oldUsername: "Your old username",
-        confirmBtn: "Confirm",
+        confirmBtn: "Submit",
         pleaseWait: "Please wait...",
         premiumSection: "Premium Features",
         autoSkipSilence: "Auto-Skip Silence",
@@ -152,9 +152,9 @@ const TRANSLATIONS = {
         coffee: "프리미엄 구매",
         rate: "확장 프로그램 평가",
         totalTime: "전체 사용자 절약 시간:",
-        migratingTitle: "사용자명 이전 중!",
+        migratingTitle: "기능을 사용하려면 사용자명을 설정하세요",
         oldUsername: "이전 사용자명",
-        confirmBtn: "확인",
+        confirmBtn: "제출",
         pleaseWait: "잠시 기다려 주세요...",
         premiumSection: "프리미엄 기능",
         autoSkipSilence: "침묵 자동 건너뛰기",
@@ -247,9 +247,9 @@ const TRANSLATIONS = {
         coffee: "获取高级版",
         rate: "评价此扩展",
         totalTime: "所有用户节省的时间：",
-        migratingTitle: "用户名正在迁移！",
+        migratingTitle: "设置用户名以使用功能",
         oldUsername: "旧用户名",
-        confirmBtn: "确认",
+        confirmBtn: "提交",
         pleaseWait: "请稍候...",
         premiumSection: "高级功能",
         autoSkipSilence: "自动跳过静音",
@@ -342,9 +342,9 @@ const TRANSLATIONS = {
         coffee: "קנה/י פרימיום",
         rate: "דרג/י את ההרחבה",
         totalTime: ":זמן שנחסך על ידי כל המשתמשים",
-        migratingTitle: "!שמות המשתמשים עוברים העברה",
+        migratingTitle: "הגדר/י שם משתמש כדי להשתמש בתכונות",
         oldUsername: "שם המשתמש הישן שלך",
-        confirmBtn: "אישור",
+        confirmBtn: "שלח/י",
         pleaseWait: "...אנא המתן",
         premiumSection: "פרימיום",
         autoSkipSilence: "דילוג אוטומטי על שקט",
@@ -437,9 +437,9 @@ const TRANSLATIONS = {
         coffee: "Придбати преміум",
         rate: "Оцінити розширення",
         totalTime: "Час, заощаджений усіма:",
-        migratingTitle: "Імена користувачів мігрують!",
+        migratingTitle: "Створіть ім'я користувача, щоб користуватися функціями",
         oldUsername: "Старе ім'я користувача",
-        confirmBtn: "Підтвердити",
+        confirmBtn: "Надіслати",
         pleaseWait: "Будь ласка, зачекайте...",
         premiumSection: "Преміум функції",
         autoSkipSilence: "Авто-пропуск тиші",
@@ -1049,14 +1049,24 @@ document.addEventListener("DOMContentLoaded", function () {
     // Chrome-native sign-in. Resolves to a token string, or null on any failure.
     function getAuthTokenNative(interactive) {
         return new Promise(resolve => {
+            // Brave (which reports itself as Chrome) and some managed Chrome profiles
+            // have an identity.getAuthToken that never calls back. With no timeout
+            // the promise hung forever, acquireGoogleToken never reached the web-flow
+            // fallback, and the Sign in button did nothing at all. Interactive gets
+            // longer because the user may genuinely be picking an account.
+            let settled = false;
+            const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+            const timer = setTimeout(() => done(null), interactive ? 45000 : 8000);
             try {
                 chrome.identity.getAuthToken({ interactive }, token => {
+                    clearTimeout(timer);
                     // Touch lastError so it is cleared even when we ignore the result.
-                    if (chrome.runtime.lastError || !token) { resolve(null); return; }
-                    resolve(token);
+                    if (chrome.runtime.lastError || !token) { done(null); return; }
+                    done(token);
                 });
             } catch (e) {
-                resolve(null);
+                clearTimeout(timer);
+                done(null);
             }
         });
     }
@@ -1196,6 +1206,11 @@ document.addEventListener("DOMContentLoaded", function () {
         initReferral();
         initRewards();
         initStreak();
+        // Republish auth for the in-page chat/dub straight away. It was only ever
+        // written at the end of the premium check, so after a silent refresh the
+        // content script saw no auth until that round-trip finished — and if it
+        // failed, never.
+        writeAiAuth();
     }
 
     function attachMigrationListener() {
@@ -1244,8 +1259,30 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function signIn() {
-        loginWithChromeIdentity(true);
+    // Sign-in used to be fire-and-forget: on any failure (Google window closed,
+    // pop-up blocked, tokeninfo unreachable on a campus network, Brave's identity
+    // API never calling back) the button simply did nothing, and the user assumed
+    // login was broken. Now it shows progress and says what to do when it fails.
+    let _signingIn = false;
+    async function signIn() {
+        if (_signingIn) return;
+        _signingIn = true;
+        const btnLbl = document.getElementById('lbl-signin-btn');
+        const prompt = document.getElementById('lbl-signin-prompt');
+        const origBtn = btnLbl ? btnLbl.textContent : '';
+        const origPrompt = prompt ? prompt.textContent : '';
+        if (btnLbl) btnLbl.textContent = 'Signing in…';
+        try {
+            const ok = await loginWithChromeIdentity(true);
+            if (!ok && prompt) {
+                prompt.textContent = 'Sign-in didn’t complete. If a Google window opened and closed, allow pop-ups for this extension and try again.';
+                prompt.style.color = '#b45309';
+                setTimeout(() => { prompt.textContent = origPrompt; prompt.style.color = ''; }, 8000);
+            }
+        } finally {
+            if (btnLbl) btnLbl.textContent = origBtn;
+            _signingIn = false;
+        }
     }
 
     document.getElementById('signInWithGoogle').addEventListener('click', signIn);
