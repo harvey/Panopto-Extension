@@ -1053,26 +1053,37 @@ function startAiFromCard(kind, el, remove) {
 const WRAPUP_FREE_NOTES_HINT = '3 notes a day';
 
 let _wrapupInFlight = false;
-async function maybeShowWrapupNudge() {
-    if (_wrapupInFlight || !isPlayerFrame() || document.querySelector('.__pcs-nudge')) return;
+// `force` is the test hook (Ctrl+Shift+F on a lecture): skips the once-per-lecture,
+// daily and opt-out gates so the card can be brought up on demand. The quota check
+// still runs, so what appears is what a real user in that state would see.
+async function maybeShowWrapupNudge(force) {
+    if (_wrapupInFlight || !isPlayerFrame()) return;
+    if (document.querySelector('.__pcs-nudge')) {
+        if (!force) return;
+        document.querySelectorAll('.__pcs-nudge').forEach((n) => n.remove());
+    }
     _wrapupInFlight = true;
     try {
         const id = lectureId();
         if (!id) return;
         const { pcsNudge, pcsWrapup } = await chrome.storage.local.get(['pcsNudge', 'pcsWrapup']);
-        if (pcsNudge && pcsNudge.off) return;                // the global × silence
         const st = pcsWrapup || {};
-        if (st.off) return;                                   // "don't show this message again"
         const today = new Date().toISOString().slice(0, 10);
         const countToday = st.day === today ? (st.count || 0) : 0;
-        if (countToday >= WRAPUP_MAX_PER_DAY) return;
-        if (Array.isArray(st.shown) && st.shown.includes(id)) return;   // once per lecture
+        if (!force) {
+            if (pcsNudge && pcsNudge.off) return;                // the global × silence
+            if (st.off) return;                                   // "don't show this message again"
+            if (countToday >= WRAPUP_MAX_PER_DAY) return;
+            if (Array.isArray(st.shown) && st.shown.includes(id)) return;   // once per lecture
+        }
 
         const kind = await wrapupOfferKind();
         if (!kind || document.querySelector('.__pcs-nudge')) return;
 
         const shown = (Array.isArray(st.shown) ? st.shown : []).concat(id).slice(-100);
-        const next  = { ...st, day: today, count: countToday + 1, shown, alt: (st.alt || 0) + 1 };
+        const next  = force
+            ? { ...st, alt: (st.alt || 0) + 1 }                                   // test: only rotate the copy
+            : { ...st, day: today, count: countToday + 1, shown, alt: (st.alt || 0) + 1 };
         await chrome.storage.local.set({ pcsWrapup: next });
 
         const copy = WRAPUP_COPY[kind];
@@ -1219,6 +1230,18 @@ function initHoldToSpeed(video) {
     // On touch a long press opens the context menu; not while we are holding.
     document.addEventListener('contextmenu', (e) => { if (holding || timer) { e.preventDefault(); } }, true);
 }
+
+// Test hook: Ctrl+Shift+F on a lecture brings the wrap-up card up immediately. It
+// alternates flashcards / notes on each press for non-free tiers, and shows the
+// sign-in state if you are signed out. Harmless for anyone who finds it by accident.
+document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey && e.shiftKey && e.code === 'KeyF')) return;
+    if (!isPlayerFrame()) return;
+    const t = e.target;
+    if (t && t.closest && t.closest('input, textarea, [contenteditable="true"]')) return;
+    e.preventDefault();
+    maybeShowWrapupNudge(true);
+}, true);
 
 startVideoWatch();
 
