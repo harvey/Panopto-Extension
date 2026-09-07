@@ -32,15 +32,16 @@ let _notesGenerating = false;   // a notes generation is currently in flight
 (async function main() {
     const params = new URLSearchParams(location.search);
     const id     = params.get('id');
-    if (!id) return showError('Missing lecture ID in URL.');
+    if (!id) return showError('This notes window isn’t linked to a lecture. Open the lecture in Panopto, then click Generate Notes in the extension.', { showRetry: false });
 
     const ctxKey = 'notesContext_' + id;
     const stored = await new Promise(r => chrome.storage.local.get(ctxKey, r));
     const context = stored[ctxKey];
-    if (!context) return showError('Lecture context expired. Open the extension popup and try again.');
+    if (!context) return showError('This notes window is no longer linked to its lecture. Open the lecture in Panopto, then click Generate Notes in the extension.', { showRetry: false });
 
     _state = { context, sections: null, title: context.title || 'Lecture' };
     document.title = `${_state.title} — AI Notes`;
+    $('header-title').textContent = _state.title;   // render() upgrades it to the AI title on success
 
     if (context.viewerUrl) {
         const openBtn = $('openLectureBtn');
@@ -262,11 +263,16 @@ async function generate() {
         _state.model = [...modelsUsed].map(prettifyModel).filter(Boolean).join(' + ');
         render();
     } catch (e) {
-        const code = e?.code || 'unknown';
-        showError(ERROR_MESSAGES[code] || e.message || 'Something went wrong.', {
-            showRetry:   ['gemini_failed', 'unknown'].includes(code),
-            showPremium: code === 'not_premium',
-        });
+        const code = String(e?.code || 'unknown');
+        const status = parseInt((code.match(/^http_(\d+)$/) || [])[1] || '0', 10);
+        let msg;
+        if (ERROR_MESSAGES[code])        msg = ERROR_MESSAGES[code];
+        else if (status === 401)         msg = 'Your sign-in expired. Sign in again in the extension popup, then try again.';
+        else if (status >= 500)          msg = 'The notes service isn’t responding right now — try again in a minute.';
+        else                             msg = 'Something went wrong generating these notes. Please try again.';
+        // Never show e.message: the worker's raw error codes are not for users.
+        const terminal = status === 401 || ['not_premium', 'rate_limited', 'budget_exceeded', 'free_ai_exhausted', 'bad_input', 'caption_too_long', 'Unauthorized', 'gemini_unconfigured'].includes(code);
+        showError(msg, { showRetry: !terminal, showPremium: code === 'not_premium' });
     } finally {
         _notesGenerating = false;
     }
@@ -380,9 +386,9 @@ function render() {
     setupAiTools();
 
     $('header-title').textContent = _state.title;
-    const poweredBy = _state.model ? `Powered by ${_state.model}` : 'Powered by Gemini';
-    $('header-sub').textContent   = `${poweredBy} · ${_state.sections.length} sections`
+    $('header-sub').textContent   = `${_state.sections.length} sections · generated from the lecture transcript`
         + (_state.partialNotice ? ` · ⚠ ${_state.partialNotice}` : '');
+    $('header-sub').title = _state.model ? `Generated with ${_state.model}` : '';   // still inspectable, not headline
 
     const list    = $('list');
     const tocList = $('tocList');

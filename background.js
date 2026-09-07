@@ -470,8 +470,13 @@ async function refreshAuthToken(reason) {
         if (String(info.email).toLowerCase() !== String(pcsAuth.email).toLowerCase()) return;
 
         const expiresIn = parseInt(info.expires_in, 10) || 3600;
+        // Also refresh the premium flag - closes the "bought in Stripe, popup not
+        // reopened" gap for the on-page surfaces within an hour. Start from what we
+        // have; only overwrite on a clean answer, never downgrade on a failed call.
+        let premium = !!pcsAuth.premium;
+        try { const r = await fetch(`${BACKEND}/check?email=${encodeURIComponent(pcsAuth.email)}`); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
         await chrome.storage.local.set({
-            pcsAuth: { ...pcsAuth, token, tokenExpiry: Date.now() + expiresIn * 1000, ts: Date.now(), refreshedBy: reason }
+            pcsAuth: { ...pcsAuth, token, premium, tokenExpiry: Date.now() + expiresIn * 1000, ts: Date.now(), refreshedBy: reason }
         });
     } catch (e) {
         // Never let a refresh failure surface anywhere; the popup still has its own path.
@@ -540,7 +545,12 @@ async function bgSignIn() {
     } catch (e) {}
     if (!info || !info.email || info.error_description) return null;
     const expiresIn = parseInt(info.expires_in, 10) || 3600;
-    const auth = { email: info.email, token, tokenExpiry: Date.now() + expiresIn * 1000, premium: false, ts: Date.now(), refreshedBy: "card-signin" };
+    // The lecture page's chat panel and nudge suppression read pcsAuth.premium, so a
+    // paying user signing in from a card must not be stamped free until the popup
+    // is next opened. /check is unauthenticated and is what the popup uses.
+    let premium = false;
+    try { const r = await fetch(`${BACKEND}/check?email=${encodeURIComponent(info.email)}`); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+    const auth = { email: info.email, token, tokenExpiry: Date.now() + expiresIn * 1000, premium, ts: Date.now(), refreshedBy: "card-signin" };
     await chrome.storage.local.set({ pcsAuth: auth });
     try {   // same event the popup logs on sign-in
         fetch(`${BACKEND}/logLogin`, { method: "POST", headers: { "Content-Type": "application/json" },

@@ -11,7 +11,8 @@
         s.textContent =
             'html{background:#fff!important;filter:invert(1) hue-rotate(180deg)!important}' +
             'img,video,canvas,iframe,embed,object,picture,[style*="background-image"],' +
-            '#__pcs-chat__,#__pcs-chapters__,#__pcs-chap-tip__,.__pcs-chap-tick__' +
+            '#__pcs-chat__,#__pcs-chapters__,#__pcs-chap-tip__,.__pcs-chap-tick__,#__pcs-dub__,#__pcs-dub-bar__,' +
+            '.__pcs-nudge,.__pcs-coach,.__pcs-hold-hud,#__panopto-ext-shot-overlay__' +
             '{filter:invert(1) hue-rotate(180deg)!important}';
         (document.head || document.documentElement).appendChild(s);
     } catch (e) {}

@@ -26,7 +26,8 @@ const SHOW_TRIAL_BANNER = true;
 const TRANSLATIONS = {
     en: {
         speedSection: "Playback Speed",
-        editHint: "✏️ Click the speed above to type any custom value",
+        speedHints: "Click the speed to type any value · hold the video to fast-forward",
+        speedWarning: "Time saved isn’t counted above 4×",
         startup: "Apply speed on startup",
         timeSavedLabel: "Time saved:",
         warning: "Changes only apply on Panopto pages.",
@@ -41,7 +42,7 @@ const TRANSLATIONS = {
         showChapters: "Show lecture chapters",
         darkTheme: "🌙 Dark theme",
         viewLeaderboard: "View Leaderboard",
-        coffee: "Buy Premium",
+        coffee: "Get Premium",
         rate: "Rate this extension",
         totalTime: "Time saved by all users:",
         migratingTitle: "Set up a username to use features",
@@ -55,7 +56,6 @@ const TRANSLATIONS = {
         pictureInPicture: "Picture in Picture",
         pipPlaceholder: "Open a Panopto page to use",
         getPremium: "🔒 Get Premium",
-        autoRefresh: "Auto-refresh login",
         premiumModalTitle: "✨ Get Premium",
         plan2moLabel: "2 Months",
         plan2moSub: "every 2 months",
@@ -136,7 +136,8 @@ const TRANSLATIONS = {
     },
     ko: {
         speedSection: "재생 속도",
-        editHint: "✏️ 속도를 클릭하면 직접 입력할 수 있어요",
+        speedHints: "속도를 클릭해 직접 입력 · 영상을 길게 누르면 빨리 감기",
+        speedWarning: "4배속 이상에서는 절약 시간이 기록되지 않아요",
         startup: "시작 시 속도 적용",
         timeSavedLabel: "절약된 시간:",
         warning: "파노프토 페이지에서만 적용됩니다.",
@@ -149,7 +150,7 @@ const TRANSLATIONS = {
         rankGt20: ">20위",
         optIn: "리더보드 데이터 수집 동의",
         viewLeaderboard: "리더보드 보기",
-        coffee: "프리미엄 구매",
+        coffee: "프리미엄 이용하기",
         rate: "확장 프로그램 평가",
         totalTime: "전체 사용자 절약 시간:",
         migratingTitle: "기능을 사용하려면 사용자명을 설정하세요",
@@ -163,7 +164,6 @@ const TRANSLATIONS = {
         pictureInPicture: "화면 속 화면",
         pipPlaceholder: "파노프토 페이지를 열어주세요",
         getPremium: "🔒 프리미엄 구매",
-        autoRefresh: "자동 로그인 갱신",
         premiumModalTitle: "✨ 프리미엄 구매",
         plan2moLabel: "2개월",
         plan2moSub: "2개월마다",
@@ -231,7 +231,8 @@ const TRANSLATIONS = {
     },
     zh: {
         speedSection: "播放速度",
-        editHint: "✏️ 点击速度数字可输入任意值",
+        speedHints: "点击速度可输入任意值 · 长按视频快进",
+        speedWarning: "超过 4× 时不计算节省的时间",
         startup: "启动时应用速度",
         timeSavedLabel: "节省的时间：",
         warning: "仅在 Panopto 页面上生效。",
@@ -258,7 +259,6 @@ const TRANSLATIONS = {
         pictureInPicture: "画中画",
         pipPlaceholder: "请打开 Panopto 页面",
         getPremium: "🔒 获取高级版",
-        autoRefresh: "自动刷新登录",
         premiumModalTitle: "✨ 获取高级版",
         plan2moLabel: "2 个月",
         plan2moSub: "每 2 个月",
@@ -326,7 +326,8 @@ const TRANSLATIONS = {
     },
     he: {
         speedSection: "מהירות הפעלה",
-        editHint: "✏️ לחצ/י על המספר כדי להקליד ערך מותאם",
+        speedHints: "לחצ/י על המהירות להקלדת ערך · לחיצה ארוכה על הווידאו להרצה קדימה",
+        speedWarning: "זמן שנחסך לא נספר מעל 4×",
         startup: "החל מהירות בהפעלה",
         timeSavedLabel: ":זמן שנחסך",
         warning: ".השינויים חלים רק בדפי Panopto",
@@ -339,7 +340,7 @@ const TRANSLATIONS = {
         rankGt20: "(>20)",
         optIn: "הסכמה לאיסוף נתוני לוח התוצאות",
         viewLeaderboard: "הצג לוח תוצאות",
-        coffee: "קנה/י פרימיום",
+        coffee: "קבלת פרימיום",
         rate: "דרג/י את ההרחבה",
         totalTime: ":זמן שנחסך על ידי כל המשתמשים",
         migratingTitle: "הגדר/י שם משתמש כדי להשתמש בתכונות",
@@ -353,7 +354,6 @@ const TRANSLATIONS = {
         pictureInPicture: "תמונה בתוך תמונה",
         pipPlaceholder: "פתח/י דף Panopto כדי להשתמש",
         getPremium: "🔒 קנה/י פרימיום",
-        autoRefresh: "רענון התחברות אוטומטי",
         premiumModalTitle: "✨ קנה/י פרימיום",
         plan2moLabel: "חודשיים",
         plan2moSub: "כל חודשיים",
@@ -421,7 +421,8 @@ const TRANSLATIONS = {
     },
     uk: {
         speedSection: "Швидкість відтворення",
-        editHint: "✏️ Натисніть на число, щоб ввести будь-яке значення",
+        speedHints: "Натисніть на швидкість, щоб ввести значення · утримуйте відео для перемотування",
+        speedWarning: "Заощаджений час не рахується понад 4×",
         startup: "Застосовувати швидкість при запуску",
         timeSavedLabel: "Заощаджений час:",
         warning: "Зміни діють лише на сторінках Panopto.",
@@ -434,7 +435,7 @@ const TRANSLATIONS = {
         rankGt20: "(>20)",
         optIn: "Долучитись до збору даних",
         viewLeaderboard: "Переглянути таблицю лідерів",
-        coffee: "Придбати преміум",
+        coffee: "Отримати Premium",
         rate: "Оцінити розширення",
         totalTime: "Час, заощаджений усіма:",
         migratingTitle: "Створіть ім'я користувача, щоб користуватися функціями",
@@ -448,7 +449,6 @@ const TRANSLATIONS = {
         pictureInPicture: "Картинка в картинці",
         pipPlaceholder: "Відкрийте сторінку Panopto для використання",
         getPremium: "🔒 Отримати преміум",
-        autoRefresh: "Автоматичне оновлення входу",
         premiumModalTitle: "✨ Отримати преміум",
         plan2moLabel: "2 місяці",
         plan2moSub: "кожні 2 місяці",
@@ -531,6 +531,7 @@ function applyLanguage() {
     document.body.dir = (lang === 'he') ? 'rtl' : 'ltr';
 
     document.getElementById('lbl-speed-section').textContent    = t('speedSection');
+    { const sw = document.getElementById('speedWarning'); if (sw && sw.style.color !== 'rgb(220, 38, 38)') sw.textContent = t('speedHints'); }
     document.getElementById('lbl-startup').textContent          = t('startup');
     document.getElementById('lbl-time-saved-label').textContent = t('timeSavedLabel');
     document.getElementById('lbl-leaderboard-section').textContent = t('leaderboardSection');
@@ -555,7 +556,6 @@ function applyLanguage() {
     const pipPlaceholderEl = document.getElementById('pipPlaceholder');
     if (pipPlaceholderEl) pipPlaceholderEl.textContent = t('pipPlaceholder');
     document.getElementById('getPremiumLink').textContent       = t('getPremium');
-    document.getElementById('lbl-auto-refresh').textContent     = t('autoRefresh');
     function setT(id, key, useInner) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -792,13 +792,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!localStorage.getItem('saved-time')) {
         localStorage.setItem('saved-time', '0');
     }
-    if (!localStorage.getItem('autoRefreshLogin')) {
-        // First run only: default Auto-login ON where silent refresh is seamless
-        // (Chrome's native getAuthToken) and OFF where sign-in uses the interactive
-        // web flow (Edge, Brave, Opera…), which can't refresh silently. Users who
-        // already have a saved preference keep it; this never overrides a choice.
-        localStorage.setItem('autoRefreshLogin', nativeAuthLikelyWorks() ? 'true' : 'false');
-    }
 
     const previousSavedTime = localStorage.getItem('saved-time');
     const uniqueID = localStorage.getItem('uniqueID');
@@ -813,11 +806,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (localStorage.getItem('panoptoExtToggle') === 'true') checkBox.checked = true;
     if (localStorage.getItem('userDataOptIn') === 'true') document.getElementById('userDataOptIn').checked = true;
 
-    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
-    autoRefreshToggle.checked = localStorage.getItem('autoRefreshLogin') !== 'false';
-    autoRefreshToggle.addEventListener('change', () => {
-        localStorage.setItem('autoRefreshLogin', autoRefreshToggle.checked ? 'true' : 'false');
-    });
 
     checkBox.addEventListener('click', () => {
         const val = checkBox.checked ? 'true' : 'false';
@@ -848,9 +836,15 @@ document.addEventListener("DOMContentLoaded", function () {
         updateOptInNudge();
     });
 
+    // One line under the slider. Normally a grey hint (typed speeds, hold-to-fast-
+    // forward - the two things nobody would otherwise discover); above 4x it becomes
+    // the red "not counted" warning, because that is where track() stops counting.
     const speedWarning = document.getElementById('speedWarning');
     function updateSpeedWarning(speed) {
-        speedWarning.style.display = speed > 3 ? 'block' : 'none';
+        const warn = speed > 4;
+        speedWarning.textContent   = warn ? t('speedWarning') : t('speedHints');
+        speedWarning.style.color   = warn ? '#dc2626' : '#9ca3af';
+        speedWarning.style.display = 'block';
     }
 
     // Restore stored speed
@@ -1185,6 +1179,13 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.removeItem('premiumCache');
         localStorage.removeItem('notesQuotaCache');
         _isPremium = false; _premiumType = null; _premiumExpiry = null; _premiumPlan = null;
+        // ...and the quota/budget state, or the AI-usage bar and "trial used" of the
+        // account that just left stay drawn under the signed-out header.
+        _notesDailyUsed = 0; _notesLifetimeUsed = 0; _notesUnlimited = false;
+        _aiTier = null; _aiBudget = null; _trialUsed = false;
+        _streak = null;
+        const sp = document.getElementById('lbl-signin-prompt');
+        if (sp) { sp.textContent = t('signinPrompt'); sp.style.color = ''; }
         showLoggedOut();
         // Redraw locks/badges for the signed-out state (applyPremiumUI is hoisted).
         try { applyPremiumUI(); } catch {}
@@ -1640,10 +1641,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 email, checkedAt: Date.now(),
                 active: data.active, type: data.type, expiry: data.expiry, plan: data.plan
             }));
-            return data;
+            return { ...data, ok: true };
         } catch {
-            if (cached) return { active: cached.active, type: cached.type, expiry: cached.expiry, plan: cached.plan };
-            return { active: false, type: null, expiry: null, plan: null };
+            // ok:false lets the "Check Premium" link tell "no premium on this email"
+            // apart from "could not reach the server".
+            if (cached) return { active: cached.active, type: cached.type, expiry: cached.expiry, plan: cached.plan, ok: false };
+            return { active: false, type: null, expiry: null, plan: null, ok: false };
         }
     }
 
@@ -1947,14 +1950,20 @@ document.addEventListener("DOMContentLoaded", function () {
         if (e.target === document.getElementById('lifetimeModal')) closeLifetimePopup();
     });
 
+    // Heading off to Stripe: drop both caches so the very next popup open after
+    // checkout refetches everything instead of showing an hour-old "not premium".
+    const forgetPremiumCaches = () => { localStorage.removeItem('premiumCache'); localStorage.removeItem('notesQuotaCache'); };
     document.getElementById('monthlyModalBtn').addEventListener('click', () => {
+        forgetPremiumCaches();
         window.open(twoMonthUrl());
         closePremiumModal();
     });
     document.getElementById('trialModalBtn')?.addEventListener('click', () => {
+        forgetPremiumCaches();
         window.open(PREMIUM_2MO_URL);   // the link that carries the 7-day no-card trial
     });
     document.getElementById('lifetimeModalBtn').addEventListener('click', () => {
+        forgetPremiumCaches();
         window.open(PREMIUM_YEAR_URL);
         closePremiumModal();
     });
@@ -2015,9 +2024,14 @@ document.addEventListener("DOMContentLoaded", function () {
         btn.style.pointerEvents = 'none';
         localStorage.removeItem('premiumCache');
         await initPremium();
-        // If still not premium, restore button (if premium, the row is hidden)
-        btn.textContent = t('checkPremium');
         btn.style.pointerEvents = '';
+        if (_isPremium) { btn.textContent = t('checkPremium'); return; }   // row hides itself
+        // Still not premium: say which of the two things happened. The usual real
+        // cause is paying with a different email than the one signed in here.
+        const reached = !!localStorage.getItem('premiumCache');
+        btn.textContent = reached ? `No Premium found for ${email}` : 'Couldn’t reach the server — try again';
+        btn.style.color = reached ? '#dc2626' : '#b45309';
+        setTimeout(() => { btn.textContent = t('checkPremium'); btn.style.color = ''; }, 5000);
     });
 
     document.getElementById('autoSkipCheckbox').addEventListener('change', function () {
@@ -2055,6 +2069,16 @@ document.addEventListener("DOMContentLoaded", function () {
             const res  = await fetch(`${BACKEND}/notesQuota?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
             if (!res.ok) return;
             const data = await res.json();
+            // /notesQuota says whether the account is premium on every call, and it is
+            // refetched every minute; checkPremium's answer is cached for an hour. When
+            // the two disagree - they just bought premium, or it just expired - trust
+            // the fresh one and re-run the premium check now, so the popup does not sit
+            // in a half-premium mix (trial budget bar under a free-tier header).
+            if (typeof data.premium === 'boolean' && data.premium !== _isPremium) {
+                localStorage.removeItem('premiumCache');
+                const s = await checkPremium(email);
+                _isPremium = s.active; _premiumType = s.type; _premiumPlan = s.plan || null; _premiumExpiry = s.expiry;
+            }
             _notesDailyUsed    = data.dailyUsed    || 0;
             _notesLifetimeUsed = data.lifetimeUsed || 0;
             _notesUnlimited    = !!data.unlimited;
@@ -2896,7 +2920,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // a single click on Sign in restores everything.
     async function refreshExpiredSession() {
         const refreshed = await loginWithChromeIdentity(false);
-        if (!refreshed) showLoggedOut();
+        if (!refreshed) {
+            showLoggedOut();
+            // The identity is kept, so this is not a stranger: say what actually
+            // happened rather than pitching the free tier at someone who may be paying.
+            const sp = document.getElementById('lbl-signin-prompt');
+            if (sp) sp.textContent = 'Your Google sign-in expired — sign in again to keep using the AI tools.';
+        }
     }
 
     let savedEmail = localStorage.getItem('email');
