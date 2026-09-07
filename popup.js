@@ -1332,6 +1332,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({
                     token: localStorage.getItem('authToken'),
                     email: localStorage.getItem('email'),
+                    source: 'popup',
                 })
             });
         } catch {}

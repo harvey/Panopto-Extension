@@ -554,7 +554,7 @@ async function bgSignIn() {
     await chrome.storage.local.set({ pcsAuth: auth });
     try {   // same event the popup logs on sign-in
         fetch(`${BACKEND}/logLogin`, { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, email: info.email }) }).catch(() => {});
+            body: JSON.stringify({ token, email: info.email, source: "card" }) }).catch(() => {});
     } catch (e) {}
     return auth;
 }
