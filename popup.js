@@ -1182,7 +1182,12 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.removeItem('email');
         localStorage.removeItem('couponCache');
         try { chrome.storage.local.remove('pcsAuth'); } catch {}   // stop in-page chat for the signed-out user
+        localStorage.removeItem('premiumCache');
+        localStorage.removeItem('notesQuotaCache');
+        _isPremium = false; _premiumType = null; _premiumExpiry = null; _premiumPlan = null;
         showLoggedOut();
+        // Redraw locks/badges for the signed-out state (applyPremiumUI is hoisted).
+        try { applyPremiumUI(); } catch {}
     }
 
     function clientLogin() {
@@ -1231,6 +1236,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // content script saw no auth until that round-trip finished — and if it
         // failed, never.
         writeAiAuth();
+        // And re-run the premium check now. It used to run only at popup open, so
+        // someone who signed in inside the popup kept looking at the signed-out lock
+        // states ("Get Premium", "10/10 free presses used") until they closed and
+        // reopened it. initPremium() ends in applyPremiumUI(), which redraws all of it.
+        initPremium();
     }
 
     function attachMigrationListener() {
@@ -2097,7 +2107,16 @@ document.addEventListener("DOMContentLoaded", function () {
         return _premiumType === 'lifetime' ? t('planLifetimeLabel') : t('planMonthlyPlanLabel');
     }
 
-    async function initPremium() {
+    // Runs at popup open AND after an in-session sign-in / sign-out. Concurrent calls
+    // share one in-flight promise so the two never race or double-fetch.
+    let _premiumInFlight = null;
+    function initPremium() {
+        if (!_premiumInFlight) {
+            _premiumInFlight = _initPremiumImpl().finally(() => { _premiumInFlight = null; });
+        }
+        return _premiumInFlight;
+    }
+    async function _initPremiumImpl() {
         const email = localStorage.getItem('email');
         if (email) {
             // The banner now advertises the free trial, not the coupon, so it stays up
