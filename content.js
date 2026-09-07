@@ -2881,6 +2881,26 @@ asd.insertBefore(overallDiv, asd.firstChild);
 // flash on load; this applies it live when toggled and mirrors the setting into the
 // page's localStorage so darktheme.js has it on the next refresh.
 // ─────────────────────────────────────────────────────────────────────────────
+// One invert on <html> keeps every Panopto surface readable, including ones we have
+// never seen. The rules after it give the KNOWN surfaces pre-filter colours chosen so
+// that after the invert they land on a designed palette (#131313 page, #1b1b1b panels,
+// #232323 inputs, Panopto's own #30733f green kept green) instead of pure #000 / #fff.
+// Same string as darktheme.js, which paints it at document_start; keep them identical.
+const PCS_DARK_CSS =
+    'html{background:#ececec!important;filter:invert(1) hue-rotate(180deg)!important}' +
+    'img,video,canvas,iframe,embed,object,picture,[style*="background-image"],#__pcs-chat__,#__pcs-chapters__,#__pcs-chap-tip__,.__pcs-chap-tick__,#__pcs-dub__,#__pcs-dub-bar__,.__pcs-nudge,.__pcs-coach,.__pcs-hold-hud,#__panopto-ext-shot-overlay__{filter:invert(1) hue-rotate(180deg)!important}' +
+    'body,.viewer,#viewer,#viewerContent,#rightPane,#eventTabPanes,.event-pane,.modal-wrapper,.event-tab-spinner,#leftPane .index-event.unseekable:hover{background-color:#ececec!important}' +
+    '#viewerHeader,#viewerHeader #revertButton,#eventTabs,#playControls,#transportControls,.thumbnail-strip,#rightPane .secondaryPlayer,.slide-deck,.event-input-options{background-color:#e4e4e4!important}' +
+    'input,select,textarea,#volumeFlyout,#secondaryExpander,#secondaryLayoutExpander,.edit-event-menu,.speech-bubble,#importAudioDescriptionsPopup,#slideStackExpandedView{background-color:#dcdcdc!important;color:#292929!important}' +
+    '#editDeliveryTitle input:not(:focus),.event-name input:not(:focus){background-color:transparent!important}' +
+    '.letterbox,#copyrightNoticeContainer{background-color:#fff!important}' +
+    '.thumbnail-strip{box-shadow:none!important}' +
+    '.edit-event-menu,#importAudioDescriptionsPopup,#absoluteControls .fullscreen-controls #transportControls{box-shadow:rgba(255,255,255,.4) 0 1px 6px 0!important}' +
+    '.branded-button,.accent-background,.safety-background,#elapsedBar,#volumeLevel,#searchHighlight,#hoverTick,.spinner-background{background-color:#6db07c!important;border-color:#6db07c!important}' +
+    '.branded-button:hover{background-color:#439756!important;border-color:#439756!important}' +
+    '.branded-button:active{background-color:#197e30!important;border-color:#197e30!important}' +
+    '.branded-button,.branded-button *{color:#0d0d0d!important}';
+
 (function initPageDarkTheme() {
     // This script now runs in sub-frames too (all_frames). The top document's invert
     // already covers a same-origin child, and its own `iframe{invert}` rule un-inverts
@@ -2888,6 +2908,10 @@ asd.insertBefore(overallDiv, asd.firstChild);
     // back. So only paint where nothing above us is already doing it: the top frame,
     // or an embedded viewer whose parent is a different origin (Canvas/Moodle/etc).
     function ownsPageTheme() {
+        // Panopto's embed player (Embed.aspx - what Canvas/Moodle/Blackboard show) is
+        // already dark: black translucent panels, white text. Inverting it produces a
+        // light theme, which is the opposite of what the toggle promises.
+        if (/\/Pages\/Embed\.aspx/i.test(location.pathname)) return false;
         if (window.top === window.self) return true;
         try { void window.parent.location.hostname; return false; }  // same-origin ancestor handles it
         catch (e) { return true; }                                   // cross-origin parent: we are the embed
@@ -2900,12 +2924,7 @@ asd.insertBefore(overallDiv, asd.firstChild);
         if (on && !existing) {
             const s = document.createElement('style');
             s.id = '__pcs-dark-page__';
-            s.textContent =
-                'html{background:#fff!important;filter:invert(1) hue-rotate(180deg)!important}' +
-                'img,video,canvas,iframe,embed,object,picture,[style*="background-image"],' +
-                '#__pcs-chat__,#__pcs-chapters__,#__pcs-chap-tip__,.__pcs-chap-tick__,#__pcs-dub__,#__pcs-dub-bar__,' +
-                '.__pcs-nudge,.__pcs-coach,.__pcs-hold-hud,#__panopto-ext-shot-overlay__' +
-                '{filter:invert(1) hue-rotate(180deg)!important}';
+            s.textContent = PCS_DARK_CSS;
             (document.head || document.documentElement).appendChild(s);
         } else if (!on && existing) {
             existing.remove();
