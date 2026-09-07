@@ -297,21 +297,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ savedTime });
     }
 
-    // A premium nudge on the Panopto page was clicked. openPopup() only exists on
-    // Chrome 127+, and can still refuse when the click is too far from a user gesture,
-    // so every failure is swallowed — the nudge's own text tells them where the icon
-    // is, which is the fallback.
     // A nudge card on the Panopto page was clicked. Do the thing the popup's
     // "Generate Notes / Flashcards" buttons do, from here, for the sender tab.
     if (message.type === "open-notes") {
-        openNotesForTab(tabId, message.tab || "notes", false).then(sendResponse);
+        openNotesForTab(sender.tab && sender.tab.id, message.tab || "notes", false).then(sendResponse);
         return true;   // async
     }
     // Same, but the card's "Sign in with Google" button: run the sign-in from the
     // service worker first, then open. identity.* works from a worker; this is the
     // same native-then-web sequence the popup uses.
     if (message.type === "signin-and-open") {
-        openNotesForTab(tabId, message.tab || "notes", true).then(sendResponse);
+        openNotesForTab(sender.tab && sender.tab.id, message.tab || "notes", true).then(sendResponse);
         return true;   // async
     }
 

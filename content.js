@@ -1040,6 +1040,7 @@ function startAiFromCard(kind, el, remove) {
         if (r.reason === 'signin')      return showSignIn();
         if (r.reason === 'no_captions') return setText(null, 'This lecture has no captions, so there is nothing to summarise yet.', 'OK');
         if (r.reason === 'no_lecture')  return setText(null, 'Open a lecture page first.', 'OK');
+        console.warn('[PCS] card action failed:', r && r.reason, r && r.detail);
         setText(null, 'Something went wrong — try from the extension icon instead.', 'OK');
         el.__pcsNext = () => remove();
     };
