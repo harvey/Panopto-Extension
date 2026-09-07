@@ -880,11 +880,6 @@ function nudgeClicked() {
         const st = (r && r.pcsNudge) || {};
         chrome.storage.local.set({ pcsNudge: Object.assign({}, st, { ignored: 0 }) });
     });
-    // chrome.action.openPopup() only exists on newer Chrome and can refuse; the
-    // service worker swallows that and the CTA copy still tells them where to click.
-    try {
-        chrome.runtime.sendMessage({ type: 'open-popup' }, () => { void chrome.runtime.lastError; });
-    } catch (e) {}
 }
 
 // Permanently silences nudges. The × is the honest alternative to people uninstalling
@@ -911,7 +906,7 @@ function renderNudgeCard(opts) {
     // textContent, not innerHTML — some of this is page-derived.
     el.querySelector('.__pcs-nudge-title').textContent = opts.title;
     el.querySelector('.__pcs-nudge-body').textContent  = opts.body;
-    el.querySelector('.__pcs-nudge-cta').textContent   = opts.cta || 'Click the extension icon in your toolbar ↗';
+    el.querySelector('.__pcs-nudge-cta').textContent   = opts.cta || 'Open in the extension ↗';
     if (opts.extraLabel) el.querySelector('.__pcs-nudge-optout').textContent = opts.extraLabel;
 
     let timer = null;
@@ -927,7 +922,18 @@ function renderNudgeCard(opts) {
     });
     const opt = el.querySelector('.__pcs-nudge-optout');
     if (opt) opt.addEventListener('click', (e) => { e.stopPropagation(); if (opts.onExtra) opts.onExtra(); remove(); });
-    el.addEventListener('click', () => { if (opts.onClick) opts.onClick(); remove(); });
+    // Nothing that happens on the card may reach Panopto's player. Its container
+    // toggles play/pause on click and seeks on drag, so without this every click
+    // on the card — including the × — also paused the lecture underneath.
+    for (const ev of ['pointerdown', 'mousedown', 'mouseup', 'click', 'dblclick', 'touchstart', 'keydown']) {
+        el.addEventListener(ev, (e) => e.stopPropagation());
+    }
+    // The whole card is the action, except its buttons. opts.onClick may return
+    // false to keep the card up (it wants to change its own copy instead).
+    el.addEventListener('click', () => {
+        const keep = opts.onClick ? opts.onClick(el, remove) === false : false;
+        if (!keep) remove();
+    });
 
     timer = setTimeout(remove, opts.timeoutMs || NUDGE_TIMEOUT_MS);
 
@@ -959,7 +965,9 @@ function showNudge(variant, vars) {
         const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null) ? String(vars[k]) : m);
         renderNudgeCard({
             title: fill(copy.title), body: fill(copy.body),
-            onX: nudgeSilence, onClick: nudgeClicked,
+            cta: 'Make the notes now →',
+            onX: nudgeSilence,
+            onClick: (el, remove) => { nudgeClicked(); return startAiFromCard('notes', el, remove); },
         });
         // Only now has it actually been shown, so only now does it cost a slot.
         recordNudgeShown(variant, st);
@@ -998,6 +1006,48 @@ async function wrapupOfferKind() {
     return ((q.lifetimeUsed || 0) >= (q.lifetimeLimit || 0)) ? null : 'notes';
 }
 
+// Runs the notes/flashcards action from a card via the service worker. On "not
+// signed in" the card turns into a sign-in prompt with a real button, rather than
+// telling the user to go and find the toolbar icon.
+function startAiFromCard(kind, el, remove) {
+    const tab   = kind === 'flashcards' ? 'cards' : 'notes';
+    const title = el.querySelector('.__pcs-nudge-title');
+    const body  = el.querySelector('.__pcs-nudge-body');
+    const cta   = el.querySelector('.__pcs-nudge-cta');
+    const setText = (t, b2, c2) => { if (t != null) title.textContent = t; if (b2 != null) body.textContent = b2; if (c2 != null) cta.textContent = c2; };
+
+    const send = (type) => new Promise((resolve) => {
+        try { chrome.runtime.sendMessage({ type, tab }, (r) => { void chrome.runtime.lastError; resolve(r || { ok: false, reason: 'error' }); }); }
+        catch (e) { resolve({ ok: false, reason: 'error' }); }
+    });
+
+    const showSignIn = () => {
+        setText('Sign in to use the free tier', 'Google sign-in, no card. Free users get ' + WRAPUP_FREE_NOTES_HINT + '.', 'Sign in with Google →');
+        el.classList.add('__pcs-nudge-signin');
+        // Next click on the card = sign in, then open.
+        el.__pcsNext = async () => {
+            setText(null, null, 'Signing in…');
+            const r = await send('signin-and-open');
+            if (r.ok) { remove(); return; }
+            if (r.reason === 'signin_failed') setText(null, 'Sign-in didn’t complete. If a Google window opened and closed, allow pop-ups and try again.', 'Sign in with Google →');
+            else handleFail(r);
+        };
+    };
+    const handleFail = (r) => {
+        if (r.reason === 'signin')      return showSignIn();
+        if (r.reason === 'no_captions') return setText(null, 'This lecture has no captions, so there is nothing to summarise yet.', 'OK');
+        if (r.reason === 'no_lecture')  return setText(null, 'Open a lecture page first.', 'OK');
+        setText(null, 'Something went wrong — try from the extension icon instead.', 'OK');
+        el.__pcsNext = () => remove();
+    };
+
+    if (el.__pcsNext) { const f = el.__pcsNext; el.__pcsNext = null; f(); return false; }
+    setText(null, null, 'Opening…');
+    send('open-notes').then((r) => { if (r.ok) remove(); else handleFail(r); });
+    return false;   // keep the card up; it removes itself on success
+}
+const WRAPUP_FREE_NOTES_HINT = '3 notes a day';
+
 let _wrapupInFlight = false;
 async function maybeShowWrapupNudge() {
     if (_wrapupInFlight || !isPlayerFrame() || document.querySelector('.__pcs-nudge')) return;
@@ -1024,10 +1074,11 @@ async function maybeShowWrapupNudge() {
         const copy = WRAPUP_COPY[kind];
         renderNudgeCard({
             title: copy.title, body: copy.body,
+            cta: kind === 'flashcards' ? 'Make flashcards now →' : 'Make the notes now →',
             timeoutMs: WRAPUP_TIMEOUT_MS,
             extraLabel: 'Don’t show this message again',
             onExtra: () => { chrome.storage.local.set({ pcsWrapup: { ...next, off: true } }); },
-            onClick: nudgeClicked,
+            onClick: (el, remove) => { nudgeClicked(); return startAiFromCard(kind, el, remove); },
         });
     } catch (e) {
     } finally {

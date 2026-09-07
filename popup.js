@@ -2880,16 +2880,26 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!refreshed) showLoggedOut();
     }
 
-    const savedEmail = localStorage.getItem('email');
+    let savedEmail = localStorage.getItem('email');
 
     // background.js refreshes the token on a 45-minute alarm and parks it in
     // chrome.storage.local.pcsAuth. If that copy is for the same account and
     // fresher than ours, take it — then the expiry branch below is rarely hit.
     async function adoptBackgroundToken() {
-        if (!savedEmail) return;
         try {
             const { pcsAuth } = await chrome.storage.local.get('pcsAuth');
-            if (!pcsAuth || !pcsAuth.token || !pcsAuth.tokenExpiry) return;
+            if (!pcsAuth || !pcsAuth.token || !pcsAuth.tokenExpiry || !pcsAuth.email) return;
+            if (!savedEmail) {
+                // Signed in from a nudge card on the page (background.js ran the Google
+                // flow). Adopt the identity so this popup opens signed in.
+                if (pcsAuth.tokenExpiry <= Date.now()) return;
+                localStorage.setItem('email',       pcsAuth.email);
+                localStorage.setItem('authToken',   pcsAuth.token);
+                localStorage.setItem('oauthToken',  pcsAuth.token);
+                localStorage.setItem('tokenExpiry', String(pcsAuth.tokenExpiry));
+                savedEmail = pcsAuth.email;
+                return;
+            }
             if (String(pcsAuth.email || '').toLowerCase() !== savedEmail.toLowerCase()) return;
             const ours = parseInt(localStorage.getItem('tokenExpiry') || '0', 10) || 0;
             if (pcsAuth.tokenExpiry <= Date.now() || pcsAuth.tokenExpiry <= ours) return;

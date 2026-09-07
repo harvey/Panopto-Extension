@@ -301,6 +301,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Chrome 127+, and can still refuse when the click is too far from a user gesture,
     // so every failure is swallowed — the nudge's own text tells them where the icon
     // is, which is the fallback.
+    // A nudge card on the Panopto page was clicked. Do the thing the popup's
+    // "Generate Notes / Flashcards" buttons do, from here, for the sender tab.
+    if (message.type === "open-notes") {
+        openNotesForTab(tabId, message.tab || "notes", false).then(sendResponse);
+        return true;   // async
+    }
+    // Same, but the card's "Sign in with Google" button: run the sign-in from the
+    // service worker first, then open. identity.* works from a worker; this is the
+    // same native-then-web sequence the popup uses.
+    if (message.type === "signin-and-open") {
+        openNotesForTab(tabId, message.tab || "notes", true).then(sendResponse);
+        return true;   // async
+    }
+
     if (message.type === "open-popup") {
         try {
             if (chrome.action && typeof chrome.action.openPopup === "function") {
@@ -467,5 +481,126 @@ async function refreshAuthToken(reason) {
         // Never let a refresh failure surface anywhere; the popup still has its own path.
     } finally {
         _authRefreshInFlight = false;
+    }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NUDGE CARD ACTIONS — "make notes / flashcards now" straight from the page
+//
+// The popup's launchAiNotes() asks the content script for the lecture (captions,
+// title, id), stores a notesContext_<id> in chrome.storage.local, and opens
+// notes.html in a popup window. Nothing in that needs the popup itself, so the
+// nudge cards do it from here. Signed-out users get a real sign-in instead of an
+// instruction: chrome.identity works from a service worker and opens the same
+// Google account chooser the popup would.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function bgAuthTokenInteractive() {
+    // Native first (Chrome), then the web flow (Brave/Edge/Opera). Both interactive.
+    return new Promise((resolve) => {
+        let settled = false;
+        const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+        const timer = setTimeout(() => done(null), 120000);   // account chooser can sit open a while
+        const web = () => {
+            try {
+                if (!chrome.identity || typeof chrome.identity.launchWebAuthFlow !== "function") return done(null);
+                const manifest    = chrome.runtime.getManifest();
+                const scopes      = (manifest.oauth2 && manifest.oauth2.scopes) || ["email"];
+                const redirectUri = chrome.identity.getRedirectURL();
+                const url =
+                    "https://accounts.google.com/o/oauth2/v2/auth" +
+                    "?client_id="     + encodeURIComponent(WEB_OAUTH_CLIENT_ID) +
+                    "&response_type=token" +
+                    "&redirect_uri="  + encodeURIComponent(redirectUri) +
+                    "&scope="         + encodeURIComponent(scopes.join(" ")) +
+                    "&prompt=select_account";
+                chrome.identity.launchWebAuthFlow({ url, interactive: true }, (redirectUrl) => {
+                    clearTimeout(timer);
+                    if (chrome.runtime.lastError || !redirectUrl) return done(null);
+                    const m = /[#&]access_token=([^&]+)/.exec(redirectUrl);
+                    done(m ? decodeURIComponent(m[1]) : null);
+                });
+            } catch (e) { clearTimeout(timer); done(null); }
+        };
+        try {
+            if (!chrome.identity || typeof chrome.identity.getAuthToken !== "function") return web();
+            chrome.identity.getAuthToken({ interactive: true }, (token) => {
+                if (chrome.runtime.lastError || !token) return web();
+                clearTimeout(timer);
+                done(token);
+            });
+        } catch (e) { web(); }
+    });
+}
+
+async function bgSignIn() {
+    const token = await bgAuthTokenInteractive();
+    if (!token) return null;
+    let info = null;
+    try {
+        const resp = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`);
+        if (resp.ok) info = await resp.json();
+    } catch (e) {}
+    if (!info || !info.email || info.error_description) return null;
+    const expiresIn = parseInt(info.expires_in, 10) || 3600;
+    const auth = { email: info.email, token, tokenExpiry: Date.now() + expiresIn * 1000, premium: false, ts: Date.now(), refreshedBy: "card-signin" };
+    await chrome.storage.local.set({ pcsAuth: auth });
+    try {   // same event the popup logs on sign-in
+        fetch(`${BACKEND}/logLogin`, { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, email: info.email }) }).catch(() => {});
+    } catch (e) {}
+    return auth;
+}
+
+async function openNotesForTab(tabId, tab, signInFirst) {
+    try {
+        if (!tabId) return { ok: false, reason: "no_tab" };
+        let { pcsAuth } = await chrome.storage.local.get("pcsAuth");
+        const signedIn = !!(pcsAuth && pcsAuth.email && pcsAuth.token);
+        if (!signedIn) {
+            if (!signInFirst) return { ok: false, reason: "signin" };
+            pcsAuth = await bgSignIn();
+            if (!pcsAuth) return { ok: false, reason: "signin_failed" };
+        }
+
+        // Ask the page for the lecture — the same probe the popup uses.
+        const info = await new Promise((resolve) => {
+            try {
+                chrome.tabs.sendMessage(tabId, { action: "getLectureInfo" }, (r) => {
+                    if (chrome.runtime.lastError) return resolve(null);
+                    resolve(r || null);
+                });
+            } catch (e) { resolve(null); }
+        });
+        if (!info || info.error) return { ok: false, reason: "no_lecture", detail: info && info.error };
+        if (!info.hasCaptions || !info.captionsCleaned) return { ok: false, reason: "no_captions" };
+
+        const context = {
+            deliveryId:      info.deliveryId,
+            title:           info.title,
+            viewerUrl:       info.viewerUrl,
+            captionsCleaned: info.captionsCleaned,
+            lang:            info.lang || "en",
+            email:           pcsAuth.email,
+            authToken:       pcsAuth.token,
+            panoptoTabId:    tabId,
+            createdAt:       Date.now(),
+        };
+        await chrome.storage.local.set({ ["notesContext_" + info.deliveryId]: context });
+        await chrome.windows.create({
+            url:    chrome.runtime.getURL("notes.html?id=" + encodeURIComponent(info.deliveryId) + "&tab=" + encodeURIComponent(tab)),
+            type:   "popup",
+            width:  1280,
+            height: 900,
+        });
+        try {   // one event per tool, same names the popup logs
+            fetch(`${BACKEND}/logPremiumFeature`, { method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: pcsAuth.token, email: pcsAuth.email,
+                    featureClicked: tab === "cards" ? "ai_flashcards" : tab === "chat" ? "ai_chat" : "ai_notes" }) }).catch(() => {});
+        } catch (e) {}
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, reason: "error", detail: String(e && e.message || e) };
     }
 }

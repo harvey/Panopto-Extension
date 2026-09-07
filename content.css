@@ -117,12 +117,22 @@
 
 .__pcs-nudge-cta {
     display: block;
-    margin-top: 8px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #11773D;
-    filter: brightness(1.6);
+    margin-top: 9px;
+    padding: 6px 8px;
+    background: #11773D;
+    border-radius: 7px;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
 }
+
+.__pcs-nudge:hover .__pcs-nudge-cta { background: #0d6332; }
+
+/* Sign-in state: the card has become a sign-in prompt. */
+.__pcs-nudge.__pcs-nudge-signin { border-left-color: #4285f4; }
+.__pcs-nudge.__pcs-nudge-signin .__pcs-nudge-cta { background: #4285f4; }
+.__pcs-nudge.__pcs-nudge-signin:hover .__pcs-nudge-cta { background: #3367d6; }
 
 /* Dismiss-for-good. Deliberately small and quiet: it is an escape hatch, not an
    equal-weight choice against the CTA. */
