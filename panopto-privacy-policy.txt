@@ -1,14 +1,20 @@
 Privacy Policy for Panopto Custom Speed
 
-Effective Date: 09/05/2026
+Effective Date: 31/08/2026
 
 1. Information Collection
 
 Anonymous Usage Data: We collect the amount of time you save by using the extension. This usage data is collected in an anonymous format unless you opt into leaderboard logging and sign in with your Google account, in which case the data is linked to your email address for leaderboard and reward purposes.
 
+Anonymous Device Identifier: The extension generates a random identifier on your device so anonymous time-saved totals are not double counted. It is not derived from your name, email address, IP address, or any hardware identifier, and it is not linked to your identity unless you choose to sign in.
+
 User Identification: When you log in using your Google account, your email address is recorded along with your usage data. This is the only personal information we collect.
 
-Opt In Requirement: Data collection is opt in and is disabled by default. You must explicitly opt in via the extension's main page to enable data collection.
+Opt In Requirement: Leaderboard data collection is opt in and is disabled by default. You must explicitly opt in via the extension's main page to enable it.
+
+Lecture Content: The AI features (notes, chat, flashcards, translation and dubbing) read the captions of the lecture you have open and send that text to our server so it can be processed by an AI provider. Lectures that have no captions may have their audio transcribed for the same purpose. We do not record your screen, your microphone, or the lecture video itself. Caption text is used only to produce the result you asked for and a short-lived cache of it, and is never sold or used to train anybody's models.
+
+Uninstall Information: If you remove the extension, Chrome opens a short goodbye page and we record the anonymous identifier described above, how many days the extension was installed, how many lectures it ran on, whether the speed control ever successfully started, whether you had Premium, the Panopto hostname you last used it on, the extension version, and the country your browser connected from. If a lecture page ever fails to start the extension, the Panopto hostname is recorded so the problem can be fixed. The exit survey is entirely optional; if you answer it, your chosen reason and any free-text comment are stored with that record. No email address is requested or required.
 
 2. Purpose of Data Collection
 
@@ -20,11 +26,15 @@ Winner Notifications: If you win free Premium or another reward, we may use your
 
 Premium Access: Where applicable, your email address may be used to apply, verify, or manage free Premium access that you have won or been given.
 
+Reliability: Uninstall and start-up-failure records are used only to find and fix the university Panopto sites where the extension does not work.
+
 Abuse Prevention: Your email address is stored to identify your opted-in account, prevent abuse, manage leaderboard participation, determine reward eligibility, and contact you if you win free Premium or another reward. This enables us to ban users who submit fraudulent data in order to unfairly boost leaderboard rankings.
 
 3. Data Storage and Security
 
-Storage Method: All data is securely stored in Google Sheets.
+Storage Method: All data is stored on Cloudflare, in a Cloudflare Worker backed by a Cloudflare D1 database and a Cloudflare KV namespace. Data is no longer stored in Google Sheets; the previous Google Sheets storage has been retired and is no longer used.
+
+Transport Security: All communication between the extension and our server uses HTTPS.
 
 Access Control: Access to this data is limited to authorized administrator accounts only. No unauthorized third parties have access.
 
@@ -32,17 +42,26 @@ Data Protection: We employ industry-standard security measures to protect your i
 
 4. Data Sharing and Third Parties
 
-No Third-Party Sharing: We do not sell, rent, or share your personal or usage data with any third parties. Your email address is used for internal purposes related to leaderboard participation, abuse prevention, reward eligibility, Premium access, and winner notifications.
+No Selling or Advertising: We do not sell, rent, or share your personal or usage data with any third parties for advertising or any unrelated purpose. Your email address is used for internal purposes related to leaderboard participation, abuse prevention, reward eligibility, Premium access, and winner notifications.
+
+Service Providers: We rely on a small number of providers to run the service, and they process only what is needed to do their part:
+
+- Cloudflare, which hosts the server and stores the data described above.
+- Google, for the optional "Sign in with Google" login and, through the Gemini API, for AI features.
+- Anthropic, through the Claude API, for AI features.
+- Stripe, which handles payment for Premium. Card details are handled entirely by Stripe and never reach us or the extension.
 
 5. Data Retention
 
-Retention Period: Data is retained only as long as necessary for performance analysis, leaderboard participation, reward eligibility, Premium access, winner notifications, and abuse prevention. We conduct periodic reviews to ensure data is not kept longer than required.
+Retention Period: Data is retained only as long as necessary for performance analysis, leaderboard participation, reward eligibility, Premium access, winner notifications, reliability work, and abuse prevention. We conduct periodic reviews to ensure data is not kept longer than required.
 
-6. User Rights and Opting Out
+6. User Rights, Opting Out, and Deletion
 
-Opting Out: You may opt out of data collection at any time via the extension's main page. When you opt out, no further data will be collected from your account.
+Opting Out: You may opt out of leaderboard data collection at any time via the extension's main page. When you opt out, no further data will be collected from your account.
 
-Data Control: While opting out stops future data collection, previously collected data may be retained for abuse prevention, performance analysis, reward verification, Premium access records, and leaderboard integrity purposes.
+Deletion Requests: You can ask for your data to be deleted. Email harveychandler235@gmail.com from the address you signed in with, or include the details needed to identify your records, and your data will be erased. Requests are handled manually by the developer.
+
+Data Control: While opting out stops future data collection, previously collected data may be retained for abuse prevention, performance analysis, reward verification, Premium access records, and leaderboard integrity purposes, unless you ask for it to be deleted as described above.
 
 7. Leaderboard Rewards, Premium Giveaways, and Review Requests
 
