@@ -15,6 +15,7 @@ window.__pcsContentLoaded__ = true;
 // from the silence skipper writing the rate dozens of times a minute — without this,
 // auto-skip users burn their one-nudge-a-day budget on a speed they never chose.
 let _lastProgrammaticRateAt = 0;
+let _holdActive = false;   // press-and-hold fast-forward in progress (see initHoldToSpeed)
 function setRate(video, rate) {
     if (!video) return;
     _lastProgrammaticRateAt = Date.now();
@@ -399,6 +400,7 @@ function startSilenceSkipper() {
         _skipperSeek = { video, onUserSeek };
 
         _silenceTimer = setInterval(() => {
+            if (_holdActive) return;   // press-and-hold owns the rate until release
             if (video.paused || video.ended) {
                 silenceStart = null; silenceVideoStart = null;
                 if (inScanMode) { inScanMode = false; setRate(video, parseFloat(localStorage.getItem('panoptoExtSpeed') || '1')); }
@@ -680,6 +682,7 @@ function onVideoAttached(video) {
     reportAttachSuccess();
     maybeShowCoachMark();
     watchRateForNudge(video);
+    initHoldToSpeed(video);
 }
 
 function reportAttachSuccess() {
@@ -1100,6 +1103,120 @@ function watchRateForNudge(video) {
         if (!(r > 1.05)) return;
         showNudge('speed', { rate: String(Math.round(r * 100) / 100) });
     });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRESS-AND-HOLD FAST-FORWARD — YouTube's "hold to 2×"
+//
+// Hold the pointer down on the video for HOLD_MS and it plays fast until you let
+// go; release restores whatever speed was set before. Works with mouse and touch,
+// and in fullscreen (the HUD is appended into the fullscreened element).
+//
+// Two things make this safe on Panopto's player:
+//   • The release would normally be seen by Panopto as a click and toggle
+//     play/pause, so the click that follows a hold is swallowed once.
+//   • A drag (scrub) is not a hold: moving more than HOLD_DRAG_PX before the timer
+//     fires cancels it, and interactive controls are never a hold target.
+// The speed is written through setRate(), so the silence skipper (which pauses
+// itself while _holdActive) and the speed nudge both know it was not the user
+// choosing a new speed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HOLD_MS        = 450;   // how long before a press becomes a hold
+const HOLD_DRAG_PX   = 8;     // move further than this first and it is a drag, not a hold
+const HOLD_MIN_SPEED = 2;     // hold speed is max(2×, double the current speed), capped
+const HOLD_MAX_SPEED = 4;
+
+function holdSpeedFor(userSpeed) {
+    const s = Math.max(HOLD_MIN_SPEED, (userSpeed || 1) * 2);
+    return Math.min(HOLD_MAX_SPEED, Math.round(s * 100) / 100);
+}
+
+function isInteractiveTarget(t) {
+    return !!(t && t.closest && t.closest('button, a, input, select, textarea, [role="button"], [role="slider"], [role="menuitem"], [role="menu"], .__pcs-nudge, .__pcs-coach'));
+}
+
+function initHoldToSpeed(video) {
+    if (!video || video.__pcsHoldWired || !isPlayerFrame()) return;
+    video.__pcsHoldWired = true;
+
+    let timer = null, startX = 0, startY = 0, holding = false, restoreTo = null, hud = null, pointerId = null;
+
+    const hudHost = () => document.fullscreenElement || document.webkitFullscreenElement || document.documentElement;
+    const showHud = (speed) => {
+        hideHud();
+        hud = document.createElement('div');
+        hud.className = '__pcs-hold-hud';
+        hud.textContent = speed + '× ▶▶';
+        hudHost().appendChild(hud);
+        requestAnimationFrame(() => { if (hud) hud.classList.add('__pcs-hold-hud-in'); });
+    };
+    const hideHud = () => { if (hud) { hud.remove(); hud = null; } };
+    const onFsChange = () => { if (hud) hudHost().appendChild(hud); };
+
+    const overVideo = (e) => {
+        if (isInteractiveTarget(e.target)) return false;
+        const r = video.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    };
+
+    const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
+
+    const begin = () => {
+        timer = null;
+        if (video.paused || video.ended) return;         // holding a paused video does nothing
+        holding = true;
+        _holdActive = true;
+        restoreTo = video.playbackRate;
+        const target = holdSpeedFor(parseFloat(localStorage.getItem('panoptoExtSpeed') || String(restoreTo) || '1'));
+        setRate(video, target);
+        showHud(target);
+        document.addEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
+    };
+
+    const end = () => {
+        clearTimer();
+        if (!holding) return;
+        holding = false;
+        _holdActive = false;
+        hideHud();
+        document.removeEventListener('fullscreenchange', onFsChange);
+        document.removeEventListener('webkitfullscreenchange', onFsChange);
+        // Back to what the user actually had: the stored speed wins over whatever
+        // the rate was at press time, so a hold that started mid-silence-skip does
+        // not restore the skipper's 3× as if it were the user's choice.
+        const stored = parseFloat(localStorage.getItem('panoptoExtSpeed'));
+        setRate(video, (!isNaN(stored) && stored > 0) ? stored : (restoreTo || 1));
+        restoreTo = null;
+        // Panopto treats the release as a click (play/pause). Swallow exactly one.
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        document.addEventListener('click', swallow, { capture: true, once: true });
+        setTimeout(() => document.removeEventListener('click', swallow, { capture: true }), 400);
+    };
+
+    document.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (!overVideo(e)) return;
+        pointerId = e.pointerId;
+        startX = e.clientX; startY = e.clientY;
+        clearTimer();
+        timer = setTimeout(begin, HOLD_MS);
+    }, true);
+
+    document.addEventListener('pointermove', (e) => {
+        if (e.pointerId !== pointerId) return;
+        if (timer && (Math.abs(e.clientX - startX) > HOLD_DRAG_PX || Math.abs(e.clientY - startY) > HOLD_DRAG_PX)) clearTimer();
+    }, true);
+
+    for (const ev of ['pointerup', 'pointercancel']) {
+        document.addEventListener(ev, (e) => { if (e.pointerId === pointerId) { end(); pointerId = null; } }, true);
+    }
+    // Lost the pointer some other way (tab switch, window blur): never leave it fast.
+    window.addEventListener('blur', end);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) end(); });
+    // On touch a long press opens the context menu; not while we are holding.
+    document.addEventListener('contextmenu', (e) => { if (holding || timer) { e.preventDefault(); } }, true);
 }
 
 startVideoWatch();
