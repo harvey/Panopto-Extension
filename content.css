@@ -155,6 +155,35 @@
     outline-offset: 1px;
 }
 
+/* "Don't show this message again" — the wrap-up nudge's permanent opt-out. A real
+   button, full width under the CTA, quiet enough not to compete with it but big
+   enough to hit in fullscreen. */
+.__pcs-nudge-optout {
+    display: block;
+    width: 100%;
+    margin-top: 9px;
+    padding: 6px 8px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 7px;
+    color: #8b949e;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}
+
+.__pcs-nudge-optout:hover {
+    background: #2a3139;
+    color: #e6edf3;
+}
+
+.__pcs-nudge-optout:focus-visible {
+    outline: 2px solid #11773D;
+    outline-offset: 1px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .__pcs-nudge { transition: none; }
 }

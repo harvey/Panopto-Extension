@@ -120,23 +120,43 @@ function track() {
 
     // Nudge bookkeeping for this sitting. Local flags because showNudge()'s own gate
     // is async — without them the milestone would fire on every tick until it resolved.
-    let sessionSaved = 0;
-    let savedNudged  = false;
-    let doneNudged   = false;
-    let hasPlayed    = false;
+    let sessionSaved     = 0;
+    let savedNudged      = false;
+    let wrapNudged       = false;
+    let wrapSilenceSince = null;
+    let hasPlayed        = false;
 
     const trackTimeSaved = () => {
         const currentRealTime = Date.now();
         const currentCurrentTime = video.currentTime;
 
-        // "Finished" is checked before the paused guard below, because a lecture that
-        // has run to the end is usually sitting paused on its last frame. It does need
-        // evidence of actually watching, though: without hasPlayed and !isSeeking this
-        // fires when someone scrubs to the end, or reopens a lecture at a saved position.
-        if (!doneNudged && hasPlayed && !isSeeking && video.duration > 0
-            && currentCurrentTime / video.duration >= NUDGE_DONE_FRAC) {
-            doneNudged = true;
-            showNudge('finished');
+        // Wrap-up nudge. Primary trigger: 75% of the way through while genuinely
+        // watching (hasPlayed, not mid-seek). Early trigger: the lecturer has stopped
+        // and the recording is just running on — measured with the silence skipper's
+        // analyser, which only exists while auto-skip is on, so this path is a bonus,
+        // not a dependency.
+        if (!wrapNudged && hasPlayed && !isSeeking && video.duration > 0) {
+            const frac = currentCurrentTime / video.duration;
+            let trailingSilence = false;
+            if (_analyser && _noiseFloor && !video.paused && frac >= WRAPUP_SILENCE_MIN_FRAC) {
+                try {
+                    const buf = new Uint8Array(_analyser.frequencyBinCount);
+                    _analyser.getByteFrequencyData(buf);
+                    const avg = buf.reduce((x, y) => x + y, 0) / buf.length;
+                    if (avg < Math.max(_noiseFloor * SILENCE_RATIO, 1)) {
+                        if (!wrapSilenceSince) wrapSilenceSince = Date.now();
+                        trailingSilence = (Date.now() - wrapSilenceSince) / 1000 >= WRAPUP_SILENCE_S;
+                    } else {
+                        wrapSilenceSince = null;
+                    }
+                } catch (e) { wrapSilenceSince = null; }
+            } else {
+                wrapSilenceSince = null;
+            }
+            if (frac >= WRAPUP_FRAC || trailingSilence) {
+                wrapNudged = true;
+                maybeShowWrapupNudge();
+            }
         }
 
         // Reset markers if the video is paused.
@@ -789,7 +809,15 @@ const NUDGE_IGNORE_MAX = 3;                     // ignored this many times → s
 const NUDGE_TIMEOUT_MS = 11000;                 // a little longer than the coach mark
 const NUDGE_SAVED_SECS = 600;                   // 10 minutes saved in one sitting
 const NUDGE_RATE_GRACE = 4000;                  // ignore the speed we restore on load
-const NUDGE_DONE_FRAC  = 0.97;                  // "finished" once this much has played
+// Wrap-up nudge: "how about flashcards / notes" as the lecture winds down. Fires at
+// WRAPUP_FRAC, or earlier when the silence analyser (only present while auto-skip is
+// on) sees the lecturer has stopped and the recording is just running on.
+const WRAPUP_FRAC             = 0.75;
+const WRAPUP_SILENCE_MIN_FRAC = 0.5;   // trailing-silence path only counts past here
+const WRAPUP_SILENCE_S        = 25;    // this much continuous silence = they have wrapped up
+const WRAPUP_MAX_PER_DAY      = 3;
+const WRAPUP_TIMEOUT_MS       = 20000; // longer than a plain nudge: it has two buttons
+const NUDGE_BACKEND           = 'https://panopto-stripe.harveychandler235.workers.dev';
 
 const NUDGE_COPY = {
     // Fired when the viewer changes speed themselves. They have just used the free
@@ -805,12 +833,15 @@ const NUDGE_COPY = {
         title: 'You’ve saved {mins} minutes on this lecture',
         body:  'Want the notes as well? They’re generated from the transcript in about 30 seconds.',
     },
-    // Fired at the end, when the "I need to revise this" instinct is strongest.
-    finished: {
-        cooldownMs: 3 * 24 * 60 * 60 * 1000,
-        title: 'Lecture finished',
-        body:  'Turn it into flashcards while it’s still fresh.',
-    },
+};
+
+// Wrap-up copy. Free users only ever get the notes version: flashcards are a premium
+// endpoint, so offering them to a free user is offering something with 0 available.
+const WRAPUP_COPY = {
+    flashcards: { title: 'How about some flashcards?',
+                  body:  'This lecture is nearly done — turn it into an Anki deck while it’s still fresh.' },
+    notes:      { title: 'Want the notes for this one?',
+                  body:  'Nearly done — notes from the transcript take about 30 seconds.' },
 };
 
 let _nudgeShownThisPage = false;
@@ -865,63 +896,143 @@ function nudgeSilence() {
     });
 }
 
+// Renders one toast card, fullscreen-safe. Returns a remove() function.
+//   opts.extraLabel / opts.onExtra — an optional second, quieter button under the CTA
+//   (the wrap-up nudge uses it for "Don't show this message again").
+function renderNudgeCard(opts) {
+    const el = document.createElement('div');
+    el.className = '__pcs-nudge';
+    el.innerHTML =
+        '<button class="__pcs-nudge-x" type="button" aria-label="Dismiss">×</button>' +
+        '<span class="__pcs-nudge-title"></span>' +
+        '<span class="__pcs-nudge-body"></span>' +
+        '<span class="__pcs-nudge-cta"></span>' +
+        (opts.extraLabel ? '<button class="__pcs-nudge-optout" type="button"></button>' : '');
+    // textContent, not innerHTML — some of this is page-derived.
+    el.querySelector('.__pcs-nudge-title').textContent = opts.title;
+    el.querySelector('.__pcs-nudge-body').textContent  = opts.body;
+    el.querySelector('.__pcs-nudge-cta').textContent   = opts.cta || 'Click the extension icon in your toolbar ↗';
+    if (opts.extraLabel) el.querySelector('.__pcs-nudge-optout').textContent = opts.extraLabel;
+
+    let timer = null;
+    let cleanup = null;
+    const remove = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (cleanup) { cleanup(); cleanup = null; }
+        el.remove();   // removed rather than hidden, so it can never swallow a click
+    };
+
+    el.querySelector('.__pcs-nudge-x').addEventListener('click', (e) => {
+        e.stopPropagation(); if (opts.onX) opts.onX(); remove();
+    });
+    const opt = el.querySelector('.__pcs-nudge-optout');
+    if (opt) opt.addEventListener('click', (e) => { e.stopPropagation(); if (opts.onExtra) opts.onExtra(); remove(); });
+    el.addEventListener('click', () => { if (opts.onClick) opts.onClick(); remove(); });
+
+    timer = setTimeout(remove, opts.timeoutMs || NUDGE_TIMEOUT_MS);
+
+    // In fullscreen the browser paints only the fullscreened element's subtree, so a
+    // toast parented to <html> is invisible — getChapterTip() below does the same
+    // dance. Re-parent on every fullscreen change so a toast that is up when the user
+    // enters or leaves fullscreen follows them.
+    const host = () => document.fullscreenElement
+                    || document.webkitFullscreenElement
+                    || document.documentElement;
+    const reparent = () => { if (el.isConnected || !timer) host().appendChild(el); };
+    document.addEventListener('fullscreenchange', reparent);
+    document.addEventListener('webkitfullscreenchange', reparent);
+    cleanup = () => {
+        document.removeEventListener('fullscreenchange', reparent);
+        document.removeEventListener('webkitfullscreenchange', reparent);
+    };
+
+    host().appendChild(el);
+    requestAnimationFrame(() => { el.classList.add('__pcs-nudge-in'); });
+    return remove;
+}
+
 function showNudge(variant, vars) {
     nudgeAllowed(variant, (ok, st) => {
         if (!ok || document.querySelector('.__pcs-nudge')) return;
         _nudgeShownThisPage = true;
-
         const copy = NUDGE_COPY[variant];
-        const fill = (s) => s.replace(/\{(\w+)\}/g,
-            (m, k) => (vars && vars[k] != null) ? String(vars[k]) : m);
-
-        const el = document.createElement('div');
-        el.className = '__pcs-nudge';
-        el.innerHTML =
-            '<button class="__pcs-nudge-x" type="button" aria-label="Don’t show these again">×</button>' +
-            '<span class="__pcs-nudge-title"></span>' +
-            '<span class="__pcs-nudge-body"></span>' +
-            '<span class="__pcs-nudge-cta">Click the extension icon in your toolbar ↗</span>';
-        // textContent, not innerHTML — the lecture title and rate are page-derived.
-        el.querySelector('.__pcs-nudge-title').textContent = fill(copy.title);
-        el.querySelector('.__pcs-nudge-body').textContent  = fill(copy.body);
-
-        let timer = null;
-        const remove = () => {
-            if (timer) { clearTimeout(timer); timer = null; }
-            if (_nudgeCleanup) { _nudgeCleanup(); _nudgeCleanup = null; }
-            el.remove();   // removed rather than hidden, so it can never swallow a click
-        };
-
-        el.querySelector('.__pcs-nudge-x').addEventListener('click', (e) => {
-            e.stopPropagation();
-            nudgeSilence();
-            remove();
+        const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null) ? String(vars[k]) : m);
+        renderNudgeCard({
+            title: fill(copy.title), body: fill(copy.body),
+            onX: nudgeSilence, onClick: nudgeClicked,
         });
-        el.addEventListener('click', () => { nudgeClicked(); remove(); });
-
-        timer = setTimeout(remove, NUDGE_TIMEOUT_MS);
-
-        // In fullscreen the browser paints only the fullscreened element's subtree, so
-        // a toast parented to <html> is invisible — getChapterTip() below already does
-        // this dance for the same reason. Re-parent on every fullscreen change so a
-        // toast that is up when the user enters or leaves fullscreen follows them.
-        const host = () => document.fullscreenElement
-                        || document.webkitFullscreenElement
-                        || document.documentElement;
-        const reparent = () => { if (el.isConnected || !timer) host().appendChild(el); };
-        document.addEventListener('fullscreenchange', reparent);
-        document.addEventListener('webkitfullscreenchange', reparent);
-        _nudgeCleanup = () => {
-            document.removeEventListener('fullscreenchange', reparent);
-            document.removeEventListener('webkitfullscreenchange', reparent);
-        };
-
-        host().appendChild(el);
-        // Only now has it actually been shown, so only now does it cost a slot. The
-        // old order spent the once-a-day budget even when nothing was painted.
+        // Only now has it actually been shown, so only now does it cost a slot.
         recordNudgeShown(variant, st);
-        requestAnimationFrame(() => { el.classList.add('__pcs-nudge-in'); });
     });
+}
+
+// ── Wrap-up nudge ─────────────────────────────────────────────────────────────
+// Its own gates, deliberately not the once-a-day budget the other nudges share:
+// once per lecture, at most WRAPUP_MAX_PER_DAY a day, a permanent "don't show this
+// again", the global × silence, never while another card is up, never to someone
+// who has nothing left to spend. That last one is checked against the server on the
+// spot, because the popup's copy of the quota is only as fresh as its last open.
+
+function lectureId() {
+    return new URLSearchParams(location.search).get('id') || '';
+}
+
+async function wrapupOfferKind() {
+    // Returns 'flashcards' | 'notes' | null (null = do not offer).
+    const { pcsAuth, pcsWrapup } = await chrome.storage.local.get(['pcsAuth', 'pcsWrapup']);
+    const st = pcsWrapup || {};
+    // Not signed in: the free allowance is untouched by definition, and the CTA leads
+    // to sign-in. Notes only — flashcards are premium.
+    if (!pcsAuth || !pcsAuth.email || !pcsAuth.token) return 'notes';
+    let q = null;
+    try {
+        const r = await fetch(NUDGE_BACKEND + '/notesQuota?email=' + encodeURIComponent(pcsAuth.email) + '&token=' + encodeURIComponent(pcsAuth.token));
+        if (r.ok) q = await r.json();
+    } catch (e) {}
+    if (!q) return null;   // cannot tell — do not offer rather than offer to 0%
+    const alt = (st.alt || 0) % 2 ? 'notes' : 'flashcards';
+    if (q.unlimited) return alt;
+    if (q.budget) return q.budget.exhausted ? null : alt;                      // 0% left → nothing
+    if (q.tier === 'promo') return ((q.dailyUsed || 0) >= (q.dailyLimit || 0)) ? null : alt;
+    // free: notes only, and only while today's allowance has something left
+    return ((q.lifetimeUsed || 0) >= (q.lifetimeLimit || 0)) ? null : 'notes';
+}
+
+let _wrapupInFlight = false;
+async function maybeShowWrapupNudge() {
+    if (_wrapupInFlight || !isPlayerFrame() || document.querySelector('.__pcs-nudge')) return;
+    _wrapupInFlight = true;
+    try {
+        const id = lectureId();
+        if (!id) return;
+        const { pcsNudge, pcsWrapup } = await chrome.storage.local.get(['pcsNudge', 'pcsWrapup']);
+        if (pcsNudge && pcsNudge.off) return;                // the global × silence
+        const st = pcsWrapup || {};
+        if (st.off) return;                                   // "don't show this message again"
+        const today = new Date().toISOString().slice(0, 10);
+        const countToday = st.day === today ? (st.count || 0) : 0;
+        if (countToday >= WRAPUP_MAX_PER_DAY) return;
+        if (Array.isArray(st.shown) && st.shown.includes(id)) return;   // once per lecture
+
+        const kind = await wrapupOfferKind();
+        if (!kind || document.querySelector('.__pcs-nudge')) return;
+
+        const shown = (Array.isArray(st.shown) ? st.shown : []).concat(id).slice(-100);
+        const next  = { ...st, day: today, count: countToday + 1, shown, alt: (st.alt || 0) + 1 };
+        await chrome.storage.local.set({ pcsWrapup: next });
+
+        const copy = WRAPUP_COPY[kind];
+        renderNudgeCard({
+            title: copy.title, body: copy.body,
+            timeoutMs: WRAPUP_TIMEOUT_MS,
+            extraLabel: 'Don’t show this message again',
+            onExtra: () => { chrome.storage.local.set({ pcsWrapup: { ...next, off: true } }); },
+            onClick: nudgeClicked,
+        });
+    } catch (e) {
+    } finally {
+        _wrapupInFlight = false;
+    }
 }
 
 // Speed trigger. A ratechange listener catches the change wherever it came from —
