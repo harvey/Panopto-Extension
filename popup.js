@@ -107,8 +107,8 @@ const TRANSLATIONS = {
         notesDailyLimitReached: "Daily limit reached ({used}/{limit}) — resets at midnight UTC",
         notesDailyUsed:         "{used}/{limit} notes used today",
         notesDailyAvailable:    "{limit} notes available today",
-        notesFreeLocked:        "🔒 Free trial used — Get Premium for {limit}/day",
-        notesFreeAvailable:     "✨ {limit} free trial available — try it now",
+        notesFreeLocked:        "🔒 Today's free notes used — resets at midnight, or get Premium for {limit}/day",
+        notesFreeAvailable:     "✨ {limit} free notes a day — try it now",
         aiUnlimited:            "⚡ Unlimited AI usage",
         weeklyPrize: "<strong>#1 on the leaderboard</strong> each week wins <strong>7 days Premium</strong> free",
         lifetimeModalTitle: "Lifetime Premium",
@@ -218,8 +218,8 @@ const TRANSLATIONS = {
         notesDailyLimitReached: "일일 한도 도달 ({used}/{limit}) — UTC 자정에 초기화",
         notesDailyUsed:         "오늘 {used}/{limit}개 노트 사용",
         notesDailyAvailable:    "오늘 {limit}개 노트 이용 가능",
-        notesFreeLocked:        "🔒 무료 체험 사용됨 — 프리미엄으로 하루 {limit}개 이용",
-        notesFreeAvailable:     "✨ 무료 체험 {limit}회 이용 가능 — 지금 시도해 보세요",
+        notesFreeLocked:        "🔒 오늘의 무료 노트를 모두 사용했어요 — 자정에 초기화되며, 프리미엄은 하루 {limit}개",
+        notesFreeAvailable:     "✨ 하루 {limit}개 무료 노트 — 지금 시도해 보세요",
         weeklyPrize: "매주 <strong>리더보드 1위</strong>는 <strong>프리미엄 7일</strong> 무료 혜택을 받습니다",
         lifetimeModalTitle: "평생 프리미엄",
         lifetimeModalBody: "모든 프리미엄 기능에 영구적으로 접근하실 수 있습니다. Panopto Speed를 지원해 주셔서 감사합니다!",
@@ -313,8 +313,8 @@ const TRANSLATIONS = {
         notesDailyLimitReached: "已达每日上限（{used}/{limit}）— 将于 UTC 午夜重置",
         notesDailyUsed:         "今日已用 {used}/{limit} 篇笔记",
         notesDailyAvailable:    "今日可生成 {limit} 篇笔记",
-        notesFreeLocked:        "🔒 免费试用已用完 — 升级高级版每天可用 {limit} 篇",
-        notesFreeAvailable:     "✨ 可免费试用 {limit} 次 — 立即体验",
+        notesFreeLocked:        "🔒 今日免费笔记已用完 — 午夜重置，或升级高级版每天 {limit} 篇",
+        notesFreeAvailable:     "✨ 每天 {limit} 篇免费笔记 — 立即体验",
         weeklyPrize: "每周<strong>排行榜第 1 名</strong>可免费获得 <strong>7 天高级版</strong>",
         lifetimeModalTitle: "终身高级版",
         lifetimeModalBody: "您已获得所有高级功能的终身使用权。感谢您支持 Panopto Speed！",
@@ -408,8 +408,8 @@ const TRANSLATIONS = {
         notesDailyLimitReached: "הגעת למגבלה היומית ({used}/{limit}) — מתאפס בחצות UTC",
         notesDailyUsed:         "השתמשת ב-{used}/{limit} סיכומים היום",
         notesDailyAvailable:    "{limit} סיכומים זמינים היום",
-        notesFreeLocked:        "🔒 הניסיון החינמי נוצל — קנה/י פרימיום ל-{limit} ביום",
-        notesFreeAvailable:     "✨ ניסיון חינמי זמין ({limit}) — נסה/י עכשיו",
+        notesFreeLocked:        "🔒 הסיכומים החינמיים להיום נוצלו — מתאפס בחצות, או פרימיום {limit} ביום",
+        notesFreeAvailable:     "✨ {limit} סיכומים חינם ביום — נסו עכשיו",
         weeklyPrize: "המקום ה<strong>ראשון בלוח התוצאות</strong> כל שבוע זוכה ב<strong>7 ימי פרימיום</strong> חינם",
         lifetimeModalTitle: "פרימיום לכל החיים",
         lifetimeModalBody: "!יש לך גישה לצמיתות לכל תכונות הפרימיום. תודה שתמכת ב-Panopto Speed",
@@ -503,8 +503,8 @@ const TRANSLATIONS = {
         notesDailyLimitReached: "Денний ліміт вичерпано ({used}/{limit}) — оновиться опівночі UTC",
         notesDailyUsed:         "Сьогодні використано {used}/{limit} конспектів",
         notesDailyAvailable:    "Сьогодні доступно {limit} конспектів",
-        notesFreeLocked:        "🔒 Пробний період використано — Premium дає {limit}/день",
-        notesFreeAvailable:     "✨ Доступно {limit} безкоштовних спроб — спробуйте зараз",
+        notesFreeLocked:        "🔒 Безкоштовні нотатки на сьогодні використано — оновлення опівночі, або Premium {limit}/день",
+        notesFreeAvailable:     "✨ {limit} безкоштовні нотатки на день — спробуйте зараз",
         weeklyPrize: "<strong>#1 у таблиці лідерів</strong> щотижня отримує <strong>7 днів Premium</strong> безкоштовно",
         lifetimeModalTitle: "Довічний Premium",
         lifetimeModalBody: "Ви маєте довічний доступ до всіх преміум-функцій. Дякуємо за підтримку Panopto Speed!",
@@ -649,7 +649,7 @@ const FREE_SILENCE_LIMIT_SECS = 180; // 3 minutes
 const FREE_PIP_LIMIT          = 10;  // PiP button presses
 const FREE_DOWNLOAD_LIMIT     = 3;   // lecture downloads
 const NOTES_DAILY_LIMIT_PREMIUM = 15; // promo-premium users — N generations per day. MUST match cf/worker.js (it was 3 here and 15 there, so the lock string advertised "3/day")
-const NOTES_FREE_LIFETIME_LIMIT = 1; // non-premium — total free generations (must match server)
+const NOTES_FREE_DAILY_LIMIT = 3; // non-premium — free generations per UTC day (must match NOTES_FREE_DAILY_LIMIT in cf/worker.js)
 const NOTES_QUOTA_CACHE_TTL_MS  = 60_000; // refetch quota at most every minute
 
 // Local time-saved & free-usage counters live per-device, not per-account. Tag them
@@ -1806,7 +1806,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- AI Lecture Notes — server enforces the same limits ---
         // Premium: NOTES_DAILY_LIMIT_PREMIUM (5) generations per UTC day.
-        // Free:    NOTES_FREE_LIFETIME_LIMIT (1) generation total, ever.
+        // Free:    NOTES_FREE_DAILY_LIMIT (3) generations per day, resets at midnight UTC.
         const notesBtn    = document.getElementById('generateNotesBtn');
         const notesFreeEl = document.getElementById('notesFreeUsage');
         if (notesBtn) {
@@ -1852,12 +1852,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             } else {
                 const used = _notesLifetimeUsed;
-                locked = used >= NOTES_FREE_LIFETIME_LIMIT;
+                locked = used >= NOTES_FREE_DAILY_LIMIT;
                 if (locked) {
                     labelText  = t('notesFreeLocked').replace('{limit}', NOTES_DAILY_LIMIT_PREMIUM);
                     labelColor = '#dc2626';
                 } else {
-                    labelText  = t('notesFreeAvailable').replace('{limit}', NOTES_FREE_LIFETIME_LIMIT);
+                    labelText  = t('notesFreeAvailable').replace('{limit}', NOTES_FREE_DAILY_LIMIT);
                     labelColor = '#11773D';
                 }
             }
@@ -2628,7 +2628,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
         } else {
-            if (_notesLifetimeUsed >= NOTES_FREE_LIFETIME_LIMIT) {
+            if (_notesLifetimeUsed >= NOTES_FREE_DAILY_LIMIT) {
                 openPremiumModal();
                 return;
             }
@@ -2753,7 +2753,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const pipCount = parseInt(localStorage.getItem('pipPressCount') || '0', 10);
         return _silenceSecs       >= FREE_SILENCE_LIMIT_SECS
             || pipCount           >= FREE_PIP_LIMIT
-            || _notesLifetimeUsed >= NOTES_FREE_LIFETIME_LIMIT;
+            || _notesLifetimeUsed >= NOTES_FREE_DAILY_LIMIT;
     }
 
     function maybeShowRatePrompt() {

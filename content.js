@@ -2827,7 +2827,7 @@ asd.insertBefore(overallDiv, asd.firstChild);
     function translateErr(e) {
         const code = e && (e.code || e.message);
         if (e && e.status === 401)   return 'Sign-in expired — reopen the extension popup to refresh, then try again.';
-        if (code === 'not_premium')  return 'You’ve used your free dub. Dubbing is a Premium feature — open the extension popup to upgrade.';
+        if (code === 'not_premium')  return 'You’ve used today’s free dub — it resets at midnight UTC. Premium gets more per day; open the extension popup to upgrade.';
         if (code === 'rate_limited') return 'Daily dub limit reached (resets midnight UTC).';
         if (code === 'caption_too_long') return 'This lecture is too long to dub.';
         if (code === 'gemini_failed')    return 'Translation service is busy right now. Please try again in a moment.';

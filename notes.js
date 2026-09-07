@@ -6,7 +6,7 @@ const PREMIUM_URL = 'https://buy.stripe.com/6oU9ALalk59U4GdfqY1VK04';
 const $ = (id) => document.getElementById(id);
 
 const ERROR_MESSAGES = {
-    not_premium:        'AI Notes is a premium feature. Start a free 7-day trial to unlock it.',
+    not_premium:        'You’ve used today’s free notes — they reset at midnight UTC. Premium gets 15 a day; start a free 7-day trial to unlock it.',
     rate_limited:       'You\'ve reached today\'s AI limit. It resets at midnight UTC.',
     // The server rejects a query before sending it to the AI if it would take the
     // user over their monthly allowance, so nothing has been charged or generated.
