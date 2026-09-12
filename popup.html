@@ -2,7 +2,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="tailwind-script.js" nonce="TAILWIND"></script>
+  <script src="tailwind-script.js"></script>
   <script src="popup.js" nonce="POPUPSCRIPT"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -560,6 +560,35 @@
 
     /* "Premium Features" heading: gold sweep over green, so it pops out from the
        other (gray) section headers. */
+    /* ── Premium support box ── */
+    .support-box {
+      margin: 6px 0 4px; padding: 8px; border-radius: 9px;
+      background: #f8fafc; border: 1px solid #e5e7eb;
+      animation: promoSlideIn 0.22s ease-out;
+    }
+    .support-box textarea {
+      width: 100%; box-sizing: border-box; resize: vertical; min-height: 54px;
+      font: inherit; font-size: 0.66rem; line-height: 1.4; color: #111827;
+      background: #fff; border: 1px solid #d1d5db; border-radius: 7px; padding: 6px 8px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .support-box textarea:focus { outline: none; border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+    .support-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+    .support-hint { font-size: 0.55rem; color: #6b7280; line-height: 1.3; }
+    .support-send {
+      flex: none; border: none; border-radius: 7px; padding: 5px 12px; cursor: pointer;
+      background: #11773D; color: #fff; font: inherit; font-size: 0.62rem; font-weight: 700;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .support-send:hover { background: #0e6633; }
+    .support-send:active { transform: translateY(1px); }
+    .support-send[disabled] { opacity: 0.6; cursor: progress; }
+    .support-status { font-size: 0.58rem; margin-top: 5px; min-height: 0; line-height: 1.35; }
+    .support-status.ok  { color: #11773D; }
+    .support-status.bad { color: #dc2626; }
+    body.dark-theme .support-box { background: #161b22; border-color: #262e38; }
+    body.dark-theme .support-box textarea { background: #0d1117; color: #e6edf3; border-color: #262e38; }
+
     #lbl-premium-section {
       background: linear-gradient(100deg,
         #11773D 0%, #11773D 40%, #f5d97a 50%, #11773D 60%, #11773D 100%);
@@ -899,6 +928,17 @@
     <div id="checkPremiumRow" style="display:none; margin-bottom:2px;">
       <a id="checkPremiumBtn" href="#" style="font-size:0.59rem; color:#6b7280; text-decoration:underline; cursor:pointer;">Already purchased? Check Premium</a>
     </div>
+    <div id="supportRow" style="margin-bottom:2px;">
+      <a id="supportOpenBtn" href="#" style="font-size:0.59rem; color:#6b7280; text-decoration:underline; cursor:pointer;"><span id="lbl-support-open">Premium not working? Message support</span></a>
+      <div id="supportBox" class="support-box" style="display:none;">
+        <textarea id="supportMsg" rows="3" maxlength="1000" spellcheck="true"></textarea>
+        <div class="support-actions">
+          <span class="support-hint" id="lbl-support-hint">Goes straight to Harvey with your signed-in email attached.</span>
+          <button type="button" id="supportSendBtn" class="support-send"><span id="lbl-support-send">Send</span></button>
+        </div>
+        <div class="support-status" id="supportStatus"></div>
+      </div>
+    </div>
 
     <!-- Picture in Picture -->
     <div class="prem-row" id="premRowPip" style="margin-top:3px;">
@@ -992,6 +1032,8 @@
     <!-- Terms of Service (opens the bundled terms.html in a new tab) -->
     <div style="text-align:center; margin-bottom:3px;">
       <a href="terms.html" target="_blank" style="font-size:0.62rem; color:#9ca3af; text-decoration:underline;">Terms of Service &amp; Refund Policy</a>
+      <span style="font-size:0.62rem; color:#9ca3af;">&middot;</span>
+      <a href="https://harveychandler.dev/Panopto-Extension/panopto-privacy-policy.txt" target="_blank" rel="noopener" style="font-size:0.62rem; color:#9ca3af; text-decoration:underline;">Privacy</a>
     </div>
 
     <!-- Total time saved -->

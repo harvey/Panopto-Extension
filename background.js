@@ -1,4 +1,6 @@
 const BACKEND = 'https://panopto-stripe.harveychandler235.workers.dev';
+// Set to true to see the extension's diagnostic console output.
+const PCS_DEBUG = false;
 
 let savedTime = 0;
 let silenceSavedTime = 0;
@@ -474,7 +476,7 @@ async function refreshAuthToken(reason) {
         // reopened" gap for the on-page surfaces within an hour. Start from what we
         // have; only overwrite on a clean answer, never downgrade on a failed call.
         let premium = !!pcsAuth.premium;
-        try { const r = await fetch(`${BACKEND}/check?email=${encodeURIComponent(pcsAuth.email)}`); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+        try { const r = await fetch(`${BACKEND}/check`, { headers: { 'X-PCS-Email': pcsAuth.email } }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
         await chrome.storage.local.set({
             pcsAuth: { ...pcsAuth, token, premium, tokenExpiry: Date.now() + expiresIn * 1000, ts: Date.now(), refreshedBy: reason }
         });
@@ -549,7 +551,7 @@ async function bgSignIn() {
     // paying user signing in from a card must not be stamped free until the popup
     // is next opened. /check is unauthenticated and is what the popup uses.
     let premium = false;
-    try { const r = await fetch(`${BACKEND}/check?email=${encodeURIComponent(info.email)}`); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+    try { const r = await fetch(`${BACKEND}/check`, { headers: { 'X-PCS-Email': info.email } }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
     const auth = { email: info.email, token, tokenExpiry: Date.now() + expiresIn * 1000, premium, ts: Date.now(), refreshedBy: "card-signin" };
     await chrome.storage.local.set({ pcsAuth: auth });
     try {   // same event the popup logs on sign-in

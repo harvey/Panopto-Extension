@@ -1,10 +1,13 @@
+// Set to true to see the extension's diagnostic console output.
+const PCS_DEBUG = false;
+
 function sendToTab(action, value) {
     try {
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             chrome.tabs.sendMessage(tabs[0].id, { action: action, value: value });
         });
     } catch {
-        console.log("Not connected to tab.");
+        PCS_DEBUG && console.log("Not connected to tab.");
     }
 }
 
@@ -25,6 +28,16 @@ const SHOW_TRIAL_BANNER = true;
 
 const TRANSLATIONS = {
     en: {
+        supportOpen: 'Premium not working? Message support',
+        supportHint: 'Goes straight to Harvey with your signed-in email attached.',
+        supportSend: 'Send',
+        supportPlaceholder: 'e.g. I bought Premium with a different email…',
+        supportSignIn: 'Sign in first so I know which account to look at.',
+        supportEmpty: 'Write a few words first.',
+        supportSending: 'Sending…',
+        supportSent: 'Sent ✓ — I’ll reply to {email}. Usually within a day.',
+        supportRate: 'Already sent one a moment ago — give it 5 minutes.',
+        supportFail: 'Couldn’t send. Email harveychandler235@gmail.com instead.',
         speedSection: "Playback Speed",
         speedHints: "Click the speed to type any value · hold the video to fast-forward",
         speedWarning: "Time saved isn’t counted above 4×",
@@ -135,6 +148,16 @@ const TRANSLATIONS = {
         streakModalBtn: "Got it",
     },
     ko: {
+        supportOpen: '프리미엄이 안 되나요? 지원팀에 문의',
+        supportHint: '로그인한 이메일과 함께 Harvey에게 바로 전달됩니다.',
+        supportSend: '보내기',
+        supportPlaceholder: '예: 다른 이메일로 프리미엄을 구매했어요…',
+        supportSignIn: '어떤 계정인지 확인할 수 있도록 먼저 로그인해 주세요.',
+        supportEmpty: '먼저 내용을 적어 주세요.',
+        supportSending: '보내는 중…',
+        supportSent: '전송됨 ✓ — {email}로 답장드릴게요. 보통 하루 안에요.',
+        supportRate: '방금 보내셨어요 — 5분 뒤에 다시 시도해 주세요.',
+        supportFail: '전송 실패. harveychandler235@gmail.com으로 메일해 주세요.',
         speedSection: "재생 속도",
         speedHints: "속도를 클릭해 직접 입력 · 영상을 길게 누르면 빨리 감기",
         speedWarning: "4배속 이상에서는 절약 시간이 기록되지 않아요",
@@ -228,8 +251,34 @@ const TRANSLATIONS = {
         milestoneExplore: "프리미엄 탐색 →",
         milestoneLater: "나중에",
         optInNudge: "리더보드 데이터 수집에 동의했는지 확인하세요",
+        // Referral / redeem / modal buttons
+        referralSection: "친구 추천",
+        referralShow: "보기",
+        referralBlurb: "내 코드를 사용하는 친구 한 명당 <strong>프리미엄 5일</strong>을 드립니다.",
+        referralCopyCode: "복사",
+        referralCopied: "✓ 복사됨",
+        referralStat: "{count}명 추천 · {days}일 획득",
+        redeemPrompt: "친구의 코드가 있나요? 적용하면 친구에게 프리미엄 5일을 선물할 수 있어요.",
+        redeemBtn: "적용",
+        redeemPlaceholder: "코드",
+        redeemInvalid: "유효한 코드를 입력하세요.",
+        redeemDone: "✓ 완료 — 친구가 프리미엄 {days}일을 받았어요.",
+        redeemFail: "코드를 적용할 수 없습니다.",
+        redeemNetwork: "네트워크 오류 — 다시 시도해 주세요.",
+        rewardModalBtn: "좋아요!",
+        streakModalBtn: "알겠어요",
     },
     zh: {
+        supportOpen: '高级版无法使用？联系支持',
+        supportHint: '会连同你登录的邮箱直接发给 Harvey。',
+        supportSend: '发送',
+        supportPlaceholder: '例如：我用另一个邮箱购买了高级版…',
+        supportSignIn: '请先登录，这样我才知道查看哪个账户。',
+        supportEmpty: '请先写几个字。',
+        supportSending: '发送中…',
+        supportSent: '已发送 ✓ — 我会回复到 {email}，通常一天内。',
+        supportRate: '刚刚已发送过一条 — 请等 5 分钟。',
+        supportFail: '发送失败。请改发邮件至 harveychandler235@gmail.com。',
         speedSection: "播放速度",
         speedHints: "点击速度可输入任意值 · 长按视频快进",
         speedWarning: "超过 4× 时不计算节省的时间",
@@ -323,8 +372,34 @@ const TRANSLATIONS = {
         milestoneExplore: "探索高级版 →",
         milestoneLater: "稍后再说",
         optInNudge: "请确保已开启排行榜数据收集",
+        // Referral / redeem / modal buttons
+        referralSection: "推荐好友",
+        referralShow: "显示",
+        referralBlurb: "每位使用你邀请码的好友都会为你带来 <strong>5 天高级版</strong>。",
+        referralCopyCode: "复制",
+        referralCopied: "✓ 已复制",
+        referralStat: "已推荐 {count} 人 · 获得 {days} 天",
+        redeemPrompt: "有好友的邀请码？应用后即可送好友 5 天高级版。",
+        redeemBtn: "应用",
+        redeemPlaceholder: "邀请码",
+        redeemInvalid: "请输入有效的邀请码。",
+        redeemDone: "✓ 完成 — 你的好友获得了 {days} 天高级版。",
+        redeemFail: "无法应用该邀请码。",
+        redeemNetwork: "网络错误 — 请重试。",
+        rewardModalBtn: "太棒了！",
+        streakModalBtn: "知道了",
     },
     he: {
+        supportOpen: 'הפרימיום לא עובד? שלחו הודעה לתמיכה',
+        supportHint: 'נשלח ישירות ל‑Harvey יחד עם האימייל שאיתו נכנסתם.',
+        supportSend: 'שליחה',
+        supportPlaceholder: 'לדוגמה: קניתי פרימיום עם אימייל אחר…',
+        supportSignIn: 'קודם התחברו כדי שאדע באיזה חשבון להסתכל.',
+        supportEmpty: 'כתבו כמה מילים קודם.',
+        supportSending: 'שולח…',
+        supportSent: 'נשלח ✓ — אשיב ל‑{email}, בדרך כלל תוך יום.',
+        supportRate: 'כבר נשלחה הודעה לפני רגע — חכו 5 דקות.',
+        supportFail: 'השליחה נכשלה. שלחו מייל ל‑harveychandler235@gmail.com.',
         speedSection: "מהירות הפעלה",
         speedHints: "לחצ/י על המהירות להקלדת ערך · לחיצה ארוכה על הווידאו להרצה קדימה",
         speedWarning: "זמן שנחסך לא נספר מעל 4×",
@@ -418,8 +493,34 @@ const TRANSLATIONS = {
         milestoneExplore: "← חקור/י פרימיום",
         milestoneLater: "אולי מאוחר יותר",
         optInNudge: "וודא/י הסכמה לאיסוף נתוני לוח התוצאות",
+        // Referral / redeem / modal buttons
+        referralSection: "הזמנת חברים",
+        referralShow: "הצג",
+        referralBlurb: "כל חבר/ה שמשתמש/ת בקוד שלך מזכה אותך ב־<strong>5 ימי פרימיום</strong>.",
+        referralCopyCode: "העתק",
+        referralCopied: "✓ הועתק",
+        referralStat: "{count} הופנו · {days} ימים נצברו",
+        redeemPrompt: "יש לך קוד של חבר/ה? הפעילו אותו כדי להעניק לו/לה 5 ימי פרימיום.",
+        redeemBtn: "הפעל",
+        redeemPlaceholder: "קוד",
+        redeemInvalid: "יש להזין קוד תקין.",
+        redeemDone: "✓ בוצע — החבר/ה שלך קיבל/ה {days} ימי פרימיום.",
+        redeemFail: "לא ניתן להפעיל את הקוד.",
+        redeemNetwork: "שגיאת רשת — נסו שוב.",
+        rewardModalBtn: "מעולה!",
+        streakModalBtn: "הבנתי",
     },
     uk: {
+        supportOpen: 'Преміум не працює? Написати в підтримку',
+        supportHint: 'Надійде прямо Harvey разом з email, під яким ви увійшли.',
+        supportSend: 'Надіслати',
+        supportPlaceholder: 'напр.: я купив(ла) Преміум з іншого email…',
+        supportSignIn: 'Спершу увійдіть, щоб я знав, який акаунт перевіряти.',
+        supportEmpty: 'Спочатку напишіть кілька слів.',
+        supportSending: 'Надсилаю…',
+        supportSent: 'Надіслано ✓ — відповім на {email}, зазвичай протягом дня.',
+        supportRate: 'Ви щойно надіслали повідомлення — зачекайте 5 хвилин.',
+        supportFail: 'Не вдалося надіслати. Напишіть на harveychandler235@gmail.com.',
         speedSection: "Швидкість відтворення",
         speedHints: "Натисніть на швидкість, щоб ввести значення · утримуйте відео для перемотування",
         speedWarning: "Заощаджений час не рахується понад 4×",
@@ -513,6 +614,22 @@ const TRANSLATIONS = {
         milestoneExplore: "Дізнатися про Premium →",
         milestoneLater: "Пізніше",
         optInNudge: "Переконайтеся, що ви долучилися до збору даних таблиці лідерів",
+        // Referral / redeem / modal buttons
+        referralSection: "Запросити друзів",
+        referralShow: "Показати",
+        referralBlurb: "Кожен друг, який скористається вашим кодом, дає вам <strong>5 днів Преміум</strong>.",
+        referralCopyCode: "Копіювати",
+        referralCopied: "✓ Скопійовано",
+        referralStat: "{count} запрошено · {days} дн. отримано",
+        redeemPrompt: "Маєте код друга? Застосуйте його, щоб подарувати другові 5 днів Преміум.",
+        redeemBtn: "Застосувати",
+        redeemPlaceholder: "КОД",
+        redeemInvalid: "Введіть дійсний код.",
+        redeemDone: "✓ Готово — ваш друг отримав {days} днів Преміум.",
+        redeemFail: "Не вдалося застосувати цей код.",
+        redeemNetwork: "Помилка мережі — спробуйте ще раз.",
+        rewardModalBtn: "Чудово!",
+        streakModalBtn: "Зрозуміло",
     }
 };
 
@@ -528,6 +645,7 @@ function t(key) {
 function applyLanguage() {
     const lang = getLang();
     document.getElementById('languageSelect').value = lang;
+    document.documentElement.dir = (lang === 'he') ? 'rtl' : 'ltr';
     document.body.dir = (lang === 'he') ? 'rtl' : 'ltr';
 
     document.getElementById('lbl-speed-section').textContent    = t('speedSection');
@@ -1206,7 +1324,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             // Fetch username from server
             sleep(1).then(() => {
-                fetch(`${BACKEND}/username?email=${encodeURIComponent(localStorage.getItem('email'))}&token=${encodeURIComponent(localStorage.getItem('authToken'))}`)
+                fetch(`${BACKEND}/username`, { headers: { 'X-PCS-Email': localStorage.getItem('email') || '', 'X-PCS-Token': localStorage.getItem('authToken') || '' } })
                     .then(r => r.text())
                     .then(text => {
                         if (text === '{username not found}') {
@@ -1222,7 +1340,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             getRank();
                         }
                     })
-                    .catch(e => console.log(e));
+                    .catch(e => PCS_DEBUG && console.log(e));
             });
 
             document.getElementById('email').textContent =
@@ -1262,7 +1380,7 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loginWithChromeIdentity(interactive, retryInvalidToken = true) {
         const token = await acquireGoogleToken(interactive);
         if (!token) {
-            if (interactive) console.log("Sign-in cancelled or failed.");
+            if (interactive) PCS_DEBUG && console.log("Sign-in cancelled or failed.");
             return false;
         }
 
@@ -1285,7 +1403,7 @@ document.addEventListener("DOMContentLoaded", function () {
             clientLogin();
             return true;
         } catch (e) {
-            console.log(e);
+            PCS_DEBUG && console.log(e);
             return false;
         }
     }
@@ -1383,7 +1501,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const token = localStorage.getItem('authToken');
         if (!email || !token || token === 'null') return;
         try {
-            const res = await fetch(`${BACKEND}/freeUsage?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+            const res = await fetch(`${BACKEND}/freeUsage`, { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } });
             if (!res.ok) return;
             const data = await res.json();
             if (data.error) return;
@@ -1450,7 +1568,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById('tick').style.display   = 'inline-block';
             })
             .catch(e => {
-                console.log('getRank error:', e);
+                PCS_DEBUG && console.log('getRank error:', e);
                 document.getElementById('loader').style.display = 'none';
             });
     }
@@ -1471,7 +1589,7 @@ document.addEventListener("DOMContentLoaded", function () {
         input.classList.remove('border-green', 'border-red', 'border-orange');
         if (username.length > 0 && isValid) {
             input.classList.add('border-orange');
-            fetch(`${BACKEND}/checkUsername?username=${encodeURIComponent(username)}&token=${encodeURIComponent(localStorage.getItem('authToken'))}&email=${encodeURIComponent(localStorage.getItem('email'))}`)
+            fetch(`${BACKEND}/checkUsername?username=${encodeURIComponent(username)}`, { headers: { 'X-PCS-Email': localStorage.getItem('email') || '', 'X-PCS-Token': localStorage.getItem('authToken') || '' } })
                 .then(r => r.text())
                 .then(text => {
                     input.classList.remove('border-orange');
@@ -1632,7 +1750,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return { active: cached.active, type: cached.type, expiry: cached.expiry, plan: cached.plan };
         }
         try {
-            const res  = await fetch(`${BACKEND}/check?email=${encodeURIComponent(email)}`);
+            const res  = await fetch(`${BACKEND}/check`, { headers: { 'X-PCS-Email': email } });
             // A 5xx from the worker (KV hiccup, deploy in progress) used to be cached
             // as an authoritative "not premium" for the next hour, locking a paying
             // user out. Treat it like a network failure: keep whatever we knew.
@@ -1994,7 +2112,7 @@ document.addEventListener("DOMContentLoaded", function () {
         btn.textContent      = 'Loading…';
         btn.style.pointerEvents = 'none';
         try {
-            const res  = await fetch(`${BACKEND}/customerPortal?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+            const res  = await fetch(`${BACKEND}/customerPortal`, { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } });
             const data = await res.json();
             if (data.url) {
                 window.open(data.url);
@@ -2011,6 +2129,49 @@ document.addEventListener("DOMContentLoaded", function () {
         btn.textContent      = 'Cancel';
         btn.style.pointerEvents = '';
     });
+
+    // Premium support: a message straight to Discord, with the signed-in email and
+    // what the server thinks their premium is. Exists because "I paid but it says
+    // no premium" is nearly always a different-email problem, and people who can't
+    // tell you that just assume it's broken and refund.
+    (function setupSupport() {
+        const open = document.getElementById('supportOpenBtn');
+        const box  = document.getElementById('supportBox');
+        const msg  = document.getElementById('supportMsg');
+        const send = document.getElementById('supportSendBtn');
+        const st   = document.getElementById('supportStatus');
+        if (!open || !box) return;
+        const status = (text, kind) => { st.textContent = text; st.className = 'support-status ' + (kind || ''); };
+        msg.placeholder = t('supportPlaceholder');
+        open.addEventListener('click', (e) => {
+            e.preventDefault();
+            const show = box.style.display === 'none';
+            box.style.display = show ? 'block' : 'none';
+            if (show) { status('', ''); setTimeout(() => msg.focus(), 50); }
+        });
+        send.addEventListener('click', async () => {
+            const email = localStorage.getItem('email');
+            const token = localStorage.getItem('authToken');
+            const text  = (msg.value || '').trim();
+            if (!email || !token) { status(t('supportSignIn'), 'bad'); return; }
+            if (text.length < 3)  { status(t('supportEmpty'), 'bad'); return; }
+            send.disabled = true; status(t('supportSending'), '');
+            try {
+                const r = await fetch('https://panopto-stripe.harveychandler235.workers.dev/support', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, token, message: text,
+                        version: (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '',
+                        host: '' }),
+                });
+                const d = await r.json().catch(() => ({}));
+                if (r.ok && d.ok) { status(t('supportSent').replace('{email}', email), 'ok'); msg.value = ''; }
+                else if (d.error === 'rate_limited') status(t('supportRate'), 'bad');
+                else if (d.error === 'signin')       status(t('supportSignIn'), 'bad');
+                else                                 status(t('supportFail'), 'bad');
+            } catch { status(t('supportFail'), 'bad'); }
+            finally { send.disabled = false; }
+        });
+    })();
 
     document.getElementById('checkPremiumBtn').addEventListener('click', async (e) => {
         e.preventDefault();
@@ -2067,7 +2228,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         try {
-            const res  = await fetch(`${BACKEND}/notesQuota?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+            const res  = await fetch(`${BACKEND}/notesQuota`, { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } });
             if (!res.ok) return;
             const data = await res.json();
             // /notesQuota says whether the account is premium on every call, and it is
@@ -2112,7 +2273,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!token || token === 'null') return false;
         try {
             const res = await fetch(
-                `${BACKEND}/couponUsed?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}&code=${PROMO_CODE}`
+                `${BACKEND}/couponUsed?code=${PROMO_CODE}`,
+                { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } }
             );
             if (!res.ok) return false;
             const data = await res.json();
@@ -2226,7 +2388,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let data;
         try {
-            const res = await fetch(`${BACKEND}/referral?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+            const res = await fetch(`${BACKEND}/referral`, { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } });
             if (!res.ok) { section.style.display = 'none'; return; }
             data = await res.json();
         } catch (e) {
@@ -2353,7 +2515,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let rewards;
         try {
-            const res = await fetch(`${BACKEND}/rewards?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+            const res = await fetch(`${BACKEND}/rewards`, { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } });
             if (!res.ok) return;
             rewards = (await res.json()).rewards;
         } catch (e) {
@@ -2415,7 +2577,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const token = localStorage.getItem('authToken');
         if (!email || !token || token === 'null') return;
         try {
-            const res = await fetch(`${BACKEND}/streak?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+            const res = await fetch(`${BACKEND}/streak`, { headers: { 'X-PCS-Email': email, 'X-PCS-Token': token } });
             if (!res.ok) return;
             _streak = await res.json();
         } catch (e) {

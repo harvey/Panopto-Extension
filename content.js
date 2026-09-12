@@ -10,6 +10,9 @@
 if (!window.__pcsContentLoaded__) {
 window.__pcsContentLoaded__ = true;
 
+// Set to true to see the extension's diagnostic console output.
+const PCS_DEBUG = false;
+
 // Every playbackRate write the extension makes itself is stamped here first. The
 // 'speed' nudge listens on `ratechange`, which cannot tell a user dragging the slider
 // from the silence skipper writing the rate dozens of times a minute — without this,
@@ -105,14 +108,14 @@ function updateSpeed() {
     if (video && speed) {
         setRate(video, speed);
     } else {
-        console.log("Took too long to find video on page, assuming no video.");
+        PCS_DEBUG && console.log("Took too long to find video on page, assuming no video.");
     }
 }
 
 function track() {
     const video = document.querySelector('video');
     if (!video) {
-        console.log("No video found to track.");
+        PCS_DEBUG && console.log("No video found to track.");
         return;
     }
     let lastCurrentTime = video.currentTime;
@@ -301,7 +304,7 @@ function initAudioAnalyser(video) {
         }
         return true;
     } catch (e) {
-        console.log('[SilenceSkipper] Init failed:', e);
+        PCS_DEBUG && console.log('[SilenceSkipper] Init failed:', e);
         _audioCtx = null;
         _analyser = null;
         return false;
@@ -331,11 +334,11 @@ function calibrateNoiseFloor(video, callback) {
                 ? samples.reduce((a, b) => a + b, 0) / samples.length
                 : 0;
             if (samples.length < 5 || floor < MIN_NOISE_FLOOR) {
-                console.log(`[SilenceSkipper] Calibration unusable (floor ${floor.toFixed(2)}, ${samples.length} samples) — will retry`);
+                PCS_DEBUG && console.log(`[SilenceSkipper] Calibration unusable (floor ${floor.toFixed(2)}, ${samples.length} samples) — will retry`);
                 callback(null);
                 return;
             }
-            console.log(`[SilenceSkipper] Noise floor calibrated: ${floor.toFixed(2)}`);
+            PCS_DEBUG && console.log(`[SilenceSkipper] Noise floor calibrated: ${floor.toFixed(2)}`);
             callback(floor);
         }
     }, 80);
@@ -350,7 +353,7 @@ function startSilenceSkipper() {
     const video = document.querySelector('video');
     if (!video || !initAudioAnalyser(video)) return;
 
-    console.log('[SilenceSkipper] Calibrating noise floor...');
+    PCS_DEBUG && console.log('[SilenceSkipper] Calibrating noise floor...');
     _silenceCalibrating = true;
 
     calibrateNoiseFloor(video, (floor) => {
@@ -369,7 +372,7 @@ function startSilenceSkipper() {
         _noiseFloor = floor;
         const silenceThreshold = Math.max(floor * SILENCE_RATIO, 1);
         const resumeThreshold  = Math.max(floor * RESUME_RATIO,  1);
-        console.log(`[SilenceSkipper] silence<${silenceThreshold.toFixed(2)} resume>${resumeThreshold.toFixed(2)}`);
+        PCS_DEBUG && console.log(`[SilenceSkipper] silence<${silenceThreshold.toFixed(2)} resume>${resumeThreshold.toFixed(2)}`);
 
         const data = new Uint8Array(_analyser.frequencyBinCount);
         let silenceStart      = null;
@@ -997,7 +1000,7 @@ async function wrapupOfferKind() {
     if (!pcsAuth || !pcsAuth.email || !pcsAuth.token) return 'notes';
     let q = null;
     try {
-        const r = await fetch(NUDGE_BACKEND + '/notesQuota?email=' + encodeURIComponent(pcsAuth.email) + '&token=' + encodeURIComponent(pcsAuth.token));
+        const r = await fetch(NUDGE_BACKEND + '/notesQuota', { headers: { 'X-PCS-Email': pcsAuth.email, 'X-PCS-Token': pcsAuth.token } });
         if (r.ok) q = await r.json();
     } catch (e) {}
     if (!q) return null;   // cannot tell — do not offer rather than offer to 0%
@@ -1255,7 +1258,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     if (window.top !== window.self
         && !document.querySelector('video')
         && !new URLSearchParams(location.search).get('id')) return;
-    console.log('Injected panopto speed script into page successfully.');
+    PCS_DEBUG && console.log('Injected panopto speed script into page successfully.');
     if (message.action === "updateSpeed") {
         localStorage.setItem('panoptoExtSpeed', message.value);
         updateSpeed();
@@ -2226,7 +2229,7 @@ function sendSpeed() {
 
 // Dummy sendToTab function that logs the message and value
 function sendToTab(message, value) {
-    console.log(`sendToTab: ${message} with value: ${value}`);
+    PCS_DEBUG && console.log(`sendToTab: ${message} with value: ${value}`);
 }
 
 // --- Append overallDiv to your container at the top ---
@@ -2286,7 +2289,7 @@ startupCheckbox.addEventListener('click', () => {
     } else {
         localStorage.setItem('speedOnStartup', 'false');
     }
-    console.log(localStorage.getItem('speedOnStartup'));
+    PCS_DEBUG && console.log(localStorage.getItem('speedOnStartup'));
 });
 
 // Create the label for the checkbox

@@ -1,4 +1,6 @@
 const BACKEND = 'https://panopto-stripe.harveychandler235.workers.dev';
+// Set to true to see the extension's diagnostic console output.
+const PCS_DEBUG = false;
 
 const LB_TRANSLATIONS = {
     en: {
