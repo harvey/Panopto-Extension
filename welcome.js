@@ -5,8 +5,12 @@
     const btn   = document.getElementById('findBtn');
     const go = () => {
         const uni = (input.value || '').trim();
-        // A web search finds the institution's Panopto host far more reliably than
-        // guessing the subdomain: "monash panopto" → monash.au.panopto.com.
+        // A pasted Panopto address (or a bare host like monash.au.panopto.com) opens
+        // directly. Anything else is a web search for "<university> panopto", which
+        // finds the institution's host far more reliably than guessing the subdomain:
+        // monash.au.panopto.com, ox.cloud.panopto.eu, utexas.hosted.panopto.com...
+        const m = uni.match(/([a-z0-9-]+\.)+panopto\.(com|eu)/i);
+        if (m) { chrome.tabs.create({ url: 'https://' + m[0] + '/' }); return; }
         const q = uni ? `${uni} panopto` : 'my university panopto login';
         chrome.tabs.create({ url: 'https://www.google.com/search?q=' + encodeURIComponent(q) });
     };
