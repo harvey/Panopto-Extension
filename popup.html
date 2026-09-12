@@ -560,6 +560,23 @@
 
     /* "Premium Features" heading: gold sweep over green, so it pops out from the
        other (gray) section headers. */
+    /* ── "Open a lecture" banner: shown when the popup is opened off Panopto ── */
+    .open-lecture {
+      display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 10px;
+      border-radius: 9px; background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 0.66rem; line-height: 1.35; color: #14532d;
+      animation: promoSlideIn 0.25s ease-out;
+    }
+    .open-lecture-icon { flex: none; width: 22px; height: 22px; border-radius: 6px; background: #11773D; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; }
+    .open-lecture-text { flex: 1; }
+    .open-lecture a { flex: none; font-weight: 700; color: #11773D; text-decoration: none; padding: 4px 8px; border-radius: 6px; background: #dcfce7; }
+    .open-lecture a:hover { background: #bbf7d0; }
+    body.dark-theme .open-lecture { background: #0f2a1a; border-color: #1f4d30; color: #bbf7d0; }
+    body.dark-theme .open-lecture a { background: #1f4d30; color: #bbf7d0; }
+    /* First session: no locks, no trial pitch. Two of the first 32 uninstalls were free
+       users who saw a padlock on day one and read the whole extension as paid. */
+    body.first-session #getPremiumLink, body.first-session #inPageChatLock,
+    body.first-session #promoBanner, body.first-session .prem-meta { display: none !important; }
+
     /* ── Premium support box ── */
     .support-box {
       margin: 6px 0 4px; padding: 8px; border-radius: 9px;
@@ -744,6 +761,11 @@
   <div class="card">
 
     <!-- ── Speed ── -->
+    <div id="openLectureBanner" class="open-lecture" style="display:none;">
+      <span class="open-lecture-icon">▶</span>
+      <span class="open-lecture-text"><b id="lbl-open-lecture">Open a lecture on Panopto to start.</b> <span id="lbl-open-lecture-sub">The speed control appears in the player.</span></span>
+      <a id="openLectureLink" href="#" target="_blank" rel="noopener" style="display:none;">Go ↗</a>
+    </div>
     <div class="section-label" id="lbl-speed-section">Playback Speed</div>
     <div class="speed-row">
       <input type="range" id="dynamicSlider" min="0.5" max="3" value="1" step="0.25">

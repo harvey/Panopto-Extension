@@ -248,6 +248,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         // and it stayed that way until the next attach or popup open re-stamped it.
         const r = await chrome.storage.local.get("installedAt");
         if (r.installedAt == null) await chrome.storage.local.set({ installedAt: Date.now() });
+        // Thirteen of the first 32 uninstalls never reached a Panopto page: they
+        // installed, saw nothing happen, and removed it. One page, once, that says
+        // "open a lecture" is the whole fix.
+        try { chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") }); } catch (e) {}
     }
     if (details.reason === "install" || details.reason === "update") {
         backfillContentScripts();
@@ -276,6 +280,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "attach-ok") {
         clearTabFailed(tabId);
         recordAttachSuccess(message.host);
+        // First ever attach: light the toolbar icon for a moment so the instant it
+        // starts working is visible even while they're looking at the video.
+        chrome.storage.local.get("firstAttachShown", (r) => {
+            if (r && r.firstAttachShown) return;
+            chrome.storage.local.set({ firstAttachShown: true });
+            try {
+                chrome.action.setBadgeBackgroundColor({ color: "#11773D" });
+                chrome.action.setBadgeText({ text: "ON", tabId });
+                setTimeout(() => { try { chrome.action.setBadgeText({ text: "", tabId }); } catch (e) {} }, 10000);
+            } catch (e) {}
+        });
+        sendResponse({ status: "success" });
+        return;
+    }
+    if (message.type === "embed-badge") {
+        // Count how often the rescue tag is shown, per host, so the churn console can
+        // tell "embedded and rescued" from "genuinely broken".
+        chrome.storage.local.get("embedBadgeHosts", (r) => {
+            const m = (r && r.embedBadgeHosts) || {};
+            m[message.host] = (m[message.host] || 0) + 1;
+            chrome.storage.local.set({ embedBadgeHosts: m });
+        });
         sendResponse({ status: "success" });
         return;
     }

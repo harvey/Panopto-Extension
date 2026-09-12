@@ -2746,11 +2746,27 @@ document.addEventListener("DOMContentLoaded", function () {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (!tabs[0]) return;
             chrome.tabs.sendMessage(tabs[0].id, { action: 'getVideos' }, (response) => {
-                if (chrome.runtime.lastError) return; // not on a Panopto page
+                if (chrome.runtime.lastError) { showOpenLectureBanner(); return; } // not on a Panopto page
                 if (response?.videos) renderPiPButtons(response.videos);
             });
         });
     }
+    // Off Panopto the popup used to show a full panel of controls that do nothing.
+    // Now the first thing it says is where to go, with their last Panopto host as
+    // the link when we know it.
+    function showOpenLectureBanner() {
+        const banner = document.getElementById('openLectureBanner');
+        if (!banner) return;
+        banner.style.display = 'flex';
+        chrome.storage.local.get(['lastHost'], (r) => {
+            const link = document.getElementById('openLectureLink');
+            if (r && r.lastHost && link) { link.href = 'https://' + r.lastHost + '/'; link.style.display = 'inline-block'; }
+        });
+    }
+    // First session ever: hide padlocks and the trial pitch (CSS on body.first-session).
+    chrome.storage.local.get(['sessionCount'], (r) => {
+        if ((parseInt(r && r.sessionCount, 10) || 0) < 2 && !_isPremium) document.body.classList.add('first-session');
+    });
     queryPiPVideos();
 
     // ── Download Lecture ──────────────────────────────────────────────────────

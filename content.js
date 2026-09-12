@@ -680,6 +680,7 @@ function onViewerNavigated() {
 }
 
 function onVideoAttached(video) {
+    hideEmbedBadge();   // a real player appeared — the rescue tag is moot
     attachPiPSync(video);
     applyStoredSpeed(video);
     reportAttachSuccess();
@@ -716,7 +717,72 @@ function reportAttachSuccess() {
 // player after ATTACH_WATCHDOG_MS something is genuinely wrong on this host. Tell
 // the service worker, which badges the tab, lets the popup offer a reload, and logs
 // the hostname so the failures are a list rather than a guess.
+// ── Embedded-viewer rescue ──────────────────────────────────────────────────
+// The single biggest population in attach_failures is a Viewer.aspx page living in
+// a sub-frame (Canvas / Moodle / Blackboard embeds) that never gets a <video>:
+// third-party cookie rules stop Panopto signing the student in inside the iframe,
+// so they see a blank player and think the extension does nothing. This shows a
+// small tag in the corner of that frame linking to the same lecture on Panopto
+// itself, where it works. Hidden the moment a video does appear.
+const EMBED_BADGE_MS = 6000;
+let _embedBadgeTimer = null;
+let _embedBadgeEl    = null;
+
+function lectureViewerUrl() {
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id) return null;
+    const u = new URL(location.href);
+    u.pathname = '/Panopto/Pages/Viewer.aspx';
+    u.search   = '?id=' + encodeURIComponent(id);
+    u.hash     = '';
+    return u.toString();
+}
+
+function scheduleEmbedBadge() {
+    if (_embedBadgeTimer || _embedBadgeEl) return;
+    if (window.top === window.self) return;                 // only sub-frames
+    if (!isPrimaryViewerPage()) return;                  // Embed.aspx thumbnails legitimately have no video until clicked
+    try { if (sessionStorage.getItem('__pcsEmbedBadgeOff')) return; } catch (e) {}
+    _embedBadgeTimer = setTimeout(() => {
+        _embedBadgeTimer = null;
+        if (_everSawVideo || document.querySelector('video')) return;
+        showEmbedBadge();
+    }, EMBED_BADGE_MS);
+}
+
+function showEmbedBadge() {
+    const href = lectureViewerUrl();
+    if (!href || _embedBadgeEl) return;
+    const el = document.createElement('div');
+    el.className = '__pcs-embed';
+    el.innerHTML =
+        '<a class="__pcs-embed-link" target="_blank" rel="noopener">' +
+        '<span class="__pcs-embed-icon">✦</span>' +
+        '<span class="__pcs-embed-text"><b>Panopto Custom Speed</b> can’t run inside this embed — <u>open the lecture on Panopto</u> ↗</span>' +
+        '</a>' +
+        '<button class="__pcs-embed-x" type="button" aria-label="Dismiss">×</button>';
+    el.querySelector('.__pcs-embed-link').href = href;
+    el.querySelector('.__pcs-embed-x').addEventListener('click', (e) => {
+        e.stopPropagation();
+        try { sessionStorage.setItem('__pcsEmbedBadgeOff', '1'); } catch (err) {}
+        hideEmbedBadge();
+    });
+    for (const ev of ['pointerdown', 'mousedown', 'mouseup', 'click', 'dblclick', 'touchstart', 'keydown']) {
+        el.addEventListener(ev, (e) => e.stopPropagation());
+    }
+    (document.body || document.documentElement).appendChild(el);
+    _embedBadgeEl = el;
+    requestAnimationFrame(() => el.classList.add('__pcs-embed-in'));
+    try { chrome.runtime.sendMessage({ type: 'embed-badge', host: location.hostname }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+}
+
+function hideEmbedBadge() {
+    if (_embedBadgeTimer) { clearTimeout(_embedBadgeTimer); _embedBadgeTimer = null; }
+    if (_embedBadgeEl) { _embedBadgeEl.remove(); _embedBadgeEl = null; }
+}
+
 function startAttachWatchdog() {
+    scheduleEmbedBadge();
     if (_attachWatchdog || _attachReported) return;
     // Only a page that exists to play one lecture can meaningfully "fail to attach".
     if (!isPrimaryViewerPage()) return;

@@ -257,6 +257,7 @@ async function generate() {
         return showError('You\'re not signed in. Open the extension popup and sign in with Google.', { showPremium: false });
     }
 
+    const genStart = Date.now();
     try {
         const chunks = chunkText(captionsCleaned, MAX_CHUNK_CHARS);
         const allSections = [];
@@ -296,6 +297,7 @@ async function generate() {
         // Show the model(s) the server actually used (it varies per request), not a
         // hardcoded name. Different chunks could use different models — show them all.
         _state.model = [...modelsUsed].map(prettifyModel).filter(Boolean).join(' + ');
+        _state.freshMs = Date.now() - genStart;   // > 3s means the AI actually wrote these just now
         render();
     } catch (e) {
         const code = String(e?.code || 'unknown');
@@ -513,6 +515,8 @@ function render() {
         li.appendChild(a);
         tocList.appendChild(li);
     });
+
+    if ((_state.freshMs || 0) > 3000) { writeInChapters(); _state.freshMs = 0; }
 
     // Cache a chronological chapter list so content.js can show clickable jump
     // points on the Panopto player for this lecture (keyed by delivery id).
@@ -884,32 +888,52 @@ function stopLoadingStages() {
 // Reveals `html` inside `el` as if it were being typed: text nodes fill in over
 // ~1-2s (eased), KaTeX spans appear whole so maths never renders half-built, and
 // the caret class blinks until it is done. Reduced-motion users get it instantly.
-function typewriterReveal(el, html) {
+function typewriterReveal(el, html, { duration = null, scrollEl = null, delay = 0 } = {}) {
     el.innerHTML = html;
-    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     const nodes = []; let n;
     while ((n = walker.nextNode())) nodes.push({ node: n, text: n.nodeValue, atomic: !!n.parentElement?.closest('.katex') });
     const total = nodes.reduce((sum, x) => sum + x.text.length, 0);
-    if (!total) return;
-    const duration = Math.min(2400, 300 + total * 5);
+    if (!total) return Promise.resolve();
+    const dur = duration || Math.min(2400, 300 + total * 5);
     for (const x of nodes) x.node.nodeValue = '';
-    el.classList.add('typing');
-    const log = $('chatLog');
-    const t0 = performance.now();
-    const step = (now) => {
-        const p = Math.min(1, (now - t0) / duration);
-        let budget = Math.floor(total * (1 - Math.pow(1 - p, 2)));
-        for (const x of nodes) {
-            const take = x.atomic ? (budget > 0 ? x.text.length : 0) : Math.max(0, Math.min(x.text.length, budget));
-            x.node.nodeValue = x.text.slice(0, take);
-            budget -= Math.min(x.text.length, Math.max(0, budget));
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            el.classList.add('typing');
+            const t0 = performance.now();
+            const step = (now) => {
+                const p = Math.min(1, (now - t0) / dur);
+                let budget = Math.floor(total * (1 - Math.pow(1 - p, 2)));
+                for (const x of nodes) {
+                    const take = x.atomic ? (budget > 0 ? x.text.length : 0) : Math.max(0, Math.min(x.text.length, budget));
+                    x.node.nodeValue = x.text.slice(0, take);
+                    budget -= Math.min(x.text.length, Math.max(0, budget));
+                }
+                if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+                if (p < 1) requestAnimationFrame(step);
+                else { for (const x of nodes) x.node.nodeValue = x.text; el.classList.remove('typing'); resolve(); }
+            };
+            requestAnimationFrame(step);
+        }, delay);
+    });
+}
+
+// Fresh notes "write themselves in": chapter bodies type out one after another,
+// within a fixed overall budget so a 15-chapter lecture doesn't take a minute.
+// Cached notes (which arrive in well under a second) render instantly — the
+// reveal is for the moment the AI has just finished, not for every reopen.
+const WRITE_IN_BUDGET_MS = 5200;
+function writeInChapters() {
+    const bodies = Array.from(document.querySelectorAll('#list .chapter .md'));
+    if (!bodies.length) return;
+    const per = Math.max(260, Math.min(1300, WRITE_IN_BUDGET_MS / bodies.length));
+    const run = async () => {
+        for (const body of bodies) {
+            await typewriterReveal(body, body.innerHTML, { duration: per });
         }
-        if (log) log.scrollTop = log.scrollHeight;
-        if (p < 1) requestAnimationFrame(step);
-        else { for (const x of nodes) x.node.nodeValue = x.text; el.classList.remove('typing'); }
     };
-    requestAnimationFrame(step);
+    run();
 }
 
 function showLoading() {
@@ -1626,7 +1650,7 @@ function appendChatMessage(role, html, pending) {
 }
 
 function chatErrorText(code) {
-    if (code === 'not_premium')      return 'Chat is a premium feature. Get Premium to unlock it.';
+    if (code === 'not_premium')      return 'Chat with the lecture is a Premium feature — notes and a flashcard deck a day stay free.';
     if (code === 'budget_exceeded')  return "You've used your AI allowance for this month. It resets on the 1st.";
     if (code === 'free_ai_exhausted') return "Today's free AI capacity is used up. It resets overnight.";
     if (code === 'rate_limited')     return "You've hit today's chat limit. It resets at midnight UTC.";
@@ -1677,9 +1701,13 @@ async function sendChat() {
         pending.classList.remove('pending');
         if (!res.ok || !data.answer) {
             pending.innerHTML = escapeHtml(chatErrorText(data.error));
+            if (data.error === 'not_premium') {
+                // Chat is the one premium-only AI feature. Continue the question, not a generic pitch.
+                pending.innerHTML += ` <a href="${PREMIUM_URL}" target="_blank" rel="noopener" style="color:var(--green-bright);font-weight:600;">Start the 7-day free trial (no card) and ask this →</a>`;
+            }
             _chatHistory.pop();   // drop the unanswered turn so it doesn't poison context
         } else {
-            typewriterReveal(pending, renderMarkdown(data.answer));
+            typewriterReveal(pending, renderMarkdown(data.answer), { scrollEl: $('chatLog') });
             _chatHistory.push({ role: 'assistant', text: data.answer });
             if (hint) {
                 if (data.unlimited) hint.textContent = '⚡ Unlimited usage';
@@ -1756,6 +1784,14 @@ async function loadFlashcards(regen) {
 
     const fail = (code, reason) => {
         intro.style.display = 'block';
+        // The daily cap is the paywall moment: offer to continue THIS deck on the
+        // trial rather than a retry that can only fail again today.
+        if (code === 'not_premium' && reason === 'free_used') {
+            intro.innerHTML = `<p>${escapeHtml(flashErrorText(code, reason))}</p>` +
+                `<a class="cards-gen-btn" href="${PREMIUM_URL}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block;">Start the 7-day free trial and make this deck →</a>` +
+                `<p class="note" style="margin-top:8px;font-size:.8rem;color:var(--muted)">No card needed. Your free deck comes back at midnight UTC either way.</p>`;
+            return;
+        }
         intro.innerHTML = `<p>${escapeHtml(flashErrorText(code, reason))}</p><button id="genCardsRetry" class="cards-gen-btn">Try again</button>`;
         $('genCardsRetry')?.addEventListener('click', () => loadFlashcards(false));
     };
