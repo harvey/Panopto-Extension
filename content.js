@@ -831,23 +831,25 @@ const NUDGE_COPY = {
     speed: {
         cooldownMs: 7 * 24 * 60 * 60 * 1000,
         title: 'Watching at {rate}×',
-        body:  'This lecture can also become AI notes, flashcards or an Anki deck.',
+        body:  'This lecture can also become AI study notes — free, no card. Flashcards and Anki decks with Premium.',
+        tag:   'Free',
     },
     // Fired once they have banked real time. Leads with what they earned, not with a pitch.
     saved: {
         cooldownMs: 3 * 24 * 60 * 60 * 1000,
         title: 'You’ve saved {mins} minutes on this lecture',
-        body:  'Want the notes as well? They’re generated from the transcript in about 30 seconds.',
+        body:  'Want the free notes as well? Generated from the transcript in about 30 seconds — no card needed.',
+        tag:   'Free',
     },
 };
 
 // Wrap-up copy. Free users only ever get the notes version: flashcards are a premium
 // endpoint, so offering them to a free user is offering something with 0 available.
 const WRAPUP_COPY = {
-    flashcards: { icon: '🃏', title: 'How about some flashcards?',
+    flashcards: { icon: '🃏', tag: 'Premium', title: 'How about some flashcards?',
                   body:  'This lecture is nearly done — turn it into an Anki deck while it’s still fresh.' },
-    notes:      { icon: '📝', title: 'Want the notes for this one?',
-                  body:  'Nearly done — notes from the transcript take about 30 seconds.' },
+    notes:      { icon: '📝', tag: 'Free', title: 'Want the free notes for this one?',
+                  body:  'Nearly done — notes from the transcript in about 30 seconds. Free, 3 a day, no card.' },
 };
 
 let _nudgeShownThisPage = false;
@@ -906,7 +908,7 @@ function renderNudgeCard(opts) {
     const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.7 5.6 4.9 9.8 10.5 10.5-5.6.7-9.8 4.9-10.5 10.5-.7-5.6-4.9-9.8-10.5-10.5C7.1 11.3 11.3 7.1 12 1.5z"/></svg>';
     el.innerHTML =
         '<button class="__pcs-nudge-x" type="button" aria-label="Dismiss">×</button>' +
-        '<span class="__pcs-nudge-head"><span class="__pcs-nudge-icon">' + STAR + '</span><span class="__pcs-nudge-eyebrow"></span></span>' +
+        '<span class="__pcs-nudge-head"><span class="__pcs-nudge-icon">' + STAR + '</span><span class="__pcs-nudge-eyebrow"></span><span class="__pcs-nudge-tag" hidden></span></span>' +
         '<span class="__pcs-nudge-title"></span>' +
         '<span class="__pcs-nudge-body"></span>' +
         '<span class="__pcs-nudge-cta"></span>' +
@@ -915,6 +917,11 @@ function renderNudgeCard(opts) {
     // textContent, not innerHTML — some of this is page-derived.
     if (opts.icon) el.querySelector('.__pcs-nudge-icon').textContent = opts.icon;   // emoji overrides the star
     el.querySelector('.__pcs-nudge-eyebrow').textContent = opts.eyebrow || 'Panopto Speed · AI';
+    if (opts.tag) {
+        const tag = el.querySelector('.__pcs-nudge-tag');
+        tag.textContent = opts.tag; tag.hidden = false;
+        if (/premium/i.test(opts.tag)) tag.classList.add('__pcs-nudge-tag-prem');
+    }
     el.style.setProperty('--pcs-nudge-ms', (opts.timeoutMs || NUDGE_TIMEOUT_MS) + 'ms');
     el.querySelector('.__pcs-nudge-title').textContent = opts.title;
     el.querySelector('.__pcs-nudge-body').textContent  = opts.body;
@@ -976,8 +983,8 @@ function showNudge(variant, vars) {
         const copy = NUDGE_COPY[variant];
         const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null) ? String(vars[k]) : m);
         renderNudgeCard({
-            title: fill(copy.title), body: fill(copy.body),
-            cta: 'Make the notes now →',
+            title: fill(copy.title), body: fill(copy.body), tag: copy.tag,
+            cta: 'Make the free notes →',
             onX: nudgeSilence,
             onClick: (el, remove) => { nudgeClicked(); return startAiFromCard('notes', el, remove); },
         });
@@ -1034,7 +1041,8 @@ function startAiFromCard(kind, el, remove) {
     });
 
     const showSignIn = () => {
-        setText('Sign in to use the free tier', 'Google sign-in, no card. Free users get ' + WRAPUP_FREE_NOTES_HINT + '.', 'Sign in with Google →');
+        setText('It’s free — just sign in', 'Google sign-in, no card, no trial to cancel. Free users get ' + WRAPUP_FREE_NOTES_HINT + '.', 'Sign in with Google →');
+        const tagEl = el.querySelector('.__pcs-nudge-tag'); if (tagEl) { tagEl.textContent = 'Free'; tagEl.className = '__pcs-nudge-tag'; }
         el.classList.add('__pcs-nudge-signin');
         // Next click on the card = sign in, then open.
         el.__pcsNext = async () => {
@@ -1098,7 +1106,7 @@ async function maybeShowWrapupNudge(force) {
         const copy = WRAPUP_COPY[kind];
         renderNudgeCard({
             title: copy.title, body: copy.body, icon: copy.icon, eyebrow: 'Lecture wrapping up',
-            cta: kind === 'flashcards' ? 'Make flashcards now →' : 'Make the notes now →',
+            cta: kind === 'flashcards' ? 'Make flashcards now →' : 'Make the free notes →', tag: copy.tag,
             timeoutMs: WRAPUP_TIMEOUT_MS,
             extraLabel: 'Don’t show this message again',
             onExtra: () => { chrome.storage.local.set({ pcsWrapup: { ...next, off: true } }); },
