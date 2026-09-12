@@ -1,9 +1,41 @@
 const BACKEND = 'https://panopto-stripe.harveychandler235.workers.dev';
+const PCS_DEBUG = false;   // flip on for console.log tracing
 const MAX_CHUNK_CHARS = 180_000;   // server caps at 200K
 // £3 every 2 months, with the 7-day free trial (no card) enabled on the link.
 const PREMIUM_URL = 'https://buy.stripe.com/6oU9ALalk59U4GdfqY1VK04';
 
 const $ = (id) => document.getElementById(id);
+
+// ── Network layer ────────────────────────────────────────────────────────────
+// Every backend call goes through here. Before: a hung request meant a spinner
+// forever, a single dropped packet went straight to the error screen, and being
+// offline read as "the service isn't responding". Now: a hard timeout (abort), one
+// quiet retry on network errors / gateway errors (never on 4xx, and never on a
+// timeout — the server may still be finishing that one), and an explicit offline
+// error code the UI can word properly.
+const FETCH_TIMEOUT_MS = 150_000;   // long lectures on a slow free model can take a while
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function fetchWithRetry(url, opts = {}, { timeoutMs = FETCH_TIMEOUT_MS, retries = 1 } = {}) {
+    for (let attempt = 0; ; attempt++) {
+        if (navigator.onLine === false) { const e = new Error('offline'); e.code = 'offline'; throw e; }
+        const ctrl  = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+            const resp = await fetch(url, { ...opts, signal: ctrl.signal });
+            clearTimeout(timer);
+            // 502/503/504 = the edge or the AI upstream hiccuped, not our request. One retry.
+            if (attempt < retries && [502, 503, 504].includes(resp.status)) { await sleep(900 * (attempt + 1)); continue; }
+            return resp;
+        } catch (e) {
+            clearTimeout(timer);
+            const timedOut = e && e.name === 'AbortError';
+            if (!timedOut && attempt < retries) { await sleep(900 * (attempt + 1)); continue; }
+            const err = new Error(timedOut ? 'timeout' : 'Network error');
+            err.code = timedOut ? 'timeout' : (navigator.onLine === false ? 'offline' : 'network');
+            throw err;
+        }
+    }
+}
 
 const ERROR_MESSAGES = {
     not_premium:        'You’ve used today’s free notes — they reset at midnight UTC. Premium gets 15 a day; start a free 7-day trial to unlock it.',
@@ -13,7 +45,9 @@ const ERROR_MESSAGES = {
     budget_exceeded:    'You\'ve used your AI allowance for this month. It resets on the 1st — everything else in Premium keeps working.',
     // Free/trial/leaderboard-premium users run on free AI capacity only, so when
     // that's gone for the day they wait rather than costing us anything.
-    free_ai_exhausted:  'Today\'s free AI capacity is used up. It resets overnight — or subscribe for priority access.',
+    free_ai_exhausted:  'Today\'s free AI capacity is used up. It resets overnight — try again tomorrow morning.',
+    offline:            'You\'re offline. Reconnect and try again — nothing was used.',
+    timeout:            'The AI took too long to answer. Try again — long lectures sometimes need a second go.',
     caption_too_long:   'This lecture is unusually long. Splitting it into chunks…',
     bad_input:          'This lecture\'s captions don\'t look like a transcript. We can\'t summarise it.',
     gemini_failed:      'The AI service had a hiccup. Try again in a moment.',
@@ -49,7 +83,8 @@ let _notesGenerating = false;   // a notes generation is currently in flight
     }
 
     $('retryBtn').addEventListener('click', () => generate());
-    $('downloadBtn').addEventListener('click', downloadHtml);
+    $('loadingRetryBtn')?.addEventListener('click', () => { if (!_notesGenerating) generate(); else { stopLoadingStages(); location.reload(); } });
+    setupExportMenu();
     $('copyBtn').addEventListener('click', copyMarkdown);
     $('regrabBtn')?.addEventListener('click', regrabScreenshots);
 
@@ -281,13 +316,15 @@ async function generate() {
 async function callSummarize(body) {
     let resp;
     try {
-        resp = await fetch(`${BACKEND}/summarize`, {
+        resp = await fetchWithRetry(`${BACKEND}/summarize`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
-    } catch {
-        const err = new Error('Network error'); err.code = 'gemini_failed'; throw err;
+    } catch (e) {
+        const err = new Error(e?.message || 'Network error');
+        err.code = (e?.code === 'offline' || e?.code === 'timeout') ? e.code : 'gemini_failed';
+        throw err;
     }
 
     let data;
@@ -385,6 +422,7 @@ function render() {
     }
     setupAiTools();
 
+    stopLoadingStages();
     $('header-title').textContent = _state.title;
     $('header-sub').textContent   = `${_state.sections.length} sections · generated from the lecture transcript`
         + (_state.partialNotice ? ` · ⚠ ${_state.partialNotice}` : '');
@@ -409,6 +447,7 @@ function render() {
         const chapter = document.createElement('section');
         chapter.className = 'chapter';
         chapter.id = id;
+        chapter.style.setProperty('--i', Math.min(i, 14));   // staggered rise-in
 
         const eyebrow = document.createElement('div');
         eyebrow.className = 'chapter-eyebrow';
@@ -683,8 +722,8 @@ async function fetchScreenshots() {
                 return;
             }
             console.groupCollapsed('[AI Notes] in-browser video capture');
-            console.log('debug:', response?.debug);
-            if (response?.error) console.log('error:', response.error);
+            PCS_DEBUG && console.log('debug:', response?.debug);
+            if (response?.error) PCS_DEBUG && console.log('error:', response.error);
             console.groupEnd();
 
             if (!response?.shots) {
@@ -805,9 +844,78 @@ function setupScrollSpy() {
     }
 }
 
+// The wait is the AI moment. Instead of one static line, the copy ticks through
+// what is actually happening, and past 35s it says so and offers a retry rather
+// than leaving people staring at a spinner wondering if anything is wrong.
+const LOADING_STAGES = [
+    [0,     'Reading the captions…'],
+    [3500,  'Finding the topics…'],
+    [8000,  'Writing the sections…'],
+    [15000, 'Adding formulas and examples…'],
+    [22000, 'Checking the timestamps…'],
+    [30000, 'Nearly there…'],
+];
+const LOADING_SLOW_MS = 35000;
+let _loadingTimers = [];
+function startLoadingStages() {
+    stopLoadingStages();
+    const stage = $('loadingStage'), sub = $('loadingSub'), retry = $('loadingRetryBtn');
+    if (!stage) return;
+    stage.textContent = LOADING_STAGES[0][1];
+    if (sub) { sub.textContent = 'This usually takes 10–25 seconds. Notes you\'ve generated before load instantly from cache.'; sub.classList.remove('slow'); }
+    if (retry) retry.style.display = 'none';
+    for (const [at, text] of LOADING_STAGES.slice(1)) {
+        _loadingTimers.push(setTimeout(() => {
+            stage.classList.add('swap');
+            setTimeout(() => { stage.textContent = text; stage.classList.remove('swap'); }, 260);
+        }, at));
+    }
+    _loadingTimers.push(setTimeout(() => {
+        if (sub) { sub.textContent = 'Taking longer than usual — the free AI is busy. Hang on, or retry now.'; sub.classList.add('slow'); }
+        if (retry) retry.style.display = 'inline-block';
+    }, LOADING_SLOW_MS));
+}
+function stopLoadingStages() {
+    for (const t of _loadingTimers) clearTimeout(t);
+    _loadingTimers = [];
+    $('loadingStage')?.classList.remove('swap');
+}
+
+// Reveals `html` inside `el` as if it were being typed: text nodes fill in over
+// ~1-2s (eased), KaTeX spans appear whole so maths never renders half-built, and
+// the caret class blinks until it is done. Reduced-motion users get it instantly.
+function typewriterReveal(el, html) {
+    el.innerHTML = html;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nodes = []; let n;
+    while ((n = walker.nextNode())) nodes.push({ node: n, text: n.nodeValue, atomic: !!n.parentElement?.closest('.katex') });
+    const total = nodes.reduce((sum, x) => sum + x.text.length, 0);
+    if (!total) return;
+    const duration = Math.min(2400, 300 + total * 5);
+    for (const x of nodes) x.node.nodeValue = '';
+    el.classList.add('typing');
+    const log = $('chatLog');
+    const t0 = performance.now();
+    const step = (now) => {
+        const p = Math.min(1, (now - t0) / duration);
+        let budget = Math.floor(total * (1 - Math.pow(1 - p, 2)));
+        for (const x of nodes) {
+            const take = x.atomic ? (budget > 0 ? x.text.length : 0) : Math.max(0, Math.min(x.text.length, budget));
+            x.node.nodeValue = x.text.slice(0, take);
+            budget -= Math.min(x.text.length, Math.max(0, budget));
+        }
+        if (log) log.scrollTop = log.scrollHeight;
+        if (p < 1) requestAnimationFrame(step);
+        else { for (const x of nodes) x.node.nodeValue = x.text; el.classList.remove('typing'); }
+    };
+    requestAnimationFrame(step);
+}
+
 function showLoading() {
     $('loading').style.display = 'flex';
     $('error').style.display   = 'none';
+    startLoadingStages();
     const page = $('page'); if (page) page.style.display = 'none';
     $('toolbar').style.display = 'none';
     // Keep the tab bar reachable once the AI tools exist (e.g. a lazy notes load) so the
@@ -817,6 +925,7 @@ function showLoading() {
 }
 
 function showError(msg, { showRetry = true, showPremium = false } = {}) {
+    stopLoadingStages();
     $('loading').style.display = 'none';
     const page = $('page'); if (page) page.style.display = 'none';
     // Don't strip tab navigation if the tools are already up (e.g. a lazy notes failure)
@@ -1062,7 +1171,7 @@ function showDownloadNudge() {
 
 function buildMarkdown() {
     let md = `# ${_state.title}\n\n`;
-    md += `_Generated by Panopto Speed · Gemini 2.0 Flash_\n\n`;
+    md += `_Generated by Panopto Custom Speed${_state.model ? ' · ' + _state.model : ''}_\n\n`;
     if (_state.context.viewerUrl) md += `[Open lecture](${_state.context.viewerUrl})\n\n---\n\n`;
     for (const s of _state.sections) {
         md += `## ${s.heading}\n\n${s.content || ''}\n\n`;
@@ -1086,7 +1195,7 @@ function buildStandaloneHtml() {
     // #openLectureBtn (<a>) and .section-shot-link deep-links are intentionally kept —
     // they are real URLs that work in any browser.
     doc.querySelectorAll(
-        '#loading, #error, #downloadBtn, #copyBtn, #regrabBtn, #dlNudge, ' +
+        '#loading, #error, #exportWrap, #downloadBtn, #copyBtn, #regrabBtn, #dlNudge, #exportToast, ' +
         '#tabBar, #aiCallout, #chatPanel, #flashcardsPanel, #ankiModal, #confirmModal, script, link[rel="stylesheet"]'
     ).forEach(el => el.remove());
 
@@ -1115,12 +1224,15 @@ function buildStandaloneHtml() {
             tile.classList.add('is-loaded');
         }
     });
-    // Also clear the row-level is-loading so any per-row banner state is clean.
+    // Tiles that never finished loading would be a spinner forever in a static
+    // file, and a row with nothing loaded is just an empty frame: drop both.
+    doc.querySelectorAll('.section-shot.is-loading, .section-shot.is-failed').forEach(t => t.remove());
     doc.querySelectorAll('.section-shot-row').forEach(row => {
-        if (row.querySelector('.section-shot.is-loaded')) {
-            row.classList.remove('is-loading');
-        }
+        row.classList.remove('is-loading');
+        if (!row.querySelector('.section-shot.is-loaded')) row.remove();
     });
+    // No `--i` stagger in the archive: everything is already there when it opens.
+    doc.querySelectorAll('.chapter').forEach(c => c.style.removeProperty('--i'));
 
     // Self-contained lightbox + smooth-scroll TOC, no external dependencies.
     const script = doc.createElement('script');
@@ -1153,7 +1265,8 @@ function buildStandaloneHtml() {
             });
         });
     }
-    document.querySelectorAll('.toc-link').forEach(a => {
+    const links = Array.from(document.querySelectorAll('.toc-link'));
+    links.forEach(a => {
         a.addEventListener('click', e => {
             const id = a.getAttribute('data-target');
             if (!id) return;
@@ -1162,6 +1275,36 @@ function buildStandaloneHtml() {
             if (el) el.scrollIntoView({ behavior: 'smooth' });
         });
     });
+    // Scroll-spy: the contents list follows the chapter you are reading. Same
+    // logic as the live page — the archive used to ship without it, so the first
+    // chapter stayed highlighted forever.
+    if (links.length) {
+        const setActive = (id) => links.forEach(a => a.classList.toggle('active', a.getAttribute('data-target') === id));
+        setActive(links[0].getAttribute('data-target'));
+        const targets = links.map(a => document.getElementById(a.getAttribute('data-target'))).filter(Boolean);
+        if ('IntersectionObserver' in window) {
+            const obs = new IntersectionObserver((entries) => {
+                const visible = entries.filter(e => e.isIntersecting)
+                    .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+                if (visible.length) setActive(visible[0].target.id);
+            }, { rootMargin: '-160px 0px -60% 0px', threshold: 0 });
+            targets.forEach(t => obs.observe(t));
+        }
+        // Fallback + bottom-of-page case: the last chapter may never cross the
+        // observer line, so also pick the nearest heading above the fold on scroll.
+        let ticking = false;
+        window.addEventListener('scroll', () => {
+            if (ticking) return; ticking = true;
+            requestAnimationFrame(() => {
+                ticking = false;
+                const line = 170;
+                let best = null;
+                for (const t of targets) { if (t.getBoundingClientRect().top <= line) best = t; else break; }
+                if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) best = targets[targets.length - 1];
+                if (best) setActive(best.id);
+            });
+        }, { passive: true });
+    }
 })();
 `;
     doc.body.appendChild(script);
@@ -1174,14 +1317,126 @@ function buildStandaloneHtml() {
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 }
 
-function downloadHtml() {
-    const blob = new Blob([buildStandaloneHtml()], { type: 'text/html;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    chrome.downloads.download({
-        url,
-        filename: safeFilename(_state.title) + '_notes.html',
-        saveAs: true,    // let the user pick where to put it
-    }, () => setTimeout(() => URL.revokeObjectURL(url), 5000));
+// ── Export ───────────────────────────────────────────────────────────────────
+// One menu, four formats. Every path goes through downloadBlob(), which uses the
+// downloads API when it is there and falls back to a plain <a download> when it
+// is not (or errors), tells the difference between "user cancelled the Save dialog"
+// and a real failure, and reports back through a toast instead of failing silently.
+
+let _toastTimer = null;
+function showToast(msg, kind = '', ms = 3200) {
+    const t = $('exportToast'); if (!t) return;
+    t.textContent = msg;
+    t.className = 'export-toast show ' + kind;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function downloadBlob(blob, filename) {
+    return new Promise((resolve) => {
+        const url = URL.createObjectURL(blob);
+        const revoke = () => setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        const viaAnchor = () => {
+            try {
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; a.style.display = 'none';
+                document.body.appendChild(a); a.click(); a.remove();
+                revoke(); resolve({ ok: true, via: 'anchor' });
+            } catch (e) { revoke(); resolve({ ok: false, error: e?.message || 'download failed' }); }
+        };
+        try {
+            if (!chrome?.downloads?.download) return viaAnchor();
+            chrome.downloads.download({ url, filename, saveAs: true }, (id) => {
+                const err = chrome.runtime.lastError?.message || '';
+                if (id == null || err) {
+                    if (/cancel/i.test(err)) { revoke(); return resolve({ ok: false, cancelled: true }); }
+                    console.warn('[AI Notes] downloads API failed, using anchor fallback:', err);
+                    return viaAnchor();
+                }
+                revoke(); resolve({ ok: true, via: 'downloads', id });
+            });
+        } catch (e) { viaAnchor(); }
+    });
+}
+
+function setupExportMenu() {
+    const btn = $('downloadBtn'), menu = $('exportMenu'), wrap = $('exportWrap');
+    if (!btn || !menu) return;
+    const close = () => {
+        menu.classList.remove('shown');
+        btn.setAttribute('aria-expanded', 'false');
+        setTimeout(() => { if (!menu.classList.contains('shown')) menu.classList.remove('open'); }, 170);
+    };
+    const open = () => {
+        menu.classList.add('open');
+        requestAnimationFrame(() => menu.classList.add('shown'));
+        btn.setAttribute('aria-expanded', 'true');
+    };
+    btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.contains('shown') ? close() : open(); });
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    menu.querySelectorAll('button[data-export]').forEach(b => {
+        b.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            close();
+            await exportNotes(b.dataset.export);
+        });
+    });
+}
+
+let _exporting = false;
+async function exportNotes(kind) {
+    if (_exporting) return;
+    if (!_notesGenerated || !_state.sections?.length) { showToast('Generate the notes first, then export.', 'bad'); return; }
+    _exporting = true;
+    const btn = $('downloadBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '⏳ Preparing…';
+    btn.disabled = true;
+    try {
+        const pendingShots = document.querySelectorAll('.section-shot.is-loading').length;
+        const base = safeFilename(_state.title);
+        let res;
+        if (kind === 'html') {
+            const html = buildStandaloneHtml();
+            res = await downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), base + '_notes.html');
+        } else if (kind === 'md') {
+            res = await downloadBlob(new Blob([buildMarkdown()], { type: 'text/markdown;charset=utf-8' }), base + '_notes.md');
+        } else if (kind === 'docx') {
+            if (!window.NotesExport) throw new Error('Exporter not loaded');
+            const chapters = NotesExport.collectChapters(document);
+            const bytes = NotesExport.buildDocx({
+                title: _state.title,
+                subtitle: `${_state.sections.length} sections · generated by Panopto Custom Speed${_state.model ? ' · ' + _state.model : ''}`,
+                lectureUrl: _state.context?.viewerUrl || '',
+                chapters,
+            });
+            res = await downloadBlob(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), base + '_notes.docx');
+        } else if (kind === 'pdf') {
+            // The browser's own PDF printer keeps maths, images and links intact and
+            // works with no extra library. The print stylesheet strips the chrome.
+            if (!$('tabNotes')?.classList.contains('active')) $('tabNotes')?.click();
+            showToast('In the print dialog choose “Save as PDF”. Then in GoodNotes: + → Import → pick the PDF.', 'ok', 9000);
+            await sleep(350);
+            window.print();
+            res = { ok: true, via: 'print' };
+        } else {
+            throw new Error('Unknown export: ' + kind);
+        }
+        if (res.cancelled) return;
+        if (!res.ok) throw new Error(res.error || 'export failed');
+        const label = { html: 'Web page', md: 'Markdown', docx: 'Word document', pdf: 'PDF' }[kind];
+        if (kind === 'docx')      showToast('Word document ready. In Notion: Settings → Import → Word, or drag the file into a page.', 'ok', 7000);
+        else if (kind === 'md')   showToast('Markdown saved. Screenshots aren’t included in Markdown — use Word (.docx) for those.', 'ok', 6000);
+        else if (kind !== 'pdf')  showToast(`${label} saved${pendingShots ? ` · ${pendingShots} screenshot${pendingShots === 1 ? ' was' : 's were'} still loading and left out` : ''}.`, 'ok');
+    } catch (e) {
+        console.error('[AI Notes] export failed:', e);
+        showToast('Export failed: ' + (e?.message || 'unknown error') + '. Try again, or use Copy.', 'bad', 6000);
+    } finally {
+        _exporting = false;
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
 }
 
 async function copyMarkdown() {
@@ -1394,7 +1649,7 @@ async function sendChat() {
     const pending = appendChatMessage('bot', 'Thinking…', true);
 
     try {
-        const res = await fetch(`${BACKEND}/askLecture`, {
+        const res = await fetchWithRetry(`${BACKEND}/askLecture`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1413,16 +1668,18 @@ async function sendChat() {
             pending.innerHTML = escapeHtml(chatErrorText(data.error));
             _chatHistory.pop();   // drop the unanswered turn so it doesn't poison context
         } else {
-            pending.innerHTML = renderMarkdown(data.answer);
+            typewriterReveal(pending, renderMarkdown(data.answer));
             _chatHistory.push({ role: 'assistant', text: data.answer });
             if (hint) {
                 if (data.unlimited) hint.textContent = '⚡ Unlimited usage';
                 else if (data.used && data.limit) hint.textContent = `${Math.max(0, data.limit - data.used)} messages left today`;
             }
         }
-    } catch {
+    } catch (e) {
         pending.classList.remove('pending');
-        pending.innerHTML = escapeHtml('Network error — please try again.');
+        pending.innerHTML = escapeHtml(e?.code === 'offline' ? 'You\'re offline — reconnect and try again.'
+                                     : e?.code === 'timeout' ? 'That took too long — please try again.'
+                                     : 'Network error — please try again.');
         _chatHistory.pop();
     } finally {
         send.disabled = false;
@@ -1492,7 +1749,7 @@ async function loadFlashcards(regen) {
     };
 
     try {
-        const res = await fetch(`${BACKEND}/flashcards`, {
+        const res = await fetchWithRetry(`${BACKEND}/flashcards`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1521,7 +1778,7 @@ function renderCards(cards) {
     const deck = $('cardsDeck');
     deck.classList.remove('selecting');   // reset any prior "select cards" mode
     deck.innerHTML = '';
-    cards.forEach((c, i) => deck.appendChild(createFlashcardEl(c, i)));
+    cards.forEach((c, i) => { const el = createFlashcardEl(c, i); el.style.setProperty('--i', Math.min(i, 18)); deck.appendChild(el); });
 }
 
 // Build one flip card: front (question) + back (answer), each with a footer
@@ -1634,7 +1891,7 @@ function showCardsMsg(text) {
 // POST one new card to the backend — distinct from the current deck, optional topic.
 async function fetchOneCard(topic) {
     const ctx = _state?.context || {};
-    const res = await fetch(`${BACKEND}/flashcard`, {
+    const res = await fetchWithRetry(`${BACKEND}/flashcard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
