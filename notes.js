@@ -1195,7 +1195,7 @@ function buildStandaloneHtml() {
     // #openLectureBtn (<a>) and .section-shot-link deep-links are intentionally kept —
     // they are real URLs that work in any browser.
     doc.querySelectorAll(
-        '#loading, #error, #exportWrap, #downloadBtn, #copyBtn, #regrabBtn, #dlNudge, #exportToast, ' +
+        '#loading, #error, #exportWrap, #exportMenu, #downloadBtn, #copyBtn, #regrabBtn, #dlNudge, #exportToast, ' +
         '#tabBar, #aiCallout, #chatPanel, #flashcardsPanel, #ankiModal, #confirmModal, script, link[rel="stylesheet"]'
     ).forEach(el => el.remove());
 
@@ -1362,6 +1362,9 @@ function downloadBlob(blob, filename) {
 function setupExportMenu() {
     const btn = $('downloadBtn'), menu = $('exportMenu'), wrap = $('exportWrap');
     if (!btn || !menu) return;
+    // The header is a sticky stacking context (and clips overflow), so the menu
+    // lives on <body> and is positioned from the button instead.
+    document.body.appendChild(menu);
     const close = () => {
         menu.classList.remove('shown');
         btn.setAttribute('aria-expanded', 'false');
@@ -1381,7 +1384,7 @@ function setupExportMenu() {
         btn.setAttribute('aria-expanded', 'true');
     };
     btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.contains('shown') ? close() : open(); });
-    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) close(); });
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target) && !menu.contains(e.target)) close(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     menu.querySelectorAll('button[data-export]').forEach(b => {
         b.addEventListener('click', async (e) => {
