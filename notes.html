@@ -1326,7 +1326,8 @@
     .export-wrap { position: relative; display: inline-flex; }
     .export-wrap .caret { font-size: .7em; opacity: .8; margin-left: 2px; }
     .export-menu {
-      position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; min-width: 300px;
+      /* fixed, positioned from the button in JS: the sticky header clips its overflow */
+      position: fixed; z-index: 90; min-width: 300px;
       background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
       box-shadow: 0 14px 34px -12px rgba(0,0,0,.7); padding: 6px;
       display: none; flex-direction: column; gap: 2px;

@@ -1367,8 +1367,16 @@ function setupExportMenu() {
         btn.setAttribute('aria-expanded', 'false');
         setTimeout(() => { if (!menu.classList.contains('shown')) menu.classList.remove('open'); }, 170);
     };
+    const place = () => {
+        const r = btn.getBoundingClientRect();
+        menu.style.top  = (r.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+    };
+    window.addEventListener('resize', () => { if (menu.classList.contains('shown')) place(); });
+    window.addEventListener('scroll', () => { if (menu.classList.contains('shown')) close(); }, { passive: true });
     const open = () => {
         menu.classList.add('open');
+        place();
         requestAnimationFrame(() => menu.classList.add('shown'));
         btn.setAttribute('aria-expanded', 'true');
     };
