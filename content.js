@@ -844,9 +844,9 @@ const NUDGE_COPY = {
 // Wrap-up copy. Free users only ever get the notes version: flashcards are a premium
 // endpoint, so offering them to a free user is offering something with 0 available.
 const WRAPUP_COPY = {
-    flashcards: { title: 'How about some flashcards?',
+    flashcards: { icon: '🃏', title: 'How about some flashcards?',
                   body:  'This lecture is nearly done — turn it into an Anki deck while it’s still fresh.' },
-    notes:      { title: 'Want the notes for this one?',
+    notes:      { icon: '📝', title: 'Want the notes for this one?',
                   body:  'Nearly done — notes from the transcript take about 30 seconds.' },
 };
 
@@ -903,13 +903,19 @@ function nudgeSilence() {
 function renderNudgeCard(opts) {
     const el = document.createElement('div');
     el.className = '__pcs-nudge';
+    const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.7 5.6 4.9 9.8 10.5 10.5-5.6.7-9.8 4.9-10.5 10.5-.7-5.6-4.9-9.8-10.5-10.5C7.1 11.3 11.3 7.1 12 1.5z"/></svg>';
     el.innerHTML =
         '<button class="__pcs-nudge-x" type="button" aria-label="Dismiss">×</button>' +
+        '<span class="__pcs-nudge-head"><span class="__pcs-nudge-icon">' + STAR + '</span><span class="__pcs-nudge-eyebrow"></span></span>' +
         '<span class="__pcs-nudge-title"></span>' +
         '<span class="__pcs-nudge-body"></span>' +
         '<span class="__pcs-nudge-cta"></span>' +
-        (opts.extraLabel ? '<button class="__pcs-nudge-optout" type="button"></button>' : '');
+        (opts.extraLabel ? '<button class="__pcs-nudge-optout" type="button"></button>' : '') +
+        '<span class="__pcs-nudge-timer" aria-hidden="true"></span>';
     // textContent, not innerHTML — some of this is page-derived.
+    if (opts.icon) el.querySelector('.__pcs-nudge-icon').textContent = opts.icon;   // emoji overrides the star
+    el.querySelector('.__pcs-nudge-eyebrow').textContent = opts.eyebrow || 'Panopto Speed · AI';
+    el.style.setProperty('--pcs-nudge-ms', (opts.timeoutMs || NUDGE_TIMEOUT_MS) + 'ms');
     el.querySelector('.__pcs-nudge-title').textContent = opts.title;
     el.querySelector('.__pcs-nudge-body').textContent  = opts.body;
     el.querySelector('.__pcs-nudge-cta').textContent   = opts.cta || 'Open in the extension ↗';
@@ -1091,7 +1097,7 @@ async function maybeShowWrapupNudge(force) {
 
         const copy = WRAPUP_COPY[kind];
         renderNudgeCard({
-            title: copy.title, body: copy.body,
+            title: copy.title, body: copy.body, icon: copy.icon, eyebrow: 'Lecture wrapping up',
             cta: kind === 'flashcards' ? 'Make flashcards now →' : 'Make the notes now →',
             timeoutMs: WRAPUP_TIMEOUT_MS,
             extraLabel: 'Don’t show this message again',
