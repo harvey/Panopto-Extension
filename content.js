@@ -831,7 +831,7 @@ const NUDGE_COPY = {
     speed: {
         cooldownMs: 7 * 24 * 60 * 60 * 1000,
         title: 'Watching at {rate}×',
-        body:  'This lecture can also become AI study notes — free, no card. Flashcards and Anki decks with Premium.',
+        body:  'This lecture can also become AI study notes and an Anki flashcard deck — free, no card.',
         tag:   'Free',
     },
     // Fired once they have banked real time. Leads with what they earned, not with a pitch.
@@ -846,7 +846,7 @@ const NUDGE_COPY = {
 // Wrap-up copy. Free users only ever get the notes version: flashcards are a premium
 // endpoint, so offering them to a free user is offering something with 0 available.
 const WRAPUP_COPY = {
-    flashcards: { icon: '🃏', tag: 'Premium', title: 'How about some flashcards?',
+    flashcards: { icon: '🃏', title: 'How about some flashcards?',
                   body:  'This lecture is nearly done — turn it into an Anki deck while it’s still fresh.' },
     notes:      { icon: '📝', tag: 'Free', title: 'Want the free notes for this one?',
                   body:  'Nearly done — notes from the transcript in about 30 seconds. Free, 3 a day, no card.' },
@@ -1004,6 +1004,7 @@ function lectureId() {
     return new URLSearchParams(location.search).get('id') || '';
 }
 
+let _wrapupTier = null;   // tier from the last /notesQuota read, for the card's FREE pill
 async function wrapupOfferKind() {
     // Returns 'flashcards' | 'notes' | null (null = do not offer).
     const { pcsAuth, pcsWrapup } = await chrome.storage.local.get(['pcsAuth', 'pcsWrapup']);
@@ -1012,17 +1013,24 @@ async function wrapupOfferKind() {
     // to sign-in. Notes only — flashcards are premium.
     if (!pcsAuth || !pcsAuth.email || !pcsAuth.token) return 'notes';
     let q = null;
+    _wrapupTier = null;
     try {
         const r = await fetch(NUDGE_BACKEND + '/notesQuota', { headers: { 'X-PCS-Email': pcsAuth.email, 'X-PCS-Token': pcsAuth.token } });
         if (r.ok) q = await r.json();
     } catch (e) {}
     if (!q) return null;   // cannot tell — do not offer rather than offer to 0%
+    _wrapupTier = q.tier || null;
     const alt = (st.alt || 0) % 2 ? 'notes' : 'flashcards';
     if (q.unlimited) return alt;
     if (q.budget) return q.budget.exhausted ? null : alt;                      // 0% left → nothing
     if (q.tier === 'promo') return ((q.dailyUsed || 0) >= (q.dailyLimit || 0)) ? null : alt;
-    // free: notes only, and only while today's allowance has something left
-    return ((q.lifetimeUsed || 0) >= (q.lifetimeLimit || 0)) ? null : 'notes';
+    // free: 3 notes and one flashcard deck a day — offer whichever still has
+    // something left today, alternating when both do.
+    const notesLeft = (q.lifetimeUsed || 0) < (q.lifetimeLimit || 0);
+    const cardsLeft = q.cardsLimit != null && (q.cardsUsed || 0) < q.cardsLimit;
+    if (!notesLeft && !cardsLeft) return null;
+    if (notesLeft && cardsLeft) return alt;
+    return notesLeft ? 'notes' : 'flashcards';
 }
 
 // Runs the notes/flashcards action from a card via the service worker. On "not
@@ -1067,7 +1075,7 @@ function startAiFromCard(kind, el, remove) {
     send('open-notes').then((r) => { if (r.ok) remove(); else handleFail(r); });
     return false;   // keep the card up; it removes itself on success
 }
-const WRAPUP_FREE_NOTES_HINT = '3 notes a day';
+const WRAPUP_FREE_NOTES_HINT = '3 notes and an Anki deck a day';
 
 let _wrapupInFlight = false;
 // `force` is the test hook (Ctrl+Shift+F on a lecture): skips the once-per-lecture,
@@ -1106,7 +1114,8 @@ async function maybeShowWrapupNudge(force) {
         const copy = WRAPUP_COPY[kind];
         renderNudgeCard({
             title: copy.title, body: copy.body, icon: copy.icon, eyebrow: 'Lecture wrapping up',
-            cta: kind === 'flashcards' ? 'Make flashcards now →' : 'Make the free notes →', tag: copy.tag,
+            cta: kind === 'flashcards' ? (_wrapupTier === 'free' ? 'Make my free deck →' : 'Make flashcards now →') : 'Make the free notes →',
+            tag: (_wrapupTier === 'free' || !_wrapupTier) ? 'Free' : null,
             timeoutMs: WRAPUP_TIMEOUT_MS,
             extraLabel: 'Don’t show this message again',
             onExtra: () => { chrome.storage.local.set({ pcsWrapup: { ...next, off: true } }); },

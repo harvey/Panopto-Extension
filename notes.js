@@ -1728,8 +1728,9 @@ function setupFlashcards() {
     });
 }
 
-function flashErrorText(code) {
-    if (code === 'not_premium')      return 'Flashcards are a premium feature. Get Premium to unlock them.';
+function flashErrorText(code, reason) {
+    if (code === 'not_premium' && reason === 'free_used') return 'You’ve used today’s free flashcard deck — it resets at midnight UTC. Premium gets up to 50 a day, and a 7-day trial needs no card.';
+    if (code === 'not_premium')      return 'Sign in to make flashcards — free users get one deck a day.';
     if (code === 'budget_exceeded')  return "You've used your AI allowance for this month. It resets on the 1st.";
     if (code === 'free_ai_exhausted') return "Today's free AI capacity is used up. It resets overnight.";
     if (code === 'rate_limited')     return "You've hit today's flashcard limit. It resets at midnight UTC.";
@@ -1753,9 +1754,9 @@ async function loadFlashcards(regen) {
     const addRow = $('cardsAdd'); if (addRow) addRow.style.display = 'none';
     const msgEl  = $('cardsMsg'); if (msgEl) msgEl.style.display = 'none';
 
-    const fail = (code) => {
+    const fail = (code, reason) => {
         intro.style.display = 'block';
-        intro.innerHTML = `<p>${escapeHtml(flashErrorText(code))}</p><button id="genCardsRetry" class="cards-gen-btn">Try again</button>`;
+        intro.innerHTML = `<p>${escapeHtml(flashErrorText(code, reason))}</p><button id="genCardsRetry" class="cards-gen-btn">Try again</button>`;
         $('genCardsRetry')?.addEventListener('click', () => loadFlashcards(false));
     };
 
@@ -1773,7 +1774,7 @@ async function loadFlashcards(regen) {
             }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || !Array.isArray(data.cards) || !data.cards.length) return fail(data.error);
+        if (!res.ok || !Array.isArray(data.cards) || !data.cards.length) return fail(data.error, data?.reason);
         _cards = data.cards;
         renderCards(_cards);
         intro.style.display = 'none';
@@ -1880,7 +1881,7 @@ function cardOpErrText(err) {
     const status = err && err.status;
     const code   = err && err.message;
     if (status === 401 || code === 'Unauthorized')     return 'Your sign-in expired. Reopen the extension popup and sign in again.';
-    if (status === 403 || code === 'not_premium')      return 'Flashcards are a premium feature. Get Premium to unlock them.';
+    if (status === 403 || code === 'not_premium')      return 'You’ve used today’s free flashcards — they reset at midnight UTC. Premium gets up to 50 a day.';
     // budget_exceeded is checked before rate_limited: both arrive as 429, but the
     // monthly-allowance message is the accurate one when the server sent that code.
     if (code === 'budget_exceeded')                    return "You've used your AI allowance for this month. It resets on the 1st.";
