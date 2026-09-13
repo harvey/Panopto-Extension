@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Panopto Custom Speed - AI Notes, Flashcards & Translation",
-    "version": "4.7.0",
+    "version": "4.6.1",
     "description": "Watch Panopto lectures past the 2x cap, then turn any lecture into AI notes, Anki flashcards, transcripts or translation.",
     "minimum_chrome_version": "116",
     "icons": {
