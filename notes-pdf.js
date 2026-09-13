@@ -66,7 +66,9 @@
       .pdf-slide figcaption { display: flex; gap: 8px; align-items: center; font-size: 9.5px; color: #6b7280; margin-top: 6px;
                               font-variant-numeric: tabular-nums; }
       .pdf-slide figcaption b { color: #15803d; font-weight: 800; }
-      .pdf-inset { float: right; width: 148px; margin: 0 0 10px 16px; }
+      .pdf-inset { float: right; width: 176px; margin: 0 0 10px 18px; }
+      .pdf-chap::after { content: ''; display: block; clear: both; }
+      .pdf-chap + .pdf-chap { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e5e9ee; }
       .pdf-inset .frame { border: 1px solid #d0d7de; border-radius: 10px; overflow: hidden; background: #f3f4f6; }
       .pdf-inset img { display: block; width: 100%; height: auto; }
       .pdf-inset figcaption { font-size: 8.5px; color: #6b7280; margin-top: 4px; text-align: right; }
@@ -245,7 +247,7 @@
         for (const s of sources) {
             const f = await scoreFrame(s.dataUrl);
             const label = s.label || '';
-            const nudge = /slide|screen/i.test(label) ? 0.25 : /camera|webcam|presenter/i.test(label) ? -0.15 : 0;
+            const nudge = /slide|screen/i.test(label) ? 0.1 : /camera|webcam|presenter/i.test(label) ? -0.1 : 0;
             const score = f.score + nudge;
             const isSlide = score >= 0.55 && f.skin < 0.06 && f.midSkin < 0.05;
             seen.push(`${label || '?'}: still ${f.still.toFixed(2)} share ${f.share.toFixed(2)} skin ${f.skin.toFixed(2)} mid ${f.midSkin.toFixed(2)} → ${score.toFixed(2)}${isSlide ? ' slide' : ' face'}`);
@@ -305,6 +307,16 @@
                `<figcaption>${esc(ts || '')}${src.label ? ' · ' + esc(src.label) : ''}</figcaption></figure>`;
     }
 
+    // One slide-less chapter as a block: label, title, optional camera inset, notes.
+    function chapterBlockHtml(ci, ch, inset, lecture) {
+        const num = `Chapter ${String(ci + 1).padStart(2, '0')}`;
+        return `<section class="pdf-chap">` +
+               eyebrowHtml([num, ...(inset?.ts ? [inset.ts] : [])], lecture) +
+               `<h2 class="pdf-title">${esc(ch.heading)}</h2>` +
+               (inset ? insetHtml(inset.src, inset.ts) : '') +
+               `<div class="md">${ch.bodyHtml}</div></section>`;
+    }
+
     // ── Rasterise one page ───────────────────────────────────────────────────
     let _host = null;
     function host() {
@@ -323,15 +335,22 @@
         document.getElementById('pdfHostStyle')?.remove();
     }
 
-    async function renderPage(innerHtml, css) {
-        // 1. Measure in the live document with the same CSS (images already decoded
-        //    there, fonts identical), so the SVG can be sized before it is drawn.
+    // Lays the page out in the live document with the same CSS (images already
+    // decoded there, fonts identical) and returns its natural height in px.
+    async function measure(innerHtml, { bare = false } = {}) {
         const h = host();
-        h.innerHTML = `<style>${PAPER_CSS}</style><div class="pdf-page">${innerHtml}</div>`;
+        // bare: measure a block on its own, without the page's padding.
+        h.innerHTML = `<style>${PAPER_CSS}</style><div class="pdf-page" style="min-height:0${bare ? ';padding:0' : ''}">${innerHtml}</div>`;
         const pageEl = h.querySelector('.pdf-page');
         await Promise.all([...pageEl.querySelectorAll('img')].map((im) => im.complete ? null : new Promise((r) => { im.onload = im.onerror = r; })));
-        const height = Math.max(PAGE_MIN, Math.ceil(pageEl.getBoundingClientRect().height) + 2);
+        const height = Math.ceil(pageEl.getBoundingClientRect().height) + 2;
         h.innerHTML = '';
+        return height;
+    }
+
+    async function renderPage(innerHtml, css) {
+        // 1. Measure first so the SVG can be sized before it is drawn.
+        const height = Math.max(PAGE_MIN, await measure(innerHtml));
 
         // 2. Draw through an SVG foreignObject at 2x.
         // CSS goes in CDATA: a stray `&` or `<` in a stylesheet is fatal to XML.
@@ -428,6 +447,12 @@
         const plan = [];   // { kind, chapterIdx, html-builder inputs }
         plan.push({ kind: 'cover' });
         const chapterFirstPage = [];
+        // Chapters without a slide (whiteboard lectures, talking-head recordings)
+        // are short blocks; several share a page rather than each sitting alone on
+        // a near-empty A4 sheet. A block taller than a page still gets its own.
+        const USABLE = PAGE_MIN - 36 - 44 - 28;   // page padding + footer
+        let pack = null;
+        const closePack = () => { pack = null; };
         for (let ci = 0; ci < chapters.length; ci++) {
             const ch = chapters[ci];
             const slides = [];
@@ -437,10 +462,20 @@
                 if (s) slides.push({ ts: row.ts, src: s });
                 else if (row.sources[0]) faces.push({ ts: row.ts, src: row.sources[0] });
             }
-            chapterFirstPage[ci] = plan.length;
             if (!slides.length) {
-                plan.push({ kind: 'text', ci, inset: faces[0] || null });
+                const inset = faces[0] || null;
+                const html = chapterBlockHtml(ci, ch, inset, '');
+                const hgt = await measure(html, { bare: true });
+                if (pack && pack.height + 24 + hgt <= USABLE) {
+                    pack.blocks.push(html); pack.height += 24 + hgt;
+                } else {
+                    pack = { kind: 'pack', blocks: [html], height: hgt };
+                    plan.push(pack);
+                }
+                chapterFirstPage[ci] = plan.length - 1;
             } else {
+                closePack();
+                chapterFirstPage[ci] = plan.length;
                 slides.forEach((sl, k) => plan.push({ kind: 'slide', ci, slide: sl, withBody: k === 0, cont: k > 0, k, n: slides.length }));
             }
         }
@@ -458,14 +493,11 @@
                         chapters.map((ch, i) => `<li><span class="n">${String(i + 1).padStart(2, '0')}</span><span>${esc(ch.heading)}</span><span class="p">${chapterFirstPage[i] + 1}</span></li>`).join('') +
                         `</ol></div><div class="made">Generated by Panopto Custom Speed from the lecture transcript · one slide per page, room to annotate</div></div>`;
             } else {
-                const ch = chapters[p.ci];
-                const num = `Chapter ${String(p.ci + 1).padStart(2, '0')}`;
-                if (p.kind === 'text') {
-                    inner = eyebrowHtml([num, ...(p.inset?.ts ? [p.inset.ts] : [])], lecture) +
-                            `<h2 class="pdf-title">${esc(ch.heading)}</h2>` +
-                            (p.inset ? insetHtml(p.inset.src, p.inset.ts) : '') +
-                            `<div class="md">${ch.bodyHtml}</div>`;
+                if (p.kind === 'pack') {
+                    inner = p.blocks.join('');
                 } else {
+                    const ch = chapters[p.ci];
+                    const num = `Chapter ${String(p.ci + 1).padStart(2, '0')}`;
                     inner = eyebrowHtml([num, p.slide.ts, ...(p.n > 1 ? [`slide ${p.k + 1} of ${p.n}`] : [])], lecture) +
                             `<h2 class="pdf-title${p.cont ? ' cont' : ''}">${esc(ch.heading)}${p.cont ? ' · continued' : ''}</h2>` +
                             slideHtml(p.slide.src, p.slide.ts, p.slide.src.label) +
