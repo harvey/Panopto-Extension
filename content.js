@@ -1929,10 +1929,21 @@ async function gatherLectureContext() {
                     // (note: ?id=, not ?deliveryId=). A different code path again, so it
                     // can succeed when GenerateSubtitles / getCaptions return nothing.
                     name: 'GenerateSRT.ashx',
-                    run: async () => cleanTextResp(await fetchWithRetry(
-                        `/Panopto/Pages/Transcription/GenerateSRT.ashx?id=${encodeURIComponent(id)}`,
-                        { credentials: 'include' }
-                    )),
+                    run: async () => {
+                        // Auto-generated tracks live under their own language index and
+                        // the endpoint returns an empty body for the wrong one.
+                        for (const lang of captionLangs) {
+                            const cleaned = await cleanTextResp(await fetchWithRetry(
+                                `/Panopto/Pages/Transcription/GenerateSRT.ashx?id=${encodeURIComponent(id)}&language=${lang}`,
+                                { credentials: 'include' }
+                            ));
+                            if (cleaned && cleaned.length >= 50) return cleaned;
+                        }
+                        return cleanTextResp(await fetchWithRetry(
+                            `/Panopto/Pages/Transcription/GenerateSRT.ashx?id=${encodeURIComponent(id)}`,
+                            { credentials: 'include' }
+                        ));
+                    },
                 },
             ];
 
