@@ -6,98 +6,156 @@
   <title>Panopto Custom Speed — you're set</title>
   <style>
     :root {
-      --bg: #0d1117; --bg2: #11161d; --surface: #161b22; --surface2: #1c232c; --border: #262e38;
-      --text: #e6edf3; --muted: #8b949e; --green: #22c55e; --green-deep: #11773D; --amber: #fbbf24;
+      --bg: #0b0f14; --bg2: #11161d; --surface: #151b23; --surface2: #1c232c; --border: #242d38; --border2: #33404e;
+      --text: #eef3f8; --muted: #94a0ad; --green: #22c55e; --green-soft: #7ef0a6; --green-deep: #11773D; --amber: #fbbf24;
+      --ease: cubic-bezier(.2,.7,.2,1);
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px 80px; }
-    a { color: #7ef0a6; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 17px; line-height: 1.55; overflow-x: hidden; }
+    .wrap { position: relative; max-width: 1120px; margin: 0 auto; padding: 0 28px 96px; }
+    a { color: var(--green-soft); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; background: var(--surface2); padding: 1px 6px; border-radius: 6px; }
+
+    /* ── Ambient background: two slow drifting glows + a faint grid ── */
+    .sky { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px) 0 0 / 48px 48px,
+        var(--bg); }
+    .sky::before, .sky::after { content: ""; position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .55; }
+    .sky::before { left: -20vmax; top: -25vmax; background: radial-gradient(circle, rgba(34,197,94,.55), transparent 62%); }
+    .sky::after  { right: -22vmax; top: 10vmax; background: radial-gradient(circle, rgba(56,132,255,.42), transparent 62%); }
+    .sky .veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, transparent 30%, var(--bg) 85%); }
+
+    /* ── Entrance + scroll reveal ── */
+    .up { opacity: 0; transform: translateY(26px); animation: rise .9s var(--ease) forwards; animation-delay: var(--d, 0s); }
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s var(--ease), transform .8s var(--ease); transition-delay: var(--d, 0s); }
+    .reveal.in { opacity: 1; transform: none; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
 
     /* ── Header ── */
-    .top { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
-    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.01em; }
-    .brand img { width: 30px; height: 30px; border-radius: 8px; }
-    .top nav a { color: var(--muted); text-decoration: none; margin-left: 18px; font-size: .9rem; }
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 26px 0; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.1rem; letter-spacing: -.01em; }
+    .brand img { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -8px rgba(34,197,94,.7); }
+    .top nav a { color: var(--muted); text-decoration: none; margin-left: 22px; font-size: .95rem; font-weight: 600; transition: color .2s; }
     .top nav a:hover { color: var(--text); }
 
     /* ── Hero ── */
-    .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 36px; align-items: center; padding: 28px 0 40px; }
-    @media (max-width: 800px) { .hero { grid-template-columns: 1fr; } }
-    .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #7ef0a6; }
-    .eyebrow::before { content: "✦"; text-shadow: 0 0 10px rgba(34,197,94,.8); }
-    h1 { font-size: clamp(2rem, 4.6vw, 3rem); line-height: 1.05; margin: 12px 0 12px; letter-spacing: -.02em; text-wrap: balance; }
-    .lede { font-size: 1.08rem; color: var(--muted); margin: 0 0 22px; max-width: 50ch; }
-    .find { display: flex; gap: 8px; flex-wrap: wrap; }
-    .find input { flex: 1 1 220px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
-    .find input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg,#1f9a52,#11773D); color: #fff; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; box-shadow: 0 8px 20px -10px rgba(34,197,94,.8); }
-    .btn:hover { filter: brightness(1.07); }
+    .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 44px; align-items: center; padding: 48px 0 40px; }
+    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 24px; } }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--green-soft); }
+    .eyebrow::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(34,197,94,.7); animation: ping 2.2s ease-out infinite; }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.7); } 100% { box-shadow: 0 0 0 14px rgba(34,197,94,0); } }
+    h1 { font-size: clamp(2.9rem, 7vw, 5.2rem); line-height: .98; margin: 18px 0 20px; letter-spacing: -.035em; text-wrap: balance; font-weight: 850; }
+    h1 .line { display: block; }
+    h1 .glow { background: linear-gradient(92deg, #baffd3, var(--green) 55%, #7cf7a8); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: shimmer 6s linear infinite; }
+    @keyframes shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+    .lede { font-size: 1.28rem; color: var(--muted); margin: 0 0 28px; max-width: 46ch; line-height: 1.5; }
+    .find { display: grid; gap: 10px; max-width: 520px; }
+    .find input { width: 100%; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border2); background: rgba(21,27,35,.85); color: var(--text); font: inherit; font-size: 1.05rem; transition: border-color .2s, box-shadow .2s; }
+    .find input::placeholder { color: #6f7b88; }
+    .find input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 4px rgba(34,197,94,.18); }
+    .btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 15px 22px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: linear-gradient(180deg,#22a85a,#11773D); color: #fff; font: inherit; font-size: 1.05rem; font-weight: 750; cursor: pointer; text-decoration: none; box-shadow: 0 14px 30px -14px rgba(34,197,94,.9); transition: transform .2s var(--ease), box-shadow .2s, filter .2s; }
+    .btn::after { content: ""; position: absolute; top: 0; left: -80%; width: 50%; height: 100%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent); transform: skewX(-20deg); transition: left .6s var(--ease); }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 20px 36px -14px rgba(34,197,94,1); filter: brightness(1.05); }
+    .btn:hover::after { left: 130%; }
+    .btn:active { transform: translateY(0); }
     .btn.ghost { background: var(--surface); color: var(--text); box-shadow: none; }
-    .hint { font-size: .82rem; color: var(--muted); margin-top: 10px; }
+    .btn.ghost:hover { box-shadow: 0 14px 30px -18px rgba(255,255,255,.4); }
+    .hint { font-size: .9rem; color: var(--muted); margin-top: 14px; }
 
-    /* ── Pin animation ── */
-    .pin { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
-    .pin h3 { margin: 0 0 4px; font-size: .95rem; }
-    .pin p { margin: 0 0 14px; color: var(--muted); font-size: .85rem; }
-    .chrome { position: relative; background: #202124; border-radius: 12px; padding: 10px 10px 40px; border: 1px solid #3c4043; overflow: hidden; min-height: 210px; }
+    /* ── Pin animation card ── */
+    .pin { background: linear-gradient(180deg, rgba(255,255,255,.03), transparent), var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 22px; box-shadow: 0 30px 60px -40px rgba(0,0,0,.9); }
+    .pin h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .pin p { margin: 0 0 16px; color: var(--muted); font-size: .95rem; }
+    .chrome { position: relative; background: #202124; border-radius: 14px; padding: 12px 12px 44px; border: 1px solid #3c4043; overflow: hidden; min-height: 240px; }
     .bar { display: flex; align-items: center; gap: 8px; }
-    .url { flex: 1; min-width: 0; height: 28px; border-radius: 14px; background: #35363a; color: #bdc1c6; font-size: 12px; display: flex; align-items: center; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ic { width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: #e8eaed; font-size: 14px; background: transparent; }
+    .url { flex: 1; min-width: 0; height: 30px; border-radius: 15px; background: #35363a; color: #bdc1c6; font-size: 12.5px; display: flex; align-items: center; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ic { width: 28px; height: 28px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #e8eaed; font-size: 15px; background: transparent; }
     .ic.puzzle { background: #303134; }
     .ic.ext { background: #11773D; color: #fff; font-weight: 800; font-size: 11px; opacity: 0; transform: scale(.4); }
-    .menu { position: absolute; right: 14px; top: 44px; width: 250px; background: #2b2c2f; border: 1px solid #3c4043; border-radius: 10px; padding: 8px; box-shadow: 0 12px 30px rgba(0,0,0,.5); opacity: 0; transform: translateY(-6px); font-size: 12.5px; color: #e8eaed; }
-    .menu .row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; }
+    .menu { position: absolute; right: 16px; top: 50px; width: 260px; background: #2b2c2f; border: 1px solid #3c4043; border-radius: 12px; padding: 8px; box-shadow: 0 16px 36px rgba(0,0,0,.55); opacity: 0; transform: translateY(-6px); font-size: 13px; color: #e8eaed; }
+    .menu .row { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 7px; }
     .menu .row.us { background: #3a3b3f; }
     .menu .row .name { flex: 1; }
     .menu .row .pinbtn { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: #9aa0a6; }
     .cursor { position: absolute; width: 16px; height: 16px; left: 60%; top: 70%; pointer-events: none; opacity: 0; }
     .cursor::before { content: ""; position: absolute; left: 0; top: 0; border: 8px solid transparent; border-top: 14px solid #fff; border-left: 8px solid #fff; transform: rotate(-20deg); filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
-    .pin-cap { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: #bdc1c6; }
+    .pin-cap { position: absolute; left: 14px; bottom: 12px; font-size: 12.5px; color: #bdc1c6; }
     @media (prefers-reduced-motion: no-preference) {
       .cursor { animation: cur 7s ease-in-out infinite; }
       .menu { animation: menu 7s ease-in-out infinite; }
       .ic.puzzle { animation: puzzle 7s ease-in-out infinite; }
       .ic.ext { animation: ext 7s ease-in-out infinite; }
       .menu .row.us .pinbtn { animation: pinbtn 7s ease-in-out infinite; }
-      .pin-cap span { animation: cap 7s ease-in-out infinite; }
     }
-    @keyframes cur { 0% { opacity: 0; left: 60%; top: 70%; } 10% { opacity: 1; left: 60%; top: 70%; } 22% { left: calc(100% - 46px); top: 20px; } 26% { transform: scale(.85); } 30% { transform: scale(1); }
-      46% { left: calc(100% - 42px); top: 96px; } 50% { transform: scale(.85); } 54% { transform: scale(1); } 80% { opacity: 1; left: calc(100% - 42px); top: 96px; } 100% { opacity: 0; } }
+    @keyframes cur { 0% { opacity: 0; left: 60%; top: 70%; } 10% { opacity: 1; left: 60%; top: 70%; } 22% { left: calc(100% - 50px); top: 22px; } 26% { transform: scale(.85); } 30% { transform: scale(1); }
+      46% { left: calc(100% - 44px); top: 104px; } 50% { transform: scale(.85); } 54% { transform: scale(1); } 80% { opacity: 1; left: calc(100% - 44px); top: 104px; } 100% { opacity: 0; } }
     @keyframes puzzle { 0%, 24% { background: #303134; } 28%, 60% { background: #5f6368; } 64%, 100% { background: #303134; } }
     @keyframes menu { 0%, 28% { opacity: 0; transform: translateY(-6px); } 32%, 62% { opacity: 1; transform: none; } 68%, 100% { opacity: 0; transform: translateY(-6px); } }
     @keyframes pinbtn { 0%, 50% { color: #9aa0a6; background: transparent; } 54%, 100% { color: #fff; background: #11773D; } }
     @keyframes ext { 0%, 52% { opacity: 0; transform: scale(.4); } 58% { opacity: 1; transform: scale(1.18); } 64%, 100% { opacity: 1; transform: scale(1); } }
-    @keyframes cap { 0%, 100% { opacity: .9; } }
+
+    /* ── Player banner: what shows up on a lecture ── */
+    .player { margin-top: 36px; background: linear-gradient(180deg, #0f141b, #0b0f14); border: 1px solid var(--border); border-radius: 24px; padding: 26px 28px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; box-shadow: 0 40px 80px -50px rgba(34,197,94,.5); position: relative; overflow: hidden; }
+    .player::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; background: linear-gradient(120deg, rgba(34,197,94,.6), transparent 40%, transparent 60%, rgba(56,132,255,.5)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+    @media (max-width: 760px) { .player { grid-template-columns: 1fr; } }
+    .player .cap { font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .vid { position: relative; height: 150px; border-radius: 14px; background: linear-gradient(135deg, #1a2a44, #0e1a2c 60%, #0b1220); border: 1px solid #253650; overflow: hidden; }
+    .vid .slide { position: absolute; left: 18px; top: 16px; right: 40%; }
+    .vid .slide i { display: block; height: 8px; border-radius: 4px; background: rgba(255,255,255,.14); margin: 8px 0; }
+    .vid .slide i:first-child { height: 13px; width: 60%; background: rgba(255,255,255,.5); }
+    .vid .who { position: absolute; right: 18px; top: 16px; width: 88px; height: 62px; border-radius: 10px; background: linear-gradient(160deg, #2b3b55, #1c2a40); border: 1px solid #34486a; }
+    .ctl { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px 12px; background: linear-gradient(transparent, rgba(0,0,0,.6)); display: grid; gap: 8px; }
+    .track { position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,.18); }
+    .track .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 3px; background: var(--green); animation: fill 8s linear infinite; }
+    .track .knob { position: absolute; top: 50%; left: 0; width: 13px; height: 13px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 0 0 4px rgba(34,197,94,.25); animation: knob 8s linear infinite; }
+    @keyframes fill { to { width: 100%; } } @keyframes knob { to { left: 100%; } }
+    .ctlrow { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: #dfe6ee; }
+    .ctlrow .t { margin-left: auto; font-family: ui-monospace, monospace; color: #b9c3ce; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--green-deep); color: #fff; font-weight: 800; font-size: 12px; border: 1px solid rgba(255,255,255,.18); }
+    .pill .s { position: relative; width: 3.2ch; height: 1.2em; overflow: hidden; }
+    .pill .s span, .big .n span { position: absolute; inset: 0; opacity: 0; animation: cycle 8s linear infinite; }
+    .pill .s span:nth-child(1), .big .n span:nth-child(1) { animation-delay: 0s; }
+    .pill .s span:nth-child(2), .big .n span:nth-child(2) { animation-delay: 1.6s; }
+    .pill .s span:nth-child(3), .big .n span:nth-child(3) { animation-delay: 3.2s; }
+    .pill .s span:nth-child(4), .big .n span:nth-child(4) { animation-delay: 4.8s; }
+    .pill .s span:nth-child(5), .big .n span:nth-child(5) { animation-delay: 6.4s; }
+    @keyframes cycle { 0% { opacity: 0; transform: translateY(60%); } 3% { opacity: 1; transform: none; } 20% { opacity: 1; transform: none; } 23% { opacity: 0; transform: translateY(-60%); } 100% { opacity: 0; } }
+    .big { text-align: center; min-width: 200px; }
+    .big .n { position: relative; height: 1em; font-size: clamp(3.6rem, 7vw, 5.4rem); font-weight: 900; letter-spacing: -.04em; line-height: 1; color: var(--green-soft); text-shadow: 0 0 40px rgba(34,197,94,.45); }
+    .big .n span { display: block; }
+    .big .l { margin-top: 10px; color: var(--muted); font-size: .95rem; }
+    .big .l b { color: var(--text); }
 
     /* ── Sections ── */
-    h2 { font-size: 1.5rem; margin: 48px 0 6px; letter-spacing: -.01em; }
-    .sub { color: var(--muted); margin: 0 0 18px; max-width: 60ch; }
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-    .step { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: grid; gap: 6px; }
-    .step .k { font-size: .7rem; font-weight: 800; letter-spacing: .1em; color: #7ef0a6; }
-    .step b { font-size: 1rem; }
-    .step span { color: var(--muted); font-size: .88rem; }
+    h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); margin: 84px 0 8px; letter-spacing: -.025em; font-weight: 820; }
+    .sub { color: var(--muted); margin: 0 0 26px; max-width: 62ch; font-size: 1.1rem; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .step { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; display: grid; gap: 8px; transition: transform .3s var(--ease), border-color .3s, box-shadow .3s; }
+    .step:hover, .feat:hover, .plan:hover { transform: translateY(-5px); border-color: var(--border2); box-shadow: 0 30px 50px -36px rgba(0,0,0,1); }
+    .step .k { font-size: 2.6rem; font-weight: 900; letter-spacing: -.04em; line-height: 1; background: linear-gradient(180deg, var(--green-soft), var(--green-deep)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .step b { font-size: 1.2rem; }
+    .step span { color: var(--muted); font-size: .98rem; }
 
     /* ── Feature demos ── */
-    .feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-    .feat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
-    .demo { position: relative; height: 190px; background: var(--bg2); border-bottom: 1px solid var(--border); overflow: hidden; }
+    .feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+    .feat { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; transition: transform .3s var(--ease), border-color .3s, box-shadow .3s; }
+    .demo { position: relative; height: 220px; background: var(--bg2); border-bottom: 1px solid var(--border); overflow: hidden; }
     .demo video { width: 100%; height: 100%; object-fit: cover; display: none; }
     .demo.has-video video { display: block; } .demo.has-video .mock { display: none; }
-    .mock { position: absolute; inset: 14px; }
-    .feat .body { padding: 14px 16px 16px; display: grid; gap: 6px; }
-    .feat .body b { font-size: 1.02rem; }
-    .feat .body span { color: var(--muted); font-size: .88rem; }
-    .tag { justify-self: start; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; }
+    .mock { position: absolute; inset: 18px; }
+    .feat .body { padding: 18px 20px 20px; display: grid; gap: 8px; }
+    .feat .body b { font-size: 1.2rem; }
+    .feat .body span { color: var(--muted); font-size: .98rem; }
+    .tag { justify-self: start; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
     .feat .body .tag.free { background: var(--green); color: #06240f; } .feat .body .tag.prem { background: linear-gradient(135deg,#fbbf24,#f59e0b); color: #3b2300; }
-    /* notes mock: lines fill in, chapter heading appears */
-    .m-notes .eyebrow2 { font-size: 9px; letter-spacing: .12em; color: #7ef0a6; font-weight: 700; }
-    .m-notes .h { height: 14px; width: 55%; background: #e6edf3; border-radius: 3px; margin: 6px 0 10px; transform-origin: left; }
-    .m-notes .l { height: 8px; border-radius: 4px; background: var(--surface2); margin: 7px 0; transform-origin: left; }
-    .m-notes .shot { position: absolute; right: 0; top: 0; width: 40%; height: 68px; border-radius: 8px; background: linear-gradient(135deg,#1e3a5f,#0f2b4b); border: 1px solid #2b4a6b; }
-    .m-notes .shot::after { content: "12:34"; position: absolute; left: 6px; bottom: 5px; font-size: 9px; color: #9cc0ff; font-family: ui-monospace, monospace; }
+    .m-notes .eyebrow2 { font-size: 10px; letter-spacing: .12em; color: var(--green-soft); font-weight: 700; }
+    .m-notes .h { height: 16px; width: 55%; background: #e6edf3; border-radius: 4px; margin: 8px 0 12px; transform-origin: left; }
+    .m-notes .l { height: 9px; border-radius: 5px; background: var(--surface2); margin: 9px 0; transform-origin: left; }
+    .m-notes .shot { position: absolute; right: 0; top: 0; width: 40%; height: 80px; border-radius: 10px; background: linear-gradient(135deg,#1e3a5f,#0f2b4b); border: 1px solid #2b4a6b; }
+    .m-notes .shot::after { content: "12:34"; position: absolute; left: 7px; bottom: 6px; font-size: 10px; color: #9cc0ff; font-family: ui-monospace, monospace; }
     @media (prefers-reduced-motion: no-preference) {
       .m-notes .h { animation: grow 5s ease-in-out infinite; }
       .m-notes .l:nth-child(3) { animation: grow 5s ease-in-out infinite .5s; } .m-notes .l:nth-child(4) { animation: grow 5s ease-in-out infinite .9s; }
@@ -106,18 +164,16 @@
     }
     @keyframes grow { 0% { transform: scaleX(0); opacity: 0; } 12% { transform: scaleX(1); opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
     @keyframes fade { 0% { opacity: 0; transform: translateY(6px); } 15% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
-    /* flashcard mock: flip */
     .m-cards { perspective: 900px; display: grid; place-items: center; }
-    .card3 { position: relative; width: 78%; height: 120px; transform-style: preserve-3d; }
-    .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); padding: 12px 14px; display: grid; align-content: center; gap: 6px; }
-    .face small { font-size: 9px; letter-spacing: .1em; color: #7ef0a6; font-weight: 700; }
-    .face p { margin: 0; font-size: 12.5px; line-height: 1.35; }
+    .card3 { position: relative; width: 80%; height: 140px; transform-style: preserve-3d; }
+    .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 14px; border: 1px solid var(--border2); background: var(--surface); padding: 14px 16px; display: grid; align-content: center; gap: 6px; box-shadow: 0 20px 40px -24px rgba(0,0,0,.9); }
+    .face small { font-size: 10px; letter-spacing: .1em; color: var(--green-soft); font-weight: 700; }
+    .face p { margin: 0; font-size: 13.5px; line-height: 1.4; }
     .face.back { transform: rotateY(180deg); background: #0f2a1a; border-color: #1f4d30; }
     @media (prefers-reduced-motion: no-preference) { .card3 { animation: flip 5s ease-in-out infinite; } }
     @keyframes flip { 0%, 38% { transform: rotateY(0); } 50%, 88% { transform: rotateY(180deg); } 100% { transform: rotateY(360deg); } }
-    /* chat mock: bubbles */
-    .m-chat { display: grid; align-content: end; gap: 8px; }
-    .bub { max-width: 82%; padding: 8px 11px; border-radius: 12px; font-size: 12px; line-height: 1.35; background: var(--surface2); }
+    .m-chat { display: grid; align-content: end; gap: 9px; }
+    .bub { max-width: 84%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.4; background: var(--surface2); }
     .bub.me { justify-self: end; background: #11773D; color: #fff; border-bottom-right-radius: 4px; }
     .bub.ai { border-bottom-left-radius: 4px; }
     .bub.ai .dots i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #8b949e; margin-right: 3px; }
@@ -132,46 +188,54 @@
     @keyframes dot { 0%, 100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-3px); opacity: 1; } }
 
     /* ── Pricing ── */
-    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; align-items: stretch; }
-    .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px; position: relative; }
-    .plan.best { border-color: rgba(34,197,94,.6); box-shadow: 0 0 0 1px rgba(34,197,94,.25), 0 20px 40px -24px rgba(34,197,94,.6); }
-    .plan .ribbon { position: absolute; top: -10px; right: 16px; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--green); color: #06240f; border-radius: 999px; padding: 3px 9px; }
-    .plan h3 { margin: 0; font-size: 1rem; }
-    .price { display: flex; align-items: baseline; gap: 6px; }
-    .price b { font-size: 2rem; letter-spacing: -.02em; }
-    .price span { color: var(--muted); font-size: .85rem; }
-    .plan ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: .9rem; align-content: start; }
-    .plan li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; align-items: start; }
+    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; align-items: stretch; }
+    .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 26px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 14px; position: relative; transition: transform .3s var(--ease), border-color .3s, box-shadow .3s; }
+    .plan.best { border-color: rgba(34,197,94,.6); animation: halo 3.2s ease-in-out infinite; }
+    @keyframes halo { 0%, 100% { box-shadow: 0 0 0 1px rgba(34,197,94,.25), 0 24px 48px -28px rgba(34,197,94,.6); } 50% { box-shadow: 0 0 0 1px rgba(34,197,94,.5), 0 30px 60px -24px rgba(34,197,94,.95); } }
+    .plan .ribbon { position: absolute; top: -12px; right: 18px; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--green); color: #06240f; border-radius: 999px; padding: 4px 11px; }
+    .plan h3 { margin: 0; font-size: 1.15rem; }
+    .price { display: flex; align-items: baseline; gap: 8px; }
+    .price b { font-size: 2.8rem; letter-spacing: -.04em; line-height: 1; }
+    .price span { color: var(--muted); font-size: .92rem; }
+    .plan ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; font-size: .98rem; align-content: start; }
+    .plan li { display: grid; grid-template-columns: 20px 1fr; gap: 6px; align-items: start; }
     .plan li::before { content: "✓"; color: var(--green); font-weight: 800; }
     .plan li.dim { color: var(--muted); } .plan li.dim::before { content: "–"; color: var(--muted); }
     .plan .btn { width: 100%; }
-    .fine { color: var(--muted); font-size: .8rem; margin-top: 10px; max-width: 70ch; }
+    .fine { color: var(--muted); font-size: .9rem; margin-top: 14px; max-width: 72ch; }
 
-    .embed { border-left: 3px solid var(--green); padding: 4px 0 4px 16px; color: var(--muted); max-width: 66ch; margin-top: 44px; }
+    .embed { border-left: 3px solid var(--green); padding: 6px 0 6px 18px; color: var(--muted); max-width: 70ch; margin-top: 56px; font-size: 1rem; }
     .embed b { color: var(--text); }
-    footer { margin-top: 44px; color: var(--muted); font-size: .8rem; display: flex; gap: 16px; flex-wrap: wrap; }
+    footer { margin-top: 56px; color: var(--muted); font-size: .88rem; display: flex; gap: 18px; flex-wrap: wrap; }
     footer a { color: var(--muted); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .up, .reveal { opacity: 1; transform: none; animation: none; transition: none; }
+      .eyebrow::before, h1 .glow, .plan.best, .track .fill, .track .knob, .btn::after { animation: none; }
+      .pill .s span, .big .n span { animation: none; } .pill .s span:first-child, .big .n span:first-child { opacity: 1; }
+    }
   </style>
 </head>
 <body>
+  <div class="sky"><div class="veil"></div></div>
   <div class="wrap">
-    <div class="top">
+    <div class="top up">
       <span class="brand"><img src="icon48.png" alt="">Panopto Custom Speed</span>
       <nav><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="terms.html">Terms</a></nav>
     </div>
 
     <section class="hero">
       <div>
-        <span class="eyebrow">Installed</span>
-        <h1>Now open a lecture. That's the whole setup.</h1>
-        <p class="lede">The extension comes alive on any lecture page on your university's Panopto. The speed control appears in the player and the toolbar icon lights up. Nothing to configure.</p>
-        <div class="find">
-          <input id="uni" type="text" placeholder="Your university (e.g. Monash), or paste your Panopto address" autocomplete="organization">
+        <span class="eyebrow up" style="--d:.05s">Installed and ready</span>
+        <h1><span class="line up" style="--d:.15s">Now open</span><span class="line up" style="--d:.25s">a lecture.</span><span class="line up glow" style="--d:.35s">That's it.</span></h1>
+        <p class="lede up" style="--d:.45s">The extension wakes up on any lecture page on your university's Panopto. The speed control appears in the player and the toolbar icon lights up. Nothing to configure.</p>
+        <div class="find up" style="--d:.55s">
+          <input id="uni" type="text" placeholder="University name, or paste a Panopto link" autocomplete="organization">
           <button class="btn" id="findBtn" type="button">Find my university's Panopto ↗</button>
         </div>
-        <p class="hint">Any page with <code>panopto.com</code> or <code>panopto.eu</code> in the address works.</p>
+        <p class="hint up" style="--d:.65s">Any page with <code>panopto.com</code> or <code>panopto.eu</code> in the address works.</p>
       </div>
-      <div class="pin">
+      <div class="pin up" style="--d:.5s">
         <h3>Pin it so it's one click away</h3>
         <p>Click the puzzle piece in Chrome's toolbar, then the pin next to Panopto Custom Speed.</p>
         <div class="chrome" aria-label="Animation: pinning the extension in Chrome">
@@ -193,32 +257,50 @@
       </div>
     </section>
 
-    <h2>How it works</h2>
-    <p class="sub">Three steps, no account needed for the first one.</p>
+    <section class="player up" style="--d:.75s" aria-label="What appears in the player">
+      <div>
+        <div class="cap">This shows up in the player</div>
+        <div class="vid">
+          <div class="slide"><i></i><i></i><i></i><i></i></div>
+          <div class="who"></div>
+          <div class="ctl">
+            <div class="track"><div class="fill"></div><div class="knob"></div></div>
+            <div class="ctlrow"><span>▶</span><span>🔊</span><span class="pill">⚡ <span class="s"><span>1×</span><span>1.5×</span><span>2×</span><span>2.5×</span><span>3×</span></span></span><span class="t">18:42 / 52:10</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="big">
+        <div class="n"><span>1×</span><span>1.5×</span><span>2×</span><span>2.5×</span><span>3×</span></div>
+        <div class="l">Any speed from <b>0.1×</b> to <b>4×</b><br>Hold <b>→</b> to fast-forward at 2×</div>
+      </div>
+    </section>
+
+    <h2 class="reveal">How it works</h2>
+    <p class="sub reveal">Three steps, no account needed for the first one.</p>
     <div class="steps">
-      <div class="step"><span class="k">STEP 1</span><b>Watch at any speed</b><span>0.1× to 4× in the player, saved per lecture. Hold → to fast-forward at 2×, like YouTube.</span></div>
-      <div class="step"><span class="k">STEP 2</span><b>Sign in with Google once</b><span>Unlocks AI notes and flashcards. Free, no card, no trial to cancel.</span></div>
-      <div class="step"><span class="k">STEP 3</span><b>Click the icon on a lecture</b><span>Generate Notes, Generate Flashcards, or AI Chat. Notes and decks export to Notion, Word, PDF and Anki.</span></div>
+      <div class="step reveal" style="--d:0s"><span class="k">01</span><b>Watch at any speed</b><span>0.1× to 4× in the player, saved per lecture. Hold → to fast-forward at 2×, like YouTube.</span></div>
+      <div class="step reveal" style="--d:.12s"><span class="k">02</span><b>Sign in with Google once</b><span>Unlocks AI notes and flashcards. Free, no card, no trial to cancel.</span></div>
+      <div class="step reveal" style="--d:.24s"><span class="k">03</span><b>Click the icon on a lecture</b><span>Generate Notes, Generate Flashcards, or AI Chat. Notes and decks export to Notion, Word, PDF and Anki.</span></div>
     </div>
 
-    <h2 id="features">What it does</h2>
-    <p class="sub">Everything runs from the lecture's own transcript, so it works on any Panopto video that has captions.</p>
+    <h2 id="features" class="reveal">What it does</h2>
+    <p class="sub reveal">Everything runs from the lecture's own transcript, so it works on any Panopto video that has captions.</p>
     <div class="feats">
-      <div class="feat">
+      <div class="feat reveal" style="--d:0s">
         <div class="demo" data-video="media/notes.mp4">
           <video muted loop playsinline preload="none"></video>
           <div class="mock m-notes"><div class="eyebrow2">CHAPTER 03</div><div class="h"></div><div class="l" style="width:88%"></div><div class="l" style="width:72%"></div><div class="l" style="width:81%"></div><div class="l" style="width:50%"></div><div class="shot"></div></div>
         </div>
         <div class="body"><span class="tag free">Free · 3 a day</span><b>AI study notes with slides</b><span>Organised by topic, with formulas, worked examples and screenshots captured from the video at the right moment.</span></div>
       </div>
-      <div class="feat">
+      <div class="feat reveal" style="--d:.12s">
         <div class="demo" data-video="media/flashcards.mp4">
           <video muted loop playsinline preload="none"></video>
           <div class="mock m-cards"><div class="card3"><div class="face"><small>CARD 4</small><p>What does the Calvin cycle produce from CO₂ and RuBP?</p></div><div class="face back"><small>ANSWER</small><p>Two molecules of 3-phosphoglycerate (3-PGA), later reduced to G3P.</p></div></div></div>
         </div>
         <div class="body"><span class="tag free">Free · 1 deck a day</span><b>Anki flashcards</b><span>A deck from the whole lecture, editable card by card, exported as .apkg straight into Anki.</span></div>
       </div>
-      <div class="feat">
+      <div class="feat reveal" style="--d:.24s">
         <div class="demo" data-video="media/chat.mp4">
           <video muted loop playsinline preload="none"></video>
           <div class="mock m-chat"><div class="bub me">Explain the bit around 12:30 again?</div><div class="bub ai typing"><span class="dots"><i></i><i></i><i></i></span></div><div class="bub ai ans">At 12:30 she's contrasting cyclic and non‑cyclic photophosphorylation: cyclic only makes ATP, non‑cyclic makes ATP <em>and</em> NADPH…</div></div>
@@ -227,10 +309,10 @@
       </div>
     </div>
 
-    <h2 id="pricing">Pricing</h2>
-    <p class="sub">The speed control, notes and a flashcard deck a day are free forever. Premium removes the daily caps and adds chat, auto-skip silence, picture-in-picture, lecture download and dubbing.</p>
+    <h2 id="pricing" class="reveal">Pricing</h2>
+    <p class="sub reveal">The speed control, notes and a flashcard deck a day are free forever. Premium removes the daily caps and adds chat, auto-skip silence, picture-in-picture, lecture download and dubbing.</p>
     <div class="plans">
-      <div class="plan">
+      <div class="plan reveal" style="--d:0s">
         <h3>Free</h3>
         <div class="price"><b>£0</b><span>forever, no card</span></div>
         <ul>
@@ -243,7 +325,7 @@
         </ul>
         <a class="btn ghost" href="#" id="freeBtn">Open a lecture to start</a>
       </div>
-      <div class="plan">
+      <div class="plan reveal" style="--d:.12s">
         <h3>Premium</h3>
         <div class="price"><b>£3</b><span>every 2 months</span></div>
         <ul>
@@ -256,7 +338,7 @@
         </ul>
         <a class="btn" href="https://buy.stripe.com/6oU9ALalk59U4GdfqY1VK04" target="_blank" rel="noopener">Start 7-day free trial</a>
       </div>
-      <div class="plan best">
+      <div class="plan best reveal" style="--d:.24s">
         <span class="ribbon">Best value</span>
         <h3>Premium · yearly</h3>
         <div class="price"><b>£12</b><span>per year · £1 a month</span></div>
@@ -268,11 +350,11 @@
         <a class="btn" href="https://buy.stripe.com/eVqdR1dxweKu8Wt3Ig1VK05" target="_blank" rel="noopener">Get the year for £12</a>
       </div>
     </div>
-    <p class="fine">Premium is linked to the Google account you sign in with in the extension. Bought it with a different email? The popup has a "Message support" link that reaches the developer directly.</p>
+    <p class="fine reveal">Premium is linked to the Google account you sign in with in the extension. Bought it with a different email? The popup has a "Message support" link that reaches the developer directly.</p>
 
-    <div class="embed"><b>Lectures inside Canvas, Moodle or Blackboard?</b><br>When Panopto is embedded in another site the player can't always sign you in. A small green tag appears in the corner of the video: click it to open the same lecture on Panopto itself, where everything works.</div>
+    <div class="embed reveal"><b>Lectures inside Canvas, Moodle or Blackboard?</b><br>When Panopto is embedded in another site the player can't always sign you in. A small green tag appears in the corner of the video: click it to open the same lecture on Panopto itself, where everything works.</div>
 
-    <footer><span>Panopto Custom Speed</span><a href="terms.html">Terms &amp; refund policy</a><a href="https://harveychandler.dev/Panopto-Extension/panopto-privacy-policy.txt" target="_blank" rel="noopener">Privacy</a></footer>
+    <footer class="reveal"><span>Panopto Custom Speed</span><a href="terms.html">Terms &amp; refund policy</a><a href="https://harveychandler.dev/Panopto-Extension/panopto-privacy-policy.txt" target="_blank" rel="noopener">Privacy</a></footer>
   </div>
   <script src="welcome.js"></script>
 </body>

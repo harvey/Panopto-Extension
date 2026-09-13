@@ -30,6 +30,19 @@
     });
     input.focus();
 
+    // Scroll reveal: sections fade up as they enter the viewport (CSS .reveal/.in).
+    // No IntersectionObserver, or reduced motion: everything is shown at once.
+    const revealable = document.querySelectorAll('.reveal');
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!('IntersectionObserver' in window) || reduced) {
+        revealable.forEach((el) => el.classList.add('in'));
+    } else {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+        revealable.forEach((el) => io.observe(el));
+    }
+
     // ── Read-receipts ──────────────────────────────────────────────────────
     // Anonymous, keyed by the uninstall-survey uid: open, scrolled past halfway,
     // clicked "find my Panopto", clicked a pricing button, and seconds on page.
