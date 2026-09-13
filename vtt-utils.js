@@ -111,23 +111,51 @@
     return null;
   }
 
+  // Panopto's caption JSON carries two clocks: `Time` (seconds into the video)
+  // and `AbsoluteTime`. Which one is real depends on the recording: pre-recorded
+  // lectures have a proper `Time` and AbsoluteTime 0; some webcast/session
+  // variants report Time 0 for every cue and put the position in AbsoluteTime
+  // (sometimes as an epoch-like offset). Trusting `Time` blindly turned those
+  // lectures into a transcript stamped [00:00:00] throughout — every screenshot
+  // then landed at the first frame. So: use whichever field actually advances,
+  // and rebase epoch-like values to the first cue.
+  function pickCueSeconds(arr) {
+    const num = (v) => { const n = Number(v); return isFinite(n) && n >= 0 ? n : null; };
+    const spread = (key) => {
+      let min = Infinity, max = -Infinity, n = 0;
+      for (const c of arr) { const v = num(c && c[key]); if (v == null) continue; n++; if (v < min) min = v; if (v > max) max = v; }
+      return n ? { min, max, n, span: max - min } : null;
+    };
+    const t = spread("Time"), a = spread("AbsoluteTime");
+    let key = "Time";
+    if (!t || t.span <= 0) { if (a && a.span > 0) key = "AbsoluteTime"; }
+    else if (a && a.span > 0 && t.span <= 0) key = "AbsoluteTime";
+    const info = key === "Time" ? t : a;
+    // Epoch-like or otherwise huge clocks (> 24h) are offsets from a start we
+    // don't know: rebase so the first cue is 0.
+    const base = info && info.min > 86400 ? info.min : 0;
+    return (c) => {
+      let v = num(c && c[key]);
+      if (v == null) v = num(c && c[key === "Time" ? "AbsoluteTime" : "Time"]);
+      if (v == null) return null;
+      return Math.max(0, v - base);
+    };
+  }
+
   // Parses Panopto's inline-captions JSON (DeliveryInfo.aspx?getCaptions=true) into the
-  // same `[HH:MM:SS] text` format that cleanVtt produces. Keeps only Caption + AbsoluteTime.
+  // same `[HH:MM:SS] text` format that cleanVtt produces.
   function cleanPanoptoCaptionsJson(input) {
     const arr = extractCaptionsArray(input);
     if (!arr || !arr.length) return "";
 
-    // `Time` is the cue's position within the video (seconds). On pre-recorded
-    // lectures, `AbsoluteTime` is always 0 — so prefer `Time` and only fall back
-    // to `AbsoluteTime` when `Time` is missing/invalid (some webcast variants).
+    const secsOf = pickCueSeconds(arr);
     const items = arr
       .map(c => {
         if (!c || typeof c.Caption !== "string") return null;
         const text = stripTags(c.Caption);
         if (!text) return null;
-        let secs = Number(c.Time);
-        if (!isFinite(secs) || secs < 0) secs = Number(c.AbsoluteTime);
-        if (!isFinite(secs) || secs < 0) return null;
+        const secs = secsOf(c);
+        if (secs == null) return null;
         return { secs: Math.floor(secs), text };
       })
       .filter(Boolean)
@@ -176,14 +204,14 @@
   function cleanPanoptoCaptionsJsonTimed(input) {
     const arr = extractCaptionsArray(input);
     if (!arr || !arr.length) return [];
+    const secsOf = pickCueSeconds(arr);
     const items = arr
       .map(c => {
         if (!c || typeof c.Caption !== "string") return null;
         const text = stripTags(c.Caption);
         if (!text) return null;
-        let secs = Number(c.Time);
-        if (!isFinite(secs) || secs < 0) secs = Number(c.AbsoluteTime);
-        if (!isFinite(secs) || secs < 0) return null;
+        const secs = secsOf(c);
+        if (secs == null) return null;
         return { start: secs, text };
       })
       .filter(Boolean)

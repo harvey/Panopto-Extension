@@ -74,6 +74,10 @@ let _notesGenerating = false;   // a notes generation is currently in flight
     if (!context) return showError('This notes window is no longer linked to its lecture. Open the lecture in Panopto, then click Generate Notes in the extension.', { showRetry: false });
 
     _state = { context, sections: null, title: context.title || 'Lecture' };
+    // Which caption path produced the transcript — the first thing to check when
+    // timings or screenshots look wrong.
+    console.info('[AI Notes] caption sources:', context.captionDebug || '(not recorded)',
+                 '· duration', context.duration || '?', '· timings', transcriptHasTimings(context.captionsCleaned) ? 'ok' : 'NONE (all 00:00:00)');
     document.title = `${_state.title} — AI Notes`;
     $('header-title').textContent = _state.title;   // render() upgrades it to the AI title on success
 
@@ -427,7 +431,8 @@ function render() {
     stopLoadingStages();
     $('header-title').textContent = _state.title;
     $('header-sub').textContent   = `${_state.sections.length} sections · generated from the lecture transcript`
-        + (_state.partialNotice ? ` · ⚠ ${_state.partialNotice}` : '');
+        + (_state.partialNotice ? ` · ⚠ ${_state.partialNotice}` : '')
+        + (!transcriptHasTimings(_state.context?.captionsCleaned) ? ' · ⚠ transcript had no timings, screenshots are spaced evenly' : '');
     $('header-sub').title = _state.model ? `Generated with ${_state.model}` : '';   // still inspectable, not headline
 
     const list    = $('list');
@@ -438,7 +443,22 @@ function render() {
     // Pre-compute auto-assigned timestamps for any section that lacks one.
     // Distributes screenshots proportionally across the lecture timeline and
     // scales count by content length so harder/longer sections get more shots.
-    autoAssignScreenshots(_state.sections, _state.context && _state.context.captionsCleaned);
+    // A transcript where every marker is [00:00:00] (some caption sources carry no
+    // timings) would pin every screenshot to the first frame. Space them evenly
+    // across the lecture instead and ignore the model's (equally zero) timestamps.
+    const flatTranscript = !transcriptHasTimings(_state.context?.captionsCleaned);
+    if (flatTranscript) {
+        const dur = Number(_state.context?.duration) || 0;
+        const n = _state.sections.length;
+        _state.sections.forEach((s, i) => {
+            s.timestamp = null;
+            s.content = typeof s.content === 'string' ? s.content.replace(/\[00:00:00\]/g, '') : s.content;
+            s._autoTimestamps = dur > 0 ? [VttUtils.secsToHHMMSS(dur * (i + 0.5) / n)] : [];
+        });
+        console.warn('[AI Notes] transcript has no timings; screenshots spaced evenly over', dur, 's');
+    } else {
+        autoAssignScreenshots(_state.sections, _state.context && _state.context.captionsCleaned);
+    }
 
     const playerChapters = [];   // {heading, ts} for the in-player chapter widget
 
@@ -542,6 +562,11 @@ function render() {
 // Auto-distribute screenshots across sections, picking timestamps from the
 // transcript proportionally to each section's chronological position. Number
 // of shots per section scales with content length: short=1, long=2, very long=3.
+// True when at least one [HH:MM:SS] marker in the transcript is not 00:00:00.
+function transcriptHasTimings(transcript) {
+    return /\[(?!00:00:00\])\d{2}:\d{2}:\d{2}\]/.test(transcript || '');
+}
+
 function autoAssignScreenshots(sections, transcript) {
     if (!sections?.length || !transcript) return;
 

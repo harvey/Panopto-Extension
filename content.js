@@ -1960,6 +1960,15 @@ async function gatherLectureContext() {
                 } catch (e) { debug.push(`dom scrape: ${e.message}`); }
             }
 
+            // Longest finite <video> duration on the page: the notes page uses it to
+            // space screenshots evenly when a transcript carries no usable timings.
+            let duration = 0;
+            try {
+                for (const v of document.querySelectorAll('video')) {
+                    if (isFinite(v.duration) && v.duration > duration) duration = v.duration;
+                }
+            } catch {}
+
             return {
                 deliveryId: id,
                 title,
@@ -1967,6 +1976,7 @@ async function gatherLectureContext() {
                 captionsCleaned,
                 lang: 'en',
                 hasCaptions: captionsCleaned.length > 0,
+                duration,
                 debug,
             };
         }

@@ -616,6 +616,8 @@ async function openNotesForTab(tabId, tab, signInFirst) {
             viewerUrl:       info.viewerUrl,
             captionsCleaned: info.captionsCleaned,
             lang:            info.lang || "en",
+            duration:        info.duration || 0,
+            captionDebug:    info.debug || [],
             email:           pcsAuth.email,
             authToken:       pcsAuth.token,
             panoptoTabId:    tabId,
