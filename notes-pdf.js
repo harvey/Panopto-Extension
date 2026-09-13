@@ -169,17 +169,22 @@
         return btoa(s);
     }
 
-    // ── Slide-or-webcam heuristic ────────────────────────────────────────────
-    // Slides are made of flat fills and crisp edges; camera frames are soft and
-    // noisy everywhere. At 320x180:
-    //   still — share of pixels whose luminance matches the pixel to their right
-    //           within 1 level. Flat slide backgrounds score high, camera noise low.
+    // ── Slide-or-webcam scoring ──────────────────────────────────────────────
+    // Panopto's stream labels are unreliable (a two-stream recording often has the
+    // camera first, which content.js calls "Main"), so every frame is scored on
+    // what it contains and the best-scoring frame wins. At 320x180:
+    //   still — share of pixels within 1 luminance level of their right-hand
+    //           neighbour. Flat slide fills score high.
     //   share — share of pixels in the single most common colour (5 bits/channel).
-    // Either being high means "slide". Labels from Panopto take priority anyway.
-    const _lookCache = new Map();
-    async function looksLikeSlide(dataUrl) {
-        if (_lookCache.has(dataUrl)) return _lookCache.get(dataUrl);
-        const verdict = await (async () => {
+    //   skin  — share of skin-toned pixels (YCbCr rule). A face fills a webcam
+    //           frame with skin; slides almost never do.
+    // score = still + 0.6*share - 3*skin, nudged by the label. A frame counts as a
+    // slide when score >= 0.55, skin < 0.06 and the centre box (where a head
+    // sits) is under 5% skin.
+    const _scoreCache = new Map();
+    async function scoreFrame(dataUrl) {
+        if (_scoreCache.has(dataUrl)) return _scoreCache.get(dataUrl);
+        const result = await (async () => {
             try {
                 const img = await loadImage(dataUrl);
                 const w = 320, h = 180;
@@ -189,21 +194,33 @@
                 const d = ctx.getImageData(0, 0, w, h).data;
                 const counts = new Map();
                 const lum = new Float32Array(w * h);
+                let skinN = 0, midSkinN = 0, midN = 0;
+                const x0 = w * 0.3, x1 = w * 0.7, y0 = h * 0.12, y1 = h * 0.78;   // where a head sits in a webcam frame
                 for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-                    lum[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                    const k = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3);
+                    const r = d[i], g = d[i + 1], b = d[i + 2];
+                    const px = p % w, py = (p / w) | 0;
+                    const mid = px >= x0 && px < x1 && py >= y0 && py < y1;
+                    if (mid) midN++;
+                    const y = 0.299 * r + 0.587 * g + 0.114 * b;
+                    lum[p] = y;
+                    const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+                    const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+                    if (y > 40 && cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173) { skinN++; if (mid) midSkinN++; }
+                    const k = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
                     counts.set(k, (counts.get(k) || 0) + 1);
                 }
                 let top = 0; for (const v of counts.values()) if (v > top) top = v;
                 const share = top / (w * h);
+                const skin = skinN / (w * h);
+                const midSkin = midSkinN / Math.max(1, midN);
                 let stillN = 0, n = 0;
                 for (let y = 0; y < h; y++) for (let x = 0; x < w - 1; x++) { const i = y * w + x; if (Math.abs(lum[i] - lum[i + 1]) <= 1) stillN++; n++; }
                 const still = stillN / n;
-                return still >= 0.55 || share >= 0.45;
-            } catch { return true; }   // unreadable → treat as a slide rather than drop it
+                return { still, share, skin, midSkin, score: still + 0.6 * share - 3 * skin };
+            } catch { return { still: 1, share: 1, skin: 0, midSkin: 0, score: 1 }; }   // unreadable → keep it
         })();
-        _lookCache.set(dataUrl, verdict);
-        return verdict;
+        _scoreCache.set(dataUrl, result);
+        return result;
     }
 
     function loadImage(src) {
@@ -215,14 +232,27 @@
         });
     }
 
+    async function looksLikeSlide(dataUrl) {
+        const f = await scoreFrame(dataUrl);
+        return f.score >= 0.55 && f.skin < 0.06 && f.midSkin < 0.05;
+    }
+
     // Pick the slide for a screenshot row, or null if the row is only faces.
+    // Labels only nudge; content decides.
     async function pickSlide(sources) {
-        const isCam = (s) => /camera|webcam|presenter/i.test(s.label || '');
-        const isSlideLabel = (s) => /slide|screen/i.test(s.label || '');
-        for (const s of sources) if (isSlideLabel(s)) return s;
-        for (const s of sources) if (!isCam(s) && await looksLikeSlide(s.dataUrl)) return s;
-        for (const s of sources) if (isCam(s) && await looksLikeSlide(s.dataUrl)) return s;   // mislabelled stream
-        return null;
+        let best = null;
+        const seen = [];
+        for (const s of sources) {
+            const f = await scoreFrame(s.dataUrl);
+            const label = s.label || '';
+            const nudge = /slide|screen/i.test(label) ? 0.25 : /camera|webcam|presenter/i.test(label) ? -0.15 : 0;
+            const score = f.score + nudge;
+            const isSlide = score >= 0.55 && f.skin < 0.06 && f.midSkin < 0.05;
+            seen.push(`${label || '?'}: still ${f.still.toFixed(2)} share ${f.share.toFixed(2)} skin ${f.skin.toFixed(2)} mid ${f.midSkin.toFixed(2)} → ${score.toFixed(2)}${isSlide ? ' slide' : ' face'}`);
+            if (isSlide && (!best || score > best.score)) best = { src: s, score };
+        }
+        console.info('[AI Notes PDF] frames: ' + seen.join(' | '));
+        return best ? best.src : null;
     }
 
     // ── Collect chapters from the live DOM ───────────────────────────────────
@@ -452,5 +482,5 @@
         return writePdf({ title: lecture, pages, outline });
     }
 
-    global.NotesPdf = { build, collectChapters, looksLikeSlide, renderPage, loadAssets };
+    global.NotesPdf = { build, collectChapters, looksLikeSlide, scoreFrame, pickSlide, renderPage, loadAssets };
 })(window);
