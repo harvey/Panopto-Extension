@@ -1402,6 +1402,11 @@ function setupExportMenu() {
     window.addEventListener('resize', () => { if (menu.classList.contains('shown')) place(); });
     window.addEventListener('scroll', () => { if (menu.classList.contains('shown')) close(); }, { passive: true });
     const open = () => {
+        // The menu follows the tab: notes exports on Notes, deck exports on
+        // Flashcards, transcript on Chat.
+        const group = $('tabCards')?.classList.contains('active') ? 'cards'
+                    : $('tabChat')?.classList.contains('active')  ? 'chat' : 'notes';
+        menu.querySelectorAll('button[data-export]').forEach((b) => { b.hidden = (b.dataset.group || 'notes') !== group; });
         menu.classList.add('open');
         place();
         requestAnimationFrame(() => menu.classList.add('shown'));
@@ -1422,6 +1427,24 @@ function setupExportMenu() {
 let _exporting = false;
 async function exportNotes(kind) {
     if (_exporting) return;
+    // Flashcard / chat exports from the top-level menu.
+    if (kind === 'cards-apkg' || kind === 'cards-html') {
+        if (!_cards?.length) { showToast('Generate the flashcards first, then export.', 'bad'); return; }
+        return kind === 'cards-apkg' ? exportCards() : exportCardsHtml();
+    }
+    if (kind === 'chat-md' || kind === 'chat-copy') {
+        if (!_chatHistory.length) { showToast('Ask the lecture something first, then export the chat.', 'bad'); return; }
+        const md = `# ${_state?.title || 'Lecture'} — chat\n\n` +
+            _chatHistory.map((m) => (m.role === 'user' ? '**You:** ' : '**AI:** ') + String(m.text || '').trim()).join('\n\n') + '\n';
+        if (kind === 'chat-copy') {
+            try { await navigator.clipboard.writeText(md); showToast('Chat copied.', 'ok'); }
+            catch { showToast('Could not copy to clipboard.', 'bad'); }
+            return;
+        }
+        const r = await downloadBlob(new Blob([md], { type: 'text/markdown;charset=utf-8' }), safeFilename(_state?.title) + '_chat.md');
+        if (r.ok) showToast('Chat transcript saved.', 'ok');
+        return;
+    }
     if (!_notesGenerated || !_state.sections?.length) { showToast('Generate the notes first, then export.', 'bad'); return; }
     _exporting = true;
     const btn = $('downloadBtn');
@@ -1448,13 +1471,32 @@ async function exportNotes(kind) {
             });
             res = await downloadBlob(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), base + '_notes.docx');
         } else if (kind === 'pdf') {
-            // The browser's own PDF printer keeps maths, images and links intact and
-            // works with no extra library. The print stylesheet strips the chrome.
-            if (!$('tabNotes')?.classList.contains('active')) $('tabNotes')?.click();
-            showToast('In the print dialog choose “Save as PDF”. Then in GoodNotes: + → Import → pick the PDF.', 'ok', 9000);
-            await sleep(350);
-            window.print();
-            res = { ok: true, via: 'print' };
+            // Our own PDF engine (notes-pdf.js): one slide per page, the notes under
+            // it, paper colours, bookmarks per chapter. Falls back to the browser's
+            // print dialog only if rendering itself fails.
+            if (!window.NotesPdf) throw new Error('PDF engine not loaded');
+            let bytes;
+            try {
+                const chapters = NotesPdf.collectChapters(document);
+                bytes = await NotesPdf.build({
+                    title: _state.title,
+                    subtitle: `${_state.sections.length} sections · generated from the lecture transcript`,
+                    lectureUrl: _state.context?.viewerUrl || '',
+                    chapters,
+                    onProgress: (i, n) => { btn.innerHTML = `⏳ Page ${i} of ${n}…`; },
+                });
+            } catch (e) {
+                console.warn('[AI Notes] PDF engine failed, using print fallback:', e);
+                if (!$('tabNotes')?.classList.contains('active')) $('tabNotes')?.click();
+                showToast('In the print dialog choose “Save as PDF”.', 'ok', 8000);
+                await sleep(350);
+                window.print();
+                res = { ok: true, via: 'print' };
+            }
+            if (bytes) {
+                res = await downloadBlob(new Blob([bytes], { type: 'application/pdf' }), base + '_notes.pdf');
+                if (res.ok) showToast('PDF saved · one slide per page. In GoodNotes: + → Import → pick the PDF.', 'ok', 7000);
+            }
         } else {
             throw new Error('Unknown export: ' + kind);
         }

@@ -1444,10 +1444,14 @@
       <div class="export-wrap" id="exportWrap">
         <button class="tool-btn" id="downloadBtn" aria-haspopup="menu" aria-expanded="false">⬇ Export <span class="caret">▾</span></button>
         <div class="export-menu" id="exportMenu" role="menu">
-          <button type="button" role="menuitem" data-export="html"><b>🌐 Web page (.html)</b><span>Self-contained, opens anywhere, offline</span></button>
-          <button type="button" role="menuitem" data-export="docx"><b>📝 Word · Notion (.docx)</b><span>Editable text with screenshots · import into Notion, Google Docs or Word</span></button>
-          <button type="button" role="menuitem" data-export="pdf"><b>📄 PDF · GoodNotes</b><span>Annotate in GoodNotes or Notability · choose “Save as PDF”</span></button>
-          <button type="button" role="menuitem" data-export="md"><b>✍️ Markdown (.md)</b><span>Obsidian, Notion, GitHub · text only</span></button>
+          <button type="button" role="menuitem" data-group="notes" data-export="pdf"><b>📄 PDF · GoodNotes</b><span>One slide per page with the notes under it · annotate in GoodNotes or Notability</span></button>
+          <button type="button" role="menuitem" data-group="notes" data-export="html"><b>🌐 Web page (.html)</b><span>Self-contained, opens anywhere, offline</span></button>
+          <button type="button" role="menuitem" data-group="notes" data-export="docx"><b>📝 Word · Notion (.docx)</b><span>Editable text with screenshots · import into Notion, Google Docs or Word</span></button>
+          <button type="button" role="menuitem" data-group="notes" data-export="md"><b>✍️ Markdown (.md)</b><span>Obsidian, Notion, GitHub · text only</span></button>
+          <button type="button" role="menuitem" data-group="cards" data-export="cards-apkg" hidden><b>🃏 Anki deck (.apkg)</b><span>All cards, or pick the ones you want</span></button>
+          <button type="button" role="menuitem" data-group="cards" data-export="cards-html" hidden><b>🌐 Flashcards web page (.html)</b><span>Flip through the deck in any browser, offline</span></button>
+          <button type="button" role="menuitem" data-group="chat" data-export="chat-md" hidden><b>💬 Chat transcript (.md)</b><span>Every question and answer from this lecture chat</span></button>
+          <button type="button" role="menuitem" data-group="chat" data-export="chat-copy" hidden><b>📋 Copy chat</b><span>Transcript to the clipboard</span></button>
         </div>
       </div>
       <button class="tool-btn" id="copyBtn">📋 Copy</button>
@@ -1593,6 +1597,7 @@
 <script src="lib/sql-wasm.js"></script>
 <script src="lib/fflate.min.js"></script>
 <script src="anki-export.js"></script>
+<script src="notes-pdf.js"></script>
 <script src="notes-export.js"></script>
 <script src="notes.js"></script>
 </body>
