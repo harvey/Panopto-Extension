@@ -1296,6 +1296,41 @@
     .skeleton > *:nth-child(3n) { animation-delay: .35s; }
     @keyframes skShimmer { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
 
+    /* ─── Flashcards generating: a deck of ghost cards dealt in one by one ── */
+    .cards-skeleton {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;
+      text-align: left;
+    }
+    .cards-deck > .cards-skeleton { grid-column: 1 / -1; }
+    .sk-card {
+      position: relative; height: 200px; border-radius: 16px;
+      border: 1px solid #2c3644; padding: 16px;
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 45%, var(--surface) 90%);
+      background-size: 220% 100%;
+      overflow: hidden;
+      animation: skDeal .5s cubic-bezier(.2,.75,.2,1) both, skShimmer 1.8s ease-in-out infinite;
+      animation-delay: calc(var(--i, 0) * 90ms), calc(var(--i, 0) * 90ms + .5s);
+    }
+    .sk-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: radial-gradient(120px 80px at 20% 0%, rgba(34,197,94,0.10), transparent 70%);
+      pointer-events: none;
+    }
+    .sk-card .sk-pill { width: 52px; height: 9px; border-radius: 999px; background: rgba(34,197,94,0.28); margin-bottom: 18px; }
+    .sk-card .sk-q { height: 12px; border-radius: 6px; background: rgba(255,255,255,0.10); margin: 9px 0; }
+    .sk-card .sk-q.a { width: 88%; } .sk-card .sk-q.b { width: 64%; }
+    .sk-card .sk-foot { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; justify-content: space-between; }
+    .sk-card .sk-foot i { display: block; width: 54px; height: 20px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+    .sk-card .sk-flip {
+      position: absolute; right: 14px; top: 14px; width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(34,197,94,0.35); border-top-color: var(--green-bright);
+      animation: spin 1.1s linear infinite; animation-delay: calc(var(--i, 0) * .15s);
+    }
+    @keyframes skDeal {
+      from { opacity: 0; transform: translateY(18px) rotateX(-14deg) scale(.96); }
+      to   { opacity: 1; transform: none; }
+    }
+
     /* ─── Reveal: chapters rise in one after another, panels crossfade ── */
     .chapter { animation-delay: calc(var(--i, 0) * 55ms); }
     #page, #chatPanel, #flashcardsPanel { animation: panelIn .24s ease both; }
@@ -1386,7 +1421,7 @@
       .chapter, .flashcard, .chat-msg { animation: none !important; }
       .chat-msg.pending { animation: none !important; opacity: 1; }
       .fc-inner { transition: none !important; }
-      .ai-star svg, .sk-line, .sk-block, .chat-msg.typing::after, .cards-gen-btn::after, .tab-btn.feature::after { animation: none !important; }
+      .ai-star svg, .sk-line, .sk-block, .sk-card, .sk-card .sk-flip, .chat-msg.typing::after, .cards-gen-btn::after, .tab-btn.feature::after { animation: none !important; }
       #page, #chatPanel, #flashcardsPanel, .flashcard { animation: none !important; }
     }
   </style>

@@ -1767,6 +1767,17 @@ function flashErrorText(code, reason) {
     return "Couldn't generate flashcards right now. Please try again.";
 }
 
+// Ghost deck shown while the AI writes the cards: card-shaped placeholders that
+// deal in one after another and shimmer, so the wait looks like cards arriving
+// rather than a blank panel. Distinct from the notes skeleton (lines of text).
+function cardsSkeletonHtml(n) {
+    let html = '<div class="cards-skeleton" aria-hidden="true">';
+    for (let i = 0; i < n; i++) {
+        html += `<div class="sk-card" style="--i:${i}"><div class="sk-pill"></div><div class="sk-q a"></div><div class="sk-q b"></div><span class="sk-flip"></span><div class="sk-foot"><i></i><i></i></div></div>`;
+    }
+    return html + '</div>';
+}
+
 async function loadFlashcards(regen) {
     const ctx     = _state?.context || {};
     const intro   = $('cardsIntro');
@@ -1777,12 +1788,13 @@ async function loadFlashcards(regen) {
 
     intro.style.display = 'block';
     intro.innerHTML = `<p>✨ ${regen ? 'Regenerating' : 'Generating'} flashcards… this takes a few seconds.</p>`;
-    deck.innerHTML = '';
+    deck.innerHTML = cardsSkeletonHtml(6);   // ghost deck in the real deck area, full width
     toolbar.style.display = 'none';
     const addRow = $('cardsAdd'); if (addRow) addRow.style.display = 'none';
     const msgEl  = $('cardsMsg'); if (msgEl) msgEl.style.display = 'none';
 
     const fail = (code, reason) => {
+        deck.innerHTML = '';
         intro.style.display = 'block';
         // The daily cap is the paywall moment: offer to continue THIS deck on the
         // trial rather than a retry that can only fail again today.
