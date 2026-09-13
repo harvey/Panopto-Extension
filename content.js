@@ -1813,6 +1813,11 @@ async function gatherLectureContext() {
             let title = 'lecture';
             let urlBasedCaptions = [];
             let inlineCaptionsFromMeta = null;
+            // Caption language indexes to ask for. Instances differ: English is
+            // index 0 on some and 1 on others (Exeter), and asking for the wrong one
+            // returns an empty list — which used to drop us to the DOM scrape and a
+            // transcript with no timings. Advertised languages first, then 0 and 1.
+            let captionLangs = [0, 1];
             try {
                 const metaRes = await fetch('/Panopto/Pages/Viewer/DeliveryInfo.aspx', {
                     method: 'POST',
@@ -1829,6 +1834,11 @@ async function gatherLectureContext() {
                         .map(c => ({ lang: (c.Language || c.LanguageCode || 'en').toLowerCase(), url: c.Url }));
                     // Some Panopto instances embed the caption text directly here
                     inlineCaptionsFromMeta = delivery.Captions || null;
+                    const advertised = [
+                        ...(Array.isArray(delivery.AvailableLanguages) ? delivery.AvailableLanguages : []),
+                        ...(Array.isArray(delivery.AvailableCaptions) ? delivery.AvailableCaptions.map(c => c && c.Language) : []),
+                    ].filter(n => Number.isInteger(n) && n >= 0);
+                    captionLangs = [...new Set([...advertised, 0, 1])];
                 }
             } catch {}
 
@@ -1871,43 +1881,48 @@ async function gatherLectureContext() {
                     run: async () => VttUtils.cleanPanoptoCaptionsJson(inlineCaptionsFromMeta),
                 },
                 {
-                    name: 'POST getCaptions=true',
-                    run: async () => VttUtils.cleanPanoptoCaptionsJson(await tryParseJson(await fetchWithRetry('/Panopto/Pages/Viewer/DeliveryInfo.aspx', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            deliveryId: id, getCaptions: 'true', language: '0', responseType: 'json'
-                        }).toString()
-                    }))),
-                },
-                {
-                    name: 'GET getCaptions=true',
-                    run: async () => VttUtils.cleanPanoptoCaptionsJson(await tryParseJson(await fetchWithRetry(
-                        `/Panopto/Pages/Viewer/DeliveryInfo.aspx?deliveryId=${encodeURIComponent(id)}&getCaptions=true&language=0&responseType=json`,
-                        { credentials: 'include' }
-                    ))),
-                },
-                {
-                    name: 'POST getCaptions+isEmbedded',
-                    run: async () => VttUtils.cleanPanoptoCaptionsJson(await tryParseJson(await fetchWithRetry('/Panopto/Pages/Viewer/DeliveryInfo.aspx', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            deliveryId: id, getCaptions: 'true', language: '0',
-                            responseType: 'json', isEmbedded: 'false'
-                        }).toString()
-                    }))),
+                    // getCaptions=true, once per advertised language, POST then GET.
+                    // The first language that returns cues wins (cues carry `Time`).
+                    name: 'getCaptions=true (langs ' + captionLangs.join(',') + ')',
+                    run: async () => {
+                        for (const lang of captionLangs) {
+                            const variants = [
+                                () => fetchWithRetry('/Panopto/Pages/Viewer/DeliveryInfo.aspx', {
+                                    method: 'POST', credentials: 'include',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: new URLSearchParams({ deliveryId: id, getCaptions: 'true', language: String(lang), responseType: 'json' }).toString(),
+                                }),
+                                () => fetchWithRetry(`/Panopto/Pages/Viewer/DeliveryInfo.aspx?deliveryId=${encodeURIComponent(id)}&getCaptions=true&language=${lang}&responseType=json`, { credentials: 'include' }),
+                                () => fetchWithRetry('/Panopto/Pages/Viewer/DeliveryInfo.aspx', {
+                                    method: 'POST', credentials: 'include',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: new URLSearchParams({ deliveryId: id, getCaptions: 'true', language: String(lang), responseType: 'json', isEmbedded: 'false' }).toString(),
+                                }),
+                            ];
+                            for (const v of variants) {
+                                try {
+                                    const cleaned = VttUtils.cleanPanoptoCaptionsJson(await tryParseJson(await v()));
+                                    if (cleaned && cleaned.length >= 50) { debug.push(`captions language ${lang}: ${cleaned.length} chars`); return cleaned; }
+                                } catch (e) { debug.push(`captions language ${lang}: ${e.message}`); }
+                            }
+                        }
+                        return '';
+                    },
                 },
                 {
                     // Panopto's dedicated subtitle endpoint — returns SRT text and often
                     // works on instances where the getCaptions JSON paths return nothing.
                     name: 'GenerateSubtitles.ashx',
-                    run: async () => cleanTextResp(await fetchWithRetry(
-                        `/Panopto/Pages/Transcription/GenerateSubtitles.ashx?deliveryId=${encodeURIComponent(id)}&language=0`,
-                        { credentials: 'include' }
-                    )),
+                    run: async () => {
+                        for (const lang of captionLangs) {
+                            const cleaned = await cleanTextResp(await fetchWithRetry(
+                                `/Panopto/Pages/Transcription/GenerateSubtitles.ashx?deliveryId=${encodeURIComponent(id)}&language=${lang}`,
+                                { credentials: 'include' }
+                            ));
+                            if (cleaned && cleaned.length >= 50) return cleaned;
+                        }
+                        return '';
+                    },
                 },
                 {
                     // The viewer's "download transcript" path — SRT keyed by delivery id
