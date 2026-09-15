@@ -142,7 +142,9 @@ function track() {
         if (!wrapNudged && hasPlayed && !isSeeking && video.duration > 0) {
             const frac = currentCurrentTime / video.duration;
             let trailingSilence = false;
-            if (_analyser && _noiseFloor && !video.paused && frac >= WRAPUP_SILENCE_MIN_FRAC) {
+            if (window.PcsSilence && PcsSilence.active() && !video.paused && frac >= WRAPUP_SILENCE_MIN_FRAC) {
+                trailingSilence = PcsSilence.trailingSilence(video, WRAPUP_SILENCE_S);
+            } else if (_analyser && _noiseFloor && !video.paused && frac >= WRAPUP_SILENCE_MIN_FRAC) {
                 try {
                     const buf = new Uint8Array(_analyser.frequencyBinCount);
                     _analyser.getByteFrequencyData(buf);
@@ -346,11 +348,11 @@ function calibrateNoiseFloor(video, callback) {
 
 let _silenceCalibrating = false;
 
-function startSilenceSkipper() {
+function startLegacySilenceSkipper() {
     // _silenceTimer is only set once calibration finishes, ~2s in, so the old guard
     // was fully re-entrant during that window: toggling twice leaked an interval.
     if (_silenceTimer || _silenceCalibrating) return;
-    const video = document.querySelector('video');
+    const video = pickSkipperVideo();
     if (!video || !initAudioAnalyser(video)) return;
 
     PCS_DEBUG && console.log('[SilenceSkipper] Calibrating noise floor...');
@@ -364,7 +366,7 @@ function startSilenceSkipper() {
             // Nothing usable yet (paused, or the context has not resumed). Try again
             // shortly rather than latching a dead threshold for the session.
             if (_silenceRetries++ < SILENCE_RETRY_MAX) {
-                _silenceRetry = setTimeout(() => { _silenceRetry = null; startSilenceSkipper(); }, SILENCE_RETRY_MS);
+                _silenceRetry = setTimeout(() => { _silenceRetry = null; startLegacySilenceSkipper(); }, SILENCE_RETRY_MS);
             }
             return;
         }
@@ -505,7 +507,49 @@ function startSilenceSkipper() {
     });
 }
 
+// ── Silence Skipper (map-based; see silence-map.js) ─────────────────────────
+// The map knows where the quiet parts are from the audio the player already
+// downloaded (plus a cheap audio-only run-ahead), so skips are exact seeks and
+// the lecture's sound is never rerouted. The analyser above is only the
+// fallback for browsers or players the map cannot read.
+// The lecture's real player element. Panopto's newer viewer puts a dummy
+// <video class="auto-play-detector"> (a data: URL, never plays) FIRST in the
+// DOM, so querySelector('video') picked the wrong one: the old skipper listened
+// to a silent dummy and did nothing. Prefer #primaryVideo, else the video with
+// the longest duration, never the detector.
+function pickSkipperVideo() {
+    const all = [...document.querySelectorAll('video')].filter((v) => !v.classList.contains('auto-play-detector'));
+    const primary = document.getElementById('primaryVideo');
+    if (primary && primary.tagName === 'VIDEO') return primary;
+    const withDur = all.filter((v) => isFinite(v.duration) && v.duration > 0).sort((a, b) => b.duration - a.duration);
+    return withDur[0] || all[0] || document.querySelector('video') || null;
+}
+
+function startSilenceSkipper() {
+    const video = pickSkipperVideo();
+    if (!video) return;
+    if (window.PcsSilence && PcsSilence.supported()) {
+        PcsSilence.start({
+            video,
+            deliveryId: new URLSearchParams(location.search).get('id'),
+            userSpeed:  () => parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'),
+            setRate:    (r) => setRate(video, r),
+            isHold:     () => _holdActive,
+            onSaved:    (secs) => { try { chrome.runtime.sendMessage({ type: "updateSilenceSavedTime", savedTime: secs }); } catch (e) {} },
+            onFallback: () => { PcsSilence.stop(); startLegacySilenceSkipper(); },
+            debug: PCS_DEBUG,
+        }).catch(() => startLegacySilenceSkipper());
+    } else {
+        startLegacySilenceSkipper();
+    }
+}
+
 function stopSilenceSkipper() {
+    if (window.PcsSilence) { try { PcsSilence.stop(); } catch (e) {} }
+    stopLegacySilenceSkipper();
+}
+
+function stopLegacySilenceSkipper() {
     if (_silenceTimer) { clearInterval(_silenceTimer); _silenceTimer = null; }
     if (_silenceRetry) { clearTimeout(_silenceRetry); _silenceRetry = null; }
     _silenceCalibrating = false;   // a calibration in flight checks the flag and bails
@@ -516,7 +560,7 @@ function stopSilenceSkipper() {
         _skipperSeek = null;
     }
     _noiseFloor = null;
-    const video = document.querySelector('video');
+    const video = pickSkipperVideo();
     if (video) setRate(video, parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'));
 }
 
@@ -2146,7 +2190,7 @@ function initExtension() {
     // calibration samples real audio instead of a suspended context's zeros.
     if (localStorage.getItem('autoSkipSilence') === 'true') {
         const armSkipper = () => {
-            const v = document.querySelector('video');
+            const v = pickSkipperVideo();
             if (!v) { setTimeout(armSkipper, 1500); return; }
             if (v.paused) v.addEventListener('play', () => startSilenceSkipper(), { once: true });
             else startSilenceSkipper();

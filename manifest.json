@@ -30,12 +30,25 @@
             "js": [
                 "vtt-utils.js",
                 "katex/katex.min.js",
+                "silence-map.js",
                 "content.js"
             ],
             "css": [
                 "content.css",
                 "katex/katex.min.css"
             ],
+            "all_frames": true
+        },
+        {
+            "matches": [
+                "https://*.panopto.com/*",
+                "https://*.panopto.eu/*"
+            ],
+            "js": [
+                "silence-tap.js"
+            ],
+            "run_at": "document_start",
+            "world": "MAIN",
             "all_frames": true
         }
     ],
