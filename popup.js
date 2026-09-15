@@ -1753,8 +1753,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!alt) { el.style.display = 'none'; return; }
         el.style.display = 'inline';
         if (status?.altBlocked) {
-            el.textContent = 'Panopto: ' + alt + ' (linked to another account)';
-            el.title = 'Premium on this Panopto email is already linked to a different Google account. Use "Message support" and it can be moved.';
+            el.textContent = 'Panopto: ' + alt + ' (used by too many accounts)';
+            el.title = 'This Panopto email has been used with several Google accounts recently, so its premium is not shared here. If that is just you, use "Message support" and it is reset in a minute.';
             el.style.color = '#b45309';
         } else if (status?.via === 'alt') {
             el.textContent = 'Premium via Panopto: ' + alt;
