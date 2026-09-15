@@ -1742,24 +1742,54 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Returns { active, type, expiry, plan } — type is 'lifetime'|'timed'|null,
     // plan is 'trial'|'monthly'|'yearly'|'lifetime' and drives the badge label.
+    // The email Panopto shows as signed in on the last lecture page (content.js →
+    // background → storage). Sent with /check so premium bought under it counts.
+    async function panoptoIdentity() {
+        try { const r = await chrome.storage.local.get('panoptoIdentity'); return (r && r.panoptoIdentity && r.panoptoIdentity.email) || ''; } catch { return ''; }
+    }
+    function showPanoptoLink(alt, status) {
+        const el = document.getElementById('panoptoEmail');
+        if (!el) return;
+        if (!alt) { el.style.display = 'none'; return; }
+        el.style.display = 'inline';
+        if (status?.altBlocked) {
+            el.textContent = 'Panopto: ' + alt + ' (linked to another account)';
+            el.title = 'Premium on this Panopto email is already linked to a different Google account. Use "Message support" and it can be moved.';
+            el.style.color = '#b45309';
+        } else if (status?.via === 'alt') {
+            el.textContent = 'Premium via Panopto: ' + alt;
+            el.title = 'Premium was bought under this Panopto email; it counts for this Google account too.';
+            el.style.color = '#11773D';
+        } else {
+            el.textContent = 'Panopto: ' + alt;
+            el.title = 'The email Panopto shows as signed in. Premium bought under it counts here.';
+            el.style.color = '#6b7280';
+        }
+    }
     async function checkPremium(email) {
+        const alt      = await panoptoIdentity();
         const cached   = JSON.parse(localStorage.getItem('premiumCache') || 'null');
         // Lifetime premium: cache 24h. Timed: cache 1h so expiry is noticed sooner.
         const cacheTTL = (cached?.type === 'lifetime') ? 86400000 : 3600000;
-        if (cached?.email === email && Date.now() - (cached.checkedAt || 0) < cacheTTL) {
-            return { active: cached.active, type: cached.type, expiry: cached.expiry, plan: cached.plan };
+        if (cached?.email === email && (cached.alt || '') === (alt || '') && Date.now() - (cached.checkedAt || 0) < cacheTTL) {
+            showPanoptoLink(alt, cached);
+            return { active: cached.active, type: cached.type, expiry: cached.expiry, plan: cached.plan, via: cached.via, altBlocked: cached.altBlocked };
         }
         try {
-            const res  = await fetch(`${BACKEND}/check`, { headers: { 'X-PCS-Email': email } });
+            const headers = { 'X-PCS-Email': email };
+            if (alt && alt !== String(email).toLowerCase()) headers['X-PCS-Alt'] = alt;
+            const res  = await fetch(`${BACKEND}/check`, { headers });
             // A 5xx from the worker (KV hiccup, deploy in progress) used to be cached
             // as an authoritative "not premium" for the next hour, locking a paying
             // user out. Treat it like a network failure: keep whatever we knew.
             if (!res.ok) throw new Error(`check ${res.status}`);
             const data = await res.json();
             localStorage.setItem('premiumCache', JSON.stringify({
-                email, checkedAt: Date.now(),
-                active: data.active, type: data.type, expiry: data.expiry, plan: data.plan
+                email, alt, checkedAt: Date.now(),
+                active: data.active, type: data.type, expiry: data.expiry, plan: data.plan,
+                via: data.via, altBlocked: !!data.altBlocked
             }));
+            showPanoptoLink(alt, data);
             return { ...data, ok: true };
         } catch {
             // ok:false lets the "Check Premium" link tell "no premium on this email"
@@ -2161,7 +2191,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, token, message: text,
                         version: (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '',
-                        host: '' }),
+                        host: '', panoptoEmail: await panoptoIdentity() }),
                 });
                 const d = await r.json().catch(() => ({}));
                 if (r.ok && d.ok) { status(t('supportSent').replace('{email}', email), 'ok'); msg.value = ''; }

@@ -274,6 +274,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => { clearTabFailed(tabId); });
 
+// Headers for /check: the Google email plus, when known, the email Panopto
+// shows as signed in, so premium bought under either counts.
+async function checkHeaders(email) {
+    const h = { 'X-PCS-Email': email };
+    try {
+        const r = await chrome.storage.local.get('panoptoIdentity');
+        const alt = r && r.panoptoIdentity && r.panoptoIdentity.email;
+        if (alt && alt.toLowerCase() !== String(email).toLowerCase()) h['X-PCS-Alt'] = alt;
+    } catch (e) {}
+    return h;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const tabId = sender.tab && sender.tab.id;
 
@@ -291,6 +303,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 setTimeout(() => { try { chrome.action.setBadgeText({ text: "", tabId }); } catch (e) {} }, 10000);
             } catch (e) {}
         });
+        sendResponse({ status: "success" });
+        return;
+    }
+    if (message.type === "panopto-identity") {
+        // The email Panopto shows as signed in on this tab. Kept so /check can
+        // count premium bought under that email (see the worker's handleCheck).
+        const email = String(message.email || "").toLowerCase().trim();
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            chrome.storage.local.set({ panoptoIdentity: { email, host: message.host || "", ts: Date.now() } });
+        }
         sendResponse({ status: "success" });
         return;
     }
@@ -502,7 +524,7 @@ async function refreshAuthToken(reason) {
         // reopened" gap for the on-page surfaces within an hour. Start from what we
         // have; only overwrite on a clean answer, never downgrade on a failed call.
         let premium = !!pcsAuth.premium;
-        try { const r = await fetch(`${BACKEND}/check`, { headers: { 'X-PCS-Email': pcsAuth.email } }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+        try { const r = await fetch(`${BACKEND}/check`, { headers: await checkHeaders(pcsAuth.email) }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
         await chrome.storage.local.set({
             pcsAuth: { ...pcsAuth, token, premium, tokenExpiry: Date.now() + expiresIn * 1000, ts: Date.now(), refreshedBy: reason }
         });
@@ -577,7 +599,7 @@ async function bgSignIn() {
     // paying user signing in from a card must not be stamped free until the popup
     // is next opened. /check is unauthenticated and is what the popup uses.
     let premium = false;
-    try { const r = await fetch(`${BACKEND}/check`, { headers: { 'X-PCS-Email': info.email } }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+    try { const r = await fetch(`${BACKEND}/check`, { headers: await checkHeaders(info.email) }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
     const auth = { email: info.email, token, tokenExpiry: Date.now() + expiresIn * 1000, premium, ts: Date.now(), refreshedBy: "card-signin" };
     await chrome.storage.local.set({ pcsAuth: auth });
     try {   // same event the popup logs on sign-in

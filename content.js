@@ -1794,6 +1794,38 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     }
 });
 
+// The email Panopto itself shows as signed in. The viewer page embeds it as
+// "userEmail":"…" in an inline script; the notes panel also labels the personal
+// channel "Your notes (provider\\email)". Used to link premium bought under a
+// university email to the Google account used in the extension.
+function detectPanoptoEmail() {
+    const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+    try {
+        for (const sc of document.scripts) {
+            const t = sc.textContent || '';
+            if (!t.includes('userEmail')) continue;
+            const m = /["']userEmail["']\s*:\s*["']([^"']+)["']/.exec(t);
+            if (m && EMAIL.test(m[1])) return m[1].toLowerCase().trim();
+        }
+    } catch {}
+    try {
+        for (const o of document.querySelectorAll('#channelSelect option, #channelSingleLabel')) {
+            const m = /\(([^)]*)\)/.exec(o.textContent || '');
+            if (!m) continue;
+            const e = (m[1].split('\\').pop() || '').trim();
+            if (EMAIL.test(e)) return e.toLowerCase();
+        }
+    } catch {}
+    return null;
+}
+let _panoptoEmail = null;
+function reportPanoptoIdentity() {
+    const email = detectPanoptoEmail();
+    if (!email || email === _panoptoEmail) return;
+    _panoptoEmail = email;
+    try { chrome.runtime.sendMessage({ type: 'panopto-identity', email, host: location.hostname }, () => void chrome.runtime.lastError); } catch {}
+}
+
 // Fetch + clean this lecture's transcript (and title/id). Returns
 // { deliveryId, title, viewerUrl, captionsCleaned, lang, hasCaptions, debug } or
 // { error }. Used by the popup's "Generate Notes" and the in-page chat panel.
@@ -2003,6 +2035,7 @@ async function gatherLectureContext() {
                 lang: 'en',
                 hasCaptions: captionsCleaned.length > 0,
                 duration,
+                panoptoEmail: detectPanoptoEmail(),
                 debug,
             };
         }
@@ -2094,6 +2127,10 @@ async function scrapeTranscriptFromDom(debug) {
 
 // Initialization function
 function initExtension() {
+    // Tell the background which Panopto account is signed in (inline data is
+    // there at load; the notes panel label arrives later, hence the retry).
+    reportPanoptoIdentity();
+    sleep(3000).then(reportPanoptoIdentity);
     if (localStorage.getItem('speedOnStartup') === "true"){
         sleep(500).then(() => {
             updateSpeed();
