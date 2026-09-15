@@ -276,12 +276,15 @@ chrome.tabs.onRemoved.addListener((tabId) => { clearTabFailed(tabId); });
 
 // Headers for /check: the Google email plus, when known, the email Panopto
 // shows as signed in, so premium bought under either counts.
-async function checkHeaders(email) {
+async function checkHeaders(email, token) {
     const h = { 'X-PCS-Email': email };
     try {
         const r = await chrome.storage.local.get('panoptoIdentity');
         const alt = r && r.panoptoIdentity && r.panoptoIdentity.email;
-        if (alt && alt.toLowerCase() !== String(email).toLowerCase()) h['X-PCS-Alt'] = alt;
+        if (alt && alt.toLowerCase() !== String(email).toLowerCase()) {
+            h['X-PCS-Alt'] = alt;
+            if (token) h['X-PCS-Token'] = token;   // the worker only honours the Panopto email for a verified Google account
+        }
     } catch (e) {}
     return h;
 }
@@ -524,7 +527,7 @@ async function refreshAuthToken(reason) {
         // reopened" gap for the on-page surfaces within an hour. Start from what we
         // have; only overwrite on a clean answer, never downgrade on a failed call.
         let premium = !!pcsAuth.premium;
-        try { const r = await fetch(`${BACKEND}/check`, { headers: await checkHeaders(pcsAuth.email) }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+        try { const r = await fetch(`${BACKEND}/check`, { headers: await checkHeaders(pcsAuth.email, token) }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
         await chrome.storage.local.set({
             pcsAuth: { ...pcsAuth, token, premium, tokenExpiry: Date.now() + expiresIn * 1000, ts: Date.now(), refreshedBy: reason }
         });
@@ -599,7 +602,7 @@ async function bgSignIn() {
     // paying user signing in from a card must not be stamped free until the popup
     // is next opened. /check is unauthenticated and is what the popup uses.
     let premium = false;
-    try { const r = await fetch(`${BACKEND}/check`, { headers: await checkHeaders(info.email) }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
+    try { const r = await fetch(`${BACKEND}/check`, { headers: await checkHeaders(info.email, token) }); if (r.ok) premium = !!(await r.json()).active; } catch (e) {}
     const auth = { email: info.email, token, tokenExpiry: Date.now() + expiresIn * 1000, premium, ts: Date.now(), refreshedBy: "card-signin" };
     await chrome.storage.local.set({ pcsAuth: auth });
     try {   // same event the popup logs on sign-in

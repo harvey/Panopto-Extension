@@ -1777,7 +1777,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         try {
             const headers = { 'X-PCS-Email': email };
-            if (alt && alt !== String(email).toLowerCase()) headers['X-PCS-Alt'] = alt;
+            if (alt && alt !== String(email).toLowerCase()) {
+                headers['X-PCS-Alt'] = alt;
+                headers['X-PCS-Token'] = localStorage.getItem('authToken') || '';   // the worker only honours the Panopto email for a verified Google account
+            }
             const res  = await fetch(`${BACKEND}/check`, { headers });
             // A 5xx from the worker (KV hiccup, deploy in progress) used to be cached
             // as an authoritative "not premium" for the next hour, locking a paying
