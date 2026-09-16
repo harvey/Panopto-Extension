@@ -288,10 +288,17 @@
         // Sibilant band: only meaningful when it has contrast of its own; otherwise
         // ignore it (h = +Infinity means "never counts as speech").
         const h = (H && hFloor != null && H.top - hFloor >= MIN_CONTRAST_HI) ? hFloor + THR_FRACTION_HI * (H.top - hFloor) : Infinity;
-        return { v, h };
+        return { v, h, vf: vFloor, hf: hFloor == null ? -100 : hFloor };
     }
-    // Speech in bin i under thresholds thr: either band stands out.
-    const isSpeech = (i, thr, margin) => S.binsV[i] >= thr.v - (margin || 0) || S.binsH[i] >= thr.h - (margin || 0);
+    // Speech in bin i under thresholds thr: either band stands out. A positive
+    // `margin` lowers the bar (used to keep the fade-out of a word as speech), but
+    // never below 2 dB over the band's floor — otherwise, when a threshold sits
+    // close to the room, the room itself would count as a word tail and no pause
+    // could ever begin.
+    const isSpeech = (i, thr, margin) => {
+        const m = margin || 0;
+        return S.binsV[i] >= Math.max(thr.v - m, thr.vf + 2) || S.binsH[i] >= Math.max(thr.h - m, thr.hf + 2);
+    };
 
     // The quiet run containing time t, if any. Returns { start, end, open } where
     // `open` means the run reaches the edge of what has been analysed (end is the
