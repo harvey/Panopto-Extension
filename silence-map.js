@@ -33,12 +33,25 @@
 
     const BIN_S            = 0.025;  // map resolution
     const UNKNOWN          = -128;
-    const SPEECH_DROP_DB   = 22;     // silence threshold sits this far under the speech level
-    const THR_MIN_DB       = -70, THR_MAX_DB = -28, THR_DEFAULT_DB = -52;
-    const MIN_KNOWN_S      = 30;     // seconds of map needed before trusting an adaptive threshold
-    const MIN_SILENCE_S    = 0.5;    // shorter pauses are speech rhythm, leave them alone
-    const GUARD_START_S    = 0.12;   // act this long after silence starts (word tails)
-    const GUARD_END_S      = 0.15;   // land this long before speech resumes
+    // Silence is judged RELATIVE TO THE LAST ~20 SECONDS, not the whole lecture:
+    // a lecturer who drops their voice, or walks away from the mic, lowers the
+    // speech level and the room floor together, and the threshold follows them.
+    //   floor  = 10th percentile of the recent window (the room)
+    //   speech = 90th percentile of the recent window (the voice)
+    //   thr    = floor + THR_FRACTION × (speech − floor)
+    // When the voice is barely above the room (contrast under MIN_CONTRAST_DB)
+    // nothing is skipped at all — better to leave a quiet passage alone than to
+    // speed through someone talking softly.
+    const LOCAL_WINDOW_S   = 20;     // seconds before the playhead the threshold is judged on
+    const LOCAL_AHEAD_S    = 5;      // plus a little after it
+    const THR_FRACTION     = 0.35;   // where the threshold sits between the room and the voice
+    const MIN_CONTRAST_DB  = 12;     // voice must stand this far above the room to skip anything
+    const THR_MIN_DB       = -75, THR_MAX_DB = -30, THR_DEFAULT_DB = -55;
+    const MIN_KNOWN_S      = 8;      // seconds of recent map needed before trusting the local threshold
+    const TAIL_DROP_DB     = 4;      // a pause only starts once the level is this far under the threshold
+    const MIN_SILENCE_S    = 0.6;    // shorter pauses are speech rhythm, leave them alone
+    const GUARD_START_S    = 0.30;   // act this long after a pause starts — trailing "s" and "t" live here
+    const GUARD_END_S      = 0.22;   // land this long before speech resumes
     const BLIP_S           = 0.10;   // noise this short inside a pause does not end it
     const SEEK_MIN_S       = 1.2;    // pauses at least this long are jumped, shorter ones sped
     const SILENCE_SPEED    = 3.0;
@@ -149,7 +162,7 @@
         tracks: new Map(),      // media url (no query) → { url, init, decoder, dead, frames, lastEnd }
         active: null,           // the track the map follows
         bins: null, binCount: 0, dirty: false, lastSave: 0,
-        thr: THR_DEFAULT_DB, thrAt: 0,
+        thr: THR_DEFAULT_DB, thrAt: 0, thrFor: -1,
         tick: null, ourSeekAt: 0, lastTickAt: 0, mode: 'normal',
         playlist: null, playlistPromise: null, playlistTried: false, prefetching: false, prefetchDone: new Set(), prefetchFail: 0,
         stats: { tapSegments: 0, prefetchSegments: 0, decodedFrames: 0, decodeErrors: 0, seeks: 0, spedSecs: 0, savedSecs: 0, source: 'none' },
@@ -174,19 +187,32 @@
     const binAt = (t) => { const i = Math.floor(t / BIN_S); return (S.bins && i >= 0 && i < S.binCount) ? S.bins[i] : UNKNOWN; };
     const known = (t) => binAt(t) !== UNKNOWN;
 
-    // Adaptive threshold: 90th percentile of what we have heard, minus SPEECH_DROP_DB.
-    function threshold() {
-        const now = Date.now();
-        if (now - S.thrAt < 5000) return S.thr;
-        S.thrAt = now;
-        if (!S.bins) return S.thr;
-        const hist = new Int32Array(101); let n = 0;
-        for (let i = 0; i < S.binCount; i++) { const v = S.bins[i]; if (v !== UNKNOWN) { hist[-v]++; n++; } }
-        if (n * BIN_S < MIN_KNOWN_S) { S.thr = THR_DEFAULT_DB; return S.thr; }
-        let acc = 0, p90 = 0;
-        for (let d = 0; d <= 100; d++) { acc += hist[d]; if (acc >= n * 0.10) { p90 = -d; break; } }   // loudest 10% starts here
-        S.thr = Math.max(THR_MIN_DB, Math.min(THR_MAX_DB, p90 - SPEECH_DROP_DB));
+    // Threshold at time t, from the loudness distribution of the bins around it.
+    // Returns null when the recent window is unknown or too low-contrast to judge
+    // (nothing is skipped then). Cached per second of lecture time.
+    function threshold(t) {
+        if (t == null) t = S.video ? S.video.currentTime : 0;
+        const sec = Math.floor(t);
+        if (sec === S.thrFor) return S.thr;
+        S.thrFor = sec;
+        S.thr = computeThreshold(t);
         return S.thr;
+    }
+    function computeThreshold(t) {
+        if (!S.bins) return null;
+        const a = Math.max(0, Math.floor((t - LOCAL_WINDOW_S) / BIN_S));
+        const b = Math.min(S.binCount - 1, Math.floor((t + LOCAL_AHEAD_S) / BIN_S));
+        const hist = new Int32Array(101); let n = 0;
+        for (let i = a; i <= b; i++) { const v = S.bins[i]; if (v !== UNKNOWN) { hist[-v]++; n++; } }
+        if (n * BIN_S < MIN_KNOWN_S) return null;
+        // percentiles over the window: floor = quietest 10%, speech = loudest 10%
+        let acc = 0, floor = -100, speech = 0;
+        for (let d = 100; d >= 0; d--) { acc += hist[d]; if (acc >= n * 0.10) { floor = -d; break; } }
+        acc = 0;
+        for (let d = 0; d <= 100; d++) { acc += hist[d]; if (acc >= n * 0.10) { speech = -d; break; } }
+        if (speech - floor < MIN_CONTRAST_DB) return null;      // voice barely above the room: leave it alone
+        const thr = floor + THR_FRACTION * (speech - floor);
+        return Math.max(THR_MIN_DB, Math.min(THR_MAX_DB, thr));
     }
 
     // The quiet run containing time t, if any. Returns { start, end, open } where
@@ -194,7 +220,8 @@
     // frontier, not the return of speech).
     function silenceRunAt(t) {
         if (!S.bins) return null;
-        const thr = threshold();
+        const thr = threshold(t);
+        if (thr == null) return null;
         const i0 = Math.floor(t / BIN_S);
         if (i0 < 0 || i0 >= S.binCount || S.bins[i0] === UNKNOWN || S.bins[i0] >= thr) return null;
         const blip = Math.round(BLIP_S / BIN_S);
@@ -204,7 +231,11 @@
             if (S.bins[i - 1] >= thr) { if (++loud > blip) break; } else loud = 0;
             i--;
         }
-        const startBin = i + loud;
+        // The pause only counts from where the level is clearly under the threshold
+        // (TAIL_DROP_DB below it): the fade-out of a word — its trailing "s" — is speech.
+        let startBin = i + loud;
+        while (startBin < i0 && S.bins[startBin] > thr - TAIL_DROP_DB) startBin++;
+        if (startBin >= i0) return null;
         // walk forward to the end
         i = i0; loud = 0; let open = false;
         while (true) {
@@ -506,7 +537,8 @@
         // True when the last `secs` seconds before the playhead are known and silent.
         trailingSilence(video, secs) {
             if (!S.bins) return false;
-            const thr = threshold(), t = video.currentTime;
+            const t = video.currentTime, thr = threshold(t);
+            if (thr == null) return false;
             for (let x = t - secs; x < t; x += BIN_S) { const v = binAt(x); if (v === UNKNOWN || v >= thr) return false; }
             return true;
         },
@@ -514,7 +546,7 @@
         lastSeekAt() { return S.ourSeekAt; },
         stats() {
             let knownBins = 0; if (S.bins) for (let i = 0; i < S.binCount; i++) if (S.bins[i] !== UNKNOWN) knownBins++;
-            return { ...S.stats, knownSeconds: Math.round(knownBins * BIN_S), thresholdDb: threshold(), tracks: [...S.tracks.values()].map((t) => ({ url: t.url.slice(-40), frames: t.frames, hasInit: !!t.init, dead: t.dead })), activeTrack: S.active ? S.active.url.slice(-40) : null };
+            return { ...S.stats, knownSeconds: Math.round(knownBins * BIN_S), thresholdDb: threshold(S.video ? S.video.currentTime : 0), tracks: [...S.tracks.values()].map((t) => ({ url: t.url.slice(-40), frames: t.frames, hasInit: !!t.init, dead: t.dead })), activeTrack: S.active ? S.active.url.slice(-40) : null };
         },
         // For tests: feed a segment directly.
         _ingest: ingestSegment, _silenceRunAt: silenceRunAt, _state: S, _controllerTick: controllerTick, _prefetchTick: prefetchTick,
