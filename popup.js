@@ -1876,13 +1876,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 silenceFreeEl.style.color   = '#dc2626';
                 silenceFreeEl.textContent   = t('silenceFreeLimit');
             }
-            if (localStorage.getItem('autoSkipSilence') === 'true') {
-                localStorage.setItem('autoSkipSilence', 'false');
-                try { chrome.storage.local.set({ autoSkipSilence: 'false' }); } catch (e) {}
-                sendToTab('autoSkipSilence', 'false');
-                const cb = document.getElementById('autoSkipCheckbox');
-                if (cb) cb.checked = false;
-            }
+            // The page enforces the limit itself (content.js lockSilenceForFree); this
+            // popup only reflects it.
         } else {
             // Everyone under the limit (free or premium) gets the toggle
             document.getElementById('getPremiumLink').style.display = 'none';
@@ -2234,6 +2229,13 @@ document.addEventListener("DOMContentLoaded", function () {
         setTimeout(() => { btn.textContent = t('checkPremium'); btn.style.color = ''; }, 5000);
     });
 
+    // chrome.storage is the source of truth for the switch: the lecture page can
+    // turn it off (free allowance used), and any Panopto tab reads it on load.
+    try {
+        const reflect = (v) => { if (v == null) return; localStorage.setItem('autoSkipSilence', v); const cb = document.getElementById('autoSkipCheckbox'); if (cb) cb.checked = v === 'true'; };
+        chrome.storage.local.get('autoSkipSilence', (r) => reflect(r && r.autoSkipSilence));
+        chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.autoSkipSilence) reflect(ch.autoSkipSilence.newValue); });
+    } catch (e) {}
     document.getElementById('autoSkipCheckbox').addEventListener('change', function () {
         const val = this.checked ? 'true' : 'false';
         localStorage.setItem('autoSkipSilence', val);

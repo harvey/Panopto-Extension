@@ -517,7 +517,7 @@ function startLegacySilenceSkipper() {
                     const dt    = (now - _lastSilenceTick) / 1000;
                     const extra = dt * (video.playbackRate / userSpeed - 1);
                     if (extra > 0) {
-                        chrome.runtime.sendMessage({ type: "updateSilenceSavedTime", savedTime: extra });
+                        reportSilenceSaved(extra);
                     }
                 }
                 _lastSilenceTick = now;
@@ -533,6 +533,79 @@ function startLegacySilenceSkipper() {
 // downloaded (plus a cheap audio-only run-ahead), so skips are exact seeks and
 // the lecture's sound is never rerouted. The analyser above is only the
 // fallback for browsers or players the map cannot read.
+// ── Auto-Skip Silence: the setting and the free allowance, enforced HERE ─────
+// chrome.storage.local is the single source of truth:
+//   autoSkipSilence        'true' | 'false'  — the switch (popup writes it, so does this)
+//   pcsAuth.premium        whether this account is premium (background keeps it fresh)
+//   totalSilenceSavedTime  seconds of silence skipped so far (background counts it)
+// Free users get SILENCE_FREE_LIMIT_SECS of skipped silence. The check runs where
+// the feature runs — on start, and as the counter grows — so it holds whether or
+// not the popup is ever opened. When the allowance is used up the skipper stops,
+// the switch is written off, and a card says why. The popup only displays state.
+const SILENCE_FREE_LIMIT_SECS = 180;   // must match FREE_SILENCE_LIMIT_SECS in popup.js
+const SILENCE_TRIAL_URL       = 'https://buy.stripe.com/6oU9ALalk59U4GdfqY1VK04';
+let _silenceLockShown  = false;
+let _silenceLastCheck  = 0;
+
+function readSilenceState() {
+    return new Promise((resolve) => {
+        try { chrome.storage.local.get(['autoSkipSilence', 'pcsAuth', 'totalSilenceSavedTime'], (r) => resolve(r || {})); }
+        catch (e) { resolve({}); }
+    });
+}
+async function silenceAllowance() {
+    const r = await readSilenceState();
+    const premium = !!(r.pcsAuth && r.pcsAuth.premium);
+    const used    = parseFloat(r.totalSilenceSavedTime || '0') || 0;
+    return { premium, used, ok: premium || used < SILENCE_FREE_LIMIT_SECS };
+}
+// Every second of silence the skipper saves goes through here (both the map
+// skipper and the legacy analyser), so the free allowance is enforced live.
+function reportSilenceSaved(secs) {
+    try { chrome.runtime.sendMessage({ type: "updateSilenceSavedTime", savedTime: secs }, () => void chrome.runtime.lastError); } catch (e) {}
+    const now = Date.now();
+    if (now - _silenceLastCheck < 5000) return;
+    _silenceLastCheck = now;
+    silenceAllowance().then((a) => { if (!a.ok) lockSilenceForFree(); });
+}
+function lockSilenceForFree() {
+    stopSilenceSkipper();
+    localStorage.setItem('autoSkipSilence', 'false');
+    try { chrome.storage.local.set({ autoSkipSilence: 'false' }); } catch (e) {}
+    if (_silenceLockShown || document.querySelector('.__pcs-nudge')) return;
+    _silenceLockShown = true;
+    try {
+        renderNudgeCard({
+            title: 'Your free Auto-Skip Silence is used up',
+            body:  'Three free minutes of skipped silence are gone, so playback is back to normal. Premium keeps skipping every pause, and the 7-day trial needs no card.',
+            tag:   'Premium',
+            cta:   'Start the free trial →',
+            onX:   () => {},
+            onClick: (el, remove) => { try { window.open(SILENCE_TRIAL_URL, '_blank', 'noopener'); } catch (e) {} remove && remove(); },
+        });
+    } catch (e) {}
+}
+function armSkipperWhenPlaying() {
+    const v = pickSkipperVideo();
+    if (!v) { setTimeout(armSkipperWhenPlaying, 1500); return; }
+    if (v.paused) v.addEventListener('play', () => startSilenceSkipper(), { once: true });
+    else startSilenceSkipper();
+}
+// The switch changed (popup, storage, or another tab): apply it, allowance permitting.
+async function applySilenceSetting(on) {
+    localStorage.setItem('autoSkipSilence', on ? 'true' : 'false');
+    if (!on) { stopSilenceSkipper(); return; }
+    const a = await silenceAllowance();
+    if (!a.ok) { lockSilenceForFree(); return; }
+    armSkipperWhenPlaying();
+}
+try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'local' || !changes.autoSkipSilence) return;
+        applySilenceSetting(changes.autoSkipSilence.newValue === 'true');
+    });
+} catch (e) {}
+
 // The lecture's real player element. Panopto's newer viewer puts a dummy
 // <video class="auto-play-detector"> (a data: URL, never plays) FIRST in the
 // DOM, so querySelector('video') picked the wrong one: the old skipper listened
@@ -556,7 +629,7 @@ function startSilenceSkipper() {
             userSpeed:  () => parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'),
             setRate:    (r) => setRate(video, r),
             isHold:     () => _holdActive,
-            onSaved:    (secs) => { try { chrome.runtime.sendMessage({ type: "updateSilenceSavedTime", savedTime: secs }); } catch (e) {} },
+            onSaved:    (secs) => reportSilenceSaved(secs),
             onFallback: () => { PcsSilence.stop(); startLegacySilenceSkipper(); },
             debug: PCS_DEBUG,
         }).catch(() => startLegacySilenceSkipper());
@@ -1421,12 +1494,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
         localStorage.setItem('speedOnStartup', message.value);
     }
     if (message.action === "autoSkipSilence") {
-        localStorage.setItem('autoSkipSilence', message.value);
-        if (message.value === 'true' || message.value === true) {
-            startSilenceSkipper();
-        } else {
-            stopSilenceSkipper();
-        }
+        applySilenceSetting(message.value === 'true' || message.value === true);
     }
     if (message.action === "getVideos") {
         const videos = Array.from(document.querySelectorAll('video'))
@@ -2209,29 +2277,13 @@ function initExtension() {
     // first PLAY rather than a fixed 1.5s: playing is the moment the page is
     // guaranteed to have had a gesture, so the AudioContext can actually run and
     // calibration samples real audio instead of a suspended context's zeros.
-    // The setting is kept in this page's localStorage (per Panopto host) AND in
-    // chrome.storage (set by the popup), so a university host you have not opened
-    // the popup on yet still starts the skipper if it is on.
-    const armSkipperIfOn = () => {
-        if (localStorage.getItem('autoSkipSilence') !== 'true') return;
-        const armSkipper = () => {
-            const v = pickSkipperVideo();
-            if (!v) { setTimeout(armSkipper, 1500); return; }
-            if (v.paused) v.addEventListener('play', () => startSilenceSkipper(), { once: true });
-            else startSilenceSkipper();
-        };
-        sleep(1500).then(armSkipper);
-    };
-    if (localStorage.getItem('autoSkipSilence') == null) {
-        try {
-            chrome.storage.local.get('autoSkipSilence', (r) => {
-                if (r && r.autoSkipSilence === 'true') localStorage.setItem('autoSkipSilence', 'true');
-                armSkipperIfOn();
-            });
-        } catch (e) { armSkipperIfOn(); }
-    } else {
-        armSkipperIfOn();
-    }
+    // Start the skipper if the switch is on. chrome.storage is authoritative; the
+    // page's old localStorage copy only matters for a host last used by a build
+    // that kept the setting there.
+    readSilenceState().then((r) => {
+        const on = r.autoSkipSilence != null ? r.autoSkipSilence === 'true' : localStorage.getItem('autoSkipSilence') === 'true';
+        if (on) applySilenceSetting(true);
+    });
 
     // Watch for the player rather than sweeping once: it can arrive long after load
     // on a slow connection or inside an embedded viewer. Idempotent, so this also
