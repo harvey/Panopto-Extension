@@ -959,7 +959,7 @@ const WRAPUP_COPY = {
     flashcards: { icon: '🃏', title: 'How about some flashcards?',
                   body:  'This lecture is nearly done — turn it into an Anki deck while it’s still fresh.' },
     notes:      { icon: '📝', tag: 'Free', title: 'Want the free notes for this one?',
-                  body:  'Nearly done — notes from the transcript in about 30 seconds. Free, 3 a day, no card.' },
+                  body:  'Nearly done — notes from the transcript in about 30 seconds. Free, one a day, no card.' },
 };
 
 let _nudgeShownThisPage = false;
@@ -1134,7 +1134,7 @@ async function wrapupOfferKind() {
     if (q.unlimited) return alt;
     if (q.budget) return q.budget.exhausted ? null : alt;                      // 0% left → nothing
     if (q.tier === 'promo') return ((q.dailyUsed || 0) >= (q.dailyLimit || 0)) ? null : alt;
-    // free: 3 notes and one flashcard deck a day — offer whichever still has
+    // free: one set of notes and one flashcard deck a day — offer whichever still has
     // something left today, alternating when both do.
     const notesLeft = (q.lifetimeUsed || 0) < (q.lifetimeLimit || 0);
     const cardsLeft = q.cardsLimit != null && (q.cardsUsed || 0) < q.cardsLimit;
@@ -1185,7 +1185,7 @@ function startAiFromCard(kind, el, remove) {
     send('open-notes').then((r) => { if (r.ok) remove(); else handleFail(r); });
     return false;   // keep the card up; it removes itself on success
 }
-const WRAPUP_FREE_NOTES_HINT = '3 notes and an Anki deck a day';
+const WRAPUP_FREE_NOTES_HINT = 'a set of notes and an Anki deck a day';
 
 let _wrapupInFlight = false;
 // `force` is the test hook (Ctrl+Shift+F on a lecture): skips the once-per-lecture,

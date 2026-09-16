@@ -121,7 +121,7 @@ const TRANSLATIONS = {
         notesDailyUsed:         "{used}/{limit} notes used today",
         notesDailyAvailable:    "{limit} notes available today",
         notesFreeLocked:        "🔒 Today's free notes used — resets at midnight, or get Premium for {limit}/day",
-        notesFreeAvailable:     "✨ {limit} free notes a day — try it now",
+        notesFreeAvailable:     "✨ {limit} free set of lecture notes a day — try it now",
         aiUnlimited:            "⚡ Unlimited AI usage",
         weeklyPrize: "<strong>#1 on the leaderboard</strong> each week wins <strong>7 days Premium</strong> free",
         lifetimeModalTitle: "Lifetime Premium",
@@ -767,7 +767,7 @@ const FREE_SILENCE_LIMIT_SECS = 180; // 3 minutes
 const FREE_PIP_LIMIT          = 10;  // PiP button presses
 const FREE_DOWNLOAD_LIMIT     = 3;   // lecture downloads
 const NOTES_DAILY_LIMIT_PREMIUM = 15; // promo-premium users — N generations per day. MUST match cf/worker.js (it was 3 here and 15 there, so the lock string advertised "3/day")
-const NOTES_FREE_DAILY_LIMIT = 3; // non-premium — free generations per UTC day (must match NOTES_FREE_DAILY_LIMIT in cf/worker.js)
+const NOTES_FREE_DAILY_LIMIT = 1; // non-premium — free generations per UTC day (must match NOTES_FREE_DAILY_LIMIT in cf/worker.js)
 const NOTES_QUOTA_CACHE_TTL_MS  = 60_000; // refetch quota at most every minute
 
 // Local time-saved & free-usage counters live per-device, not per-account. Tag them
@@ -1971,7 +1971,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- AI Lecture Notes — server enforces the same limits ---
         // Premium: NOTES_DAILY_LIMIT_PREMIUM (5) generations per UTC day.
-        // Free:    NOTES_FREE_DAILY_LIMIT (3) generations per day, resets at midnight UTC.
+        // Free:    NOTES_FREE_DAILY_LIMIT (1) generation per day, resets at midnight UTC.
         const notesBtn    = document.getElementById('generateNotesBtn');
         const notesFreeEl = document.getElementById('notesFreeUsage');
         if (notesBtn) {
