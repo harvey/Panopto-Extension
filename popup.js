@@ -755,6 +755,7 @@ let _isPremium          = false;
 let _premiumType        = null;   // 'lifetime' | 'timed' | null
 let _premiumExpiry      = null;   // Unix timestamp (seconds) or null
 let _premiumPlan        = null;   // 'trial' | 'monthly' | 'yearly' | 'lifetime' (from /check)
+let _premiumResolved    = false;  // true once /check (or sign-out) has settled _isPremium for this popup open
 let _trialUsed          = false;  // free trial already spent → send them to the pay-now link
 let _silenceSecs        = 0;
 let _lastCaptionData    = null;
@@ -1300,7 +1301,7 @@ document.addEventListener("DOMContentLoaded", function () {
         try { chrome.storage.local.remove('pcsAuth'); } catch {}   // stop in-page chat for the signed-out user
         localStorage.removeItem('premiumCache');
         localStorage.removeItem('notesQuotaCache');
-        _isPremium = false; _premiumType = null; _premiumExpiry = null; _premiumPlan = null;
+        _isPremium = false; _premiumType = null; _premiumExpiry = null; _premiumPlan = null; _premiumResolved = true;
         // ...and the quota/budget state, or the AI-usage bar and "trial used" of the
         // account that just left stay drawn under the signed-out header.
         _notesDailyUsed = 0; _notesLifetimeUsed = 0; _notesUnlimited = false;
@@ -1810,7 +1811,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // and can be safely called from updateSavedTime which runs before this code block.
     function applyPremiumUI() {
         const pipCount      = parseInt(localStorage.getItem('pipPressCount') || '0');
-        const silenceLocked = !_isPremium && _silenceSecs >= FREE_SILENCE_LIMIT_SECS;
+        // Only lock (and switch the toggle off) once premium status is KNOWN. This
+        // used to run before /check had answered, so every premium user whose
+        // counter was past the free three minutes had Auto-Skip switched off on
+        // every popup open.
+        const silenceLocked = _premiumResolved && !_isPremium && _silenceSecs >= FREE_SILENCE_LIMIT_SECS;
         const pipLocked     = !_isPremium && pipCount >= FREE_PIP_LIMIT;
         const silenceFreeEl = document.getElementById('silenceFreeUsage');
         const pipFreeEl     = document.getElementById('pipFreeUsage');
@@ -1873,6 +1878,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (localStorage.getItem('autoSkipSilence') === 'true') {
                 localStorage.setItem('autoSkipSilence', 'false');
+                try { chrome.storage.local.set({ autoSkipSilence: 'false' }); } catch (e) {}
                 sendToTab('autoSkipSilence', 'false');
                 const cb = document.getElementById('autoSkipCheckbox');
                 if (cb) cb.checked = false;
@@ -2231,6 +2237,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('autoSkipCheckbox').addEventListener('change', function () {
         const val = this.checked ? 'true' : 'false';
         localStorage.setItem('autoSkipSilence', val);
+        try { chrome.storage.local.set({ autoSkipSilence: val }); } catch (e) {}   // every Panopto host reads this on load
         sendToTab('autoSkipSilence', val);
         if (this.checked) logPremiumFeature('auto_skip_silence');
     });
@@ -2271,7 +2278,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (typeof data.premium === 'boolean' && data.premium !== _isPremium) {
                 localStorage.removeItem('premiumCache');
                 const s = await checkPremium(email);
-                _isPremium = s.active; _premiumType = s.type; _premiumPlan = s.plan || null; _premiumExpiry = s.expiry;
+                _isPremium = s.active; _premiumType = s.type; _premiumPlan = s.plan || null; _premiumExpiry = s.expiry; _premiumResolved = true;
             }
             _notesDailyUsed    = data.dailyUsed    || 0;
             _notesLifetimeUsed = data.lifetimeUsed || 0;
@@ -2346,8 +2353,10 @@ document.addEventListener("DOMContentLoaded", function () {
             _premiumType   = status.type;
             _premiumPlan   = status.plan || null;
             _premiumExpiry = status.expiry;
+            _premiumResolved = status.ok !== false || !!status.active;   // a failed check with no cache stays unresolved: never lock on a guess
         } else {
             _isPremium = false; _premiumType = null; _premiumExpiry = null; _premiumPlan = null;
+            _premiumResolved = true;   // not signed in: free, and that is certain
         }
         await new Promise(resolve => {
             chrome.runtime.sendMessage({ type: "getSilenceSavedTime" }, (r) => {

@@ -2209,7 +2209,11 @@ function initExtension() {
     // first PLAY rather than a fixed 1.5s: playing is the moment the page is
     // guaranteed to have had a gesture, so the AudioContext can actually run and
     // calibration samples real audio instead of a suspended context's zeros.
-    if (localStorage.getItem('autoSkipSilence') === 'true') {
+    // The setting is kept in this page's localStorage (per Panopto host) AND in
+    // chrome.storage (set by the popup), so a university host you have not opened
+    // the popup on yet still starts the skipper if it is on.
+    const armSkipperIfOn = () => {
+        if (localStorage.getItem('autoSkipSilence') !== 'true') return;
         const armSkipper = () => {
             const v = pickSkipperVideo();
             if (!v) { setTimeout(armSkipper, 1500); return; }
@@ -2217,6 +2221,16 @@ function initExtension() {
             else startSilenceSkipper();
         };
         sleep(1500).then(armSkipper);
+    };
+    if (localStorage.getItem('autoSkipSilence') == null) {
+        try {
+            chrome.storage.local.get('autoSkipSilence', (r) => {
+                if (r && r.autoSkipSilence === 'true') localStorage.setItem('autoSkipSilence', 'true');
+                armSkipperIfOn();
+            });
+        } catch (e) { armSkipperIfOn(); }
+    } else {
+        armSkipperIfOn();
     }
 
     // Watch for the player rather than sweeping once: it can arrive long after load
