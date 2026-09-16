@@ -287,24 +287,45 @@ function initAudioAnalyser(video) {
         // clamp to 1, and auto-skip silently never fires for the whole session —
         // checkbox on, nothing happening. resume() is a no-op when already running.
         try { const p = _audioCtx.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+        // This legacy analyser only runs when the map-based skipper cannot (no
+        // WebCodecs, unreadable media). It must NEVER be the reason a lecture has
+        // no sound. An uninstall note on 4.6.1 said exactly "there is no sound":
+        // createMediaElementSource() reroutes the element's audio through the
+        // context, and if the context is suspended (no user gesture yet: Panopto
+        // auto-resumes playback) or the media is cross-origin, the graph outputs
+        // silence — for the user too. So listen via captureStream(), which taps the
+        // rendered audio without touching it; only if that is unavailable AND the
+        // context is actually running fall back to the rerouting path. Otherwise
+        // give up (the caller retries a few seconds later).
+        const makeAnalyser = () => { const a = _audioCtx.createAnalyser(); a.fftSize = 512; a.smoothingTimeConstant = 0.4; return a; };
         try {
-            // Primary: reroute through AudioContext (requires same-origin media)
-            const src = _audioCtx.createMediaElementSource(video);
-            _analyser = _audioCtx.createAnalyser();
-            _analyser.fftSize = 512;
-            _analyser.smoothingTimeConstant = 0.4;
-            src.connect(_analyser);
-            _analyser.connect(_audioCtx.destination); // must connect or audio goes silent
-        } catch {
-            // Fallback: capture the rendered stream (audio still plays via original pipeline)
-            const stream = video.captureStream();
-            const src    = _audioCtx.createMediaStreamSource(stream);
-            _analyser    = _audioCtx.createAnalyser();
-            _analyser.fftSize = 512;
-            _analyser.smoothingTimeConstant = 0.4;
-            src.connect(_analyser);
+            if (typeof video.captureStream === 'function') {
+                const stream = video.captureStream();
+                if (stream && stream.getAudioTracks().length) {
+                    const src = _audioCtx.createMediaStreamSource(stream);
+                    _analyser = makeAnalyser();
+                    src.connect(_analyser);            // no connection to destination: playback untouched
+                    return true;
+                }
+            }
+        } catch (e) { PCS_DEBUG && console.log('[SilenceSkipper] captureStream unavailable:', e?.message); }
+        if (_audioCtx.state !== 'running') {
+            // Rerouting now would mute the lecture. Don't. Retry later.
+            try { _audioCtx.close(); } catch (e) {}
+            _audioCtx = null; _analyser = null;
+            return false;
         }
-        return true;
+        try {
+            const src = _audioCtx.createMediaElementSource(video);
+            _analyser = makeAnalyser();
+            src.connect(_analyser);
+            _analyser.connect(_audioCtx.destination); // rerouted: must connect or audio goes silent
+            return true;
+        } catch (e) {
+            try { _audioCtx.close(); } catch (e2) {}
+            _audioCtx = null; _analyser = null;
+            return false;
+        }
     } catch (e) {
         PCS_DEBUG && console.log('[SilenceSkipper] Init failed:', e);
         _audioCtx = null;
