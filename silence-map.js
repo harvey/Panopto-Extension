@@ -19,8 +19,14 @@
 //   3. The cached map from a previous visit (chrome.storage.local), so the
 //      second watch of a lecture knows everything from the first second.
 //
-// The map is a grid of 25 ms bins holding loudness in dBFS (Int8, -128 =
-// unknown). The controller reads it every 60 ms: inside a quiet run it jumps
+// The map is a grid of 25 ms bins. Each bin holds THREE loudness values in dBFS
+// (Int8, -128 = unknown): overall, the VOICE band (150–3500 Hz, where vowels and
+// voiced consonants live) and the SIBILANT band (3500 Hz up, where "s", "t",
+// "sh" live). Because analysis runs ahead of the playhead there is time for a
+// small FFT per frame, and the extra two numbers are what tell a quiet trailing
+// "s", or someone talking softly, apart from a real pause: a bin is speech if
+// EITHER band stands out above that band's own recent floor.
+// The controller reads the map every 60 ms: inside a quiet run it jumps
 // straight to 150 ms before speech resumes when the run is long, or plays it
 // at 3x when it is short. It never guesses about parts of the lecture it has
 // not heard, and it never touches the audio pipeline.
@@ -44,8 +50,12 @@
     // speed through someone talking softly.
     const LOCAL_WINDOW_S   = 20;     // seconds before the playhead the threshold is judged on
     const LOCAL_AHEAD_S    = 5;      // plus a little after it
-    const THR_FRACTION     = 0.35;   // where the threshold sits between the room and the voice
+    const THR_FRACTION     = 0.35;   // voice band: threshold sits this far up from the room to the voice
+    const THR_FRACTION_HI  = 0.45;   // sibilant band: a little stricter, hiss is noisier
+    const VOICE_LO_HZ = 150, VOICE_HI_HZ = 3500, SIB_HI_HZ = 9000;
+    const FFT_N = 1024;
     const MIN_CONTRAST_DB  = 12;     // voice must stand this far above the room to skip anything
+    const MAP_VERSION      = 2;      // cache format: three arrays per lecture
     const THR_MIN_DB       = -75, THR_MAX_DB = -30, THR_DEFAULT_DB = -55;
     const MIN_KNOWN_S      = 8;      // seconds of recent map needed before trusting the local threshold
     const TAIL_DROP_DB     = 4;      // a pause only starts once the level is this far under the threshold
@@ -161,7 +171,7 @@
         debug: false, running: false, video: null, deliveryId: null, opts: null,
         tracks: new Map(),      // media url (no query) → { url, init, decoder, dead, frames, lastEnd }
         active: null,           // the track the map follows
-        bins: null, binCount: 0, dirty: false, lastSave: 0,
+        bins: null, binsV: null, binsH: null, binCount: 0, dirty: false, lastSave: 0,
         thr: THR_DEFAULT_DB, thrAt: 0, thrFor: -1,
         tick: null, ourSeekAt: 0, lastTickAt: 0, mode: 'normal',
         playlist: null, playlistPromise: null, playlistTried: false, prefetching: false, prefetchDone: new Set(), prefetchFail: 0,
@@ -173,23 +183,62 @@
         const need = Math.ceil(seconds / BIN_S) + 2;
         if (S.bins && need <= S.binCount) return;
         const grown = Math.max(need, Math.ceil((S.video?.duration || 0) / BIN_S) + 2, S.binCount * 2, 4096);
-        const nb = new Int8Array(grown).fill(UNKNOWN);
-        if (S.bins) nb.set(S.bins);
-        S.bins = nb; S.binCount = grown;
+        const mk = (old) => { const nb = new Int8Array(grown).fill(UNKNOWN); if (old) nb.set(old); return nb; };
+        S.bins = mk(S.bins); S.binsV = mk(S.binsV); S.binsH = mk(S.binsH); S.binCount = grown;
     }
-    function writeBins(startS, endS, db) {
+    const q8 = (db) => Math.max(-100, Math.min(0, Math.round(db)));
+    function writeBins(startS, endS, db, dbV, dbH) {
         ensureBins(endS);
-        const v = Math.max(-100, Math.min(0, Math.round(db)));
+        const v = q8(db), vv = q8(dbV == null ? db : dbV), vh = q8(dbH == null ? db : dbH);
         const a = Math.max(0, Math.floor(startS / BIN_S)), b = Math.min(S.binCount - 1, Math.ceil(endS / BIN_S) - 1);
-        for (let i = a; i <= b; i++) S.bins[i] = v;
+        for (let i = a; i <= b; i++) { S.bins[i] = v; S.binsV[i] = vv; S.binsH[i] = vh; }
         S.dirty = true;
+    }
+
+    // ── Spectrum: band energies of one decoded frame ─────────────────────────
+    // Radix-2 FFT over a Hann-windowed 1024-sample frame; returns dB of the
+    // overall RMS, the voice band and the sibilant band.
+    const _hann = new Float32Array(FFT_N); for (let i = 0; i < FFT_N; i++) _hann[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (FFT_N - 1));
+    const _cos = new Float32Array(FFT_N / 2), _sin = new Float32Array(FFT_N / 2);
+    for (let i = 0; i < FFT_N / 2; i++) { _cos[i] = Math.cos(-2 * Math.PI * i / FFT_N); _sin[i] = Math.sin(-2 * Math.PI * i / FFT_N); }
+    const _re = new Float32Array(FFT_N), _im = new Float32Array(FFT_N);
+    function analyseFrame(pcm, n, sampleRate) {
+        let s = 0; for (let i = 0; i < n; i++) s += pcm[i] * pcm[i];
+        const rmsDb = 20 * Math.log10(Math.sqrt(s / Math.max(1, n)) + 1e-9);
+        // window + zero-pad into the FFT buffers (bit-reversed order)
+        for (let i = 0; i < FFT_N; i++) { _re[i] = 0; _im[i] = 0; }
+        const m = Math.min(n, FFT_N);
+        for (let i = 0; i < m; i++) {
+            let r = 0, x = i; for (let b = 0; b < 10; b++) { r = (r << 1) | (x & 1); x >>= 1; }
+            _re[r] = pcm[i] * _hann[i];
+        }
+        for (let size = 2; size <= FFT_N; size <<= 1) {
+            const half = size >> 1, step = FFT_N / size;
+            for (let start = 0; start < FFT_N; start += size) {
+                for (let k = 0; k < half; k++) {
+                    const wr = _cos[k * step], wi = _sin[k * step];
+                    const i1 = start + k, i2 = i1 + half;
+                    const tr = _re[i2] * wr - _im[i2] * wi, ti = _re[i2] * wi + _im[i2] * wr;
+                    _re[i2] = _re[i1] - tr; _im[i2] = _im[i1] - ti; _re[i1] += tr; _im[i1] += ti;
+                }
+            }
+        }
+        const binHz = sampleRate / FFT_N;
+        const band = (lo, hi) => {
+            const a = Math.max(1, Math.round(lo / binHz)), b = Math.min(FFT_N / 2 - 1, Math.round(hi / binHz));
+            let e = 0; for (let i = a; i <= b; i++) e += _re[i] * _re[i] + _im[i] * _im[i];
+            // normalise to a per-sample power comparable to the RMS figure
+            return 10 * Math.log10(e / (FFT_N * FFT_N / 4) + 1e-12);
+        };
+        return { rmsDb, voiceDb: band(VOICE_LO_HZ, VOICE_HI_HZ), sibDb: band(VOICE_HI_HZ, Math.min(SIB_HI_HZ, sampleRate / 2 - 1)) };
     }
     const binAt = (t) => { const i = Math.floor(t / BIN_S); return (S.bins && i >= 0 && i < S.binCount) ? S.bins[i] : UNKNOWN; };
     const known = (t) => binAt(t) !== UNKNOWN;
 
-    // Threshold at time t, from the loudness distribution of the bins around it.
-    // Returns null when the recent window is unknown or too low-contrast to judge
-    // (nothing is skipped then). Cached per second of lecture time.
+    // Thresholds at time t: { v, h } for the voice and sibilant bands, from the
+    // loudness distribution of the bins around t. null when the recent window is
+    // unknown or the voice is too close to the room to judge (nothing is skipped
+    // then). Cached per second of lecture time.
     function threshold(t) {
         if (t == null) t = S.video ? S.video.currentTime : 0;
         const sec = Math.floor(t);
@@ -198,22 +247,50 @@
         S.thr = computeThreshold(t);
         return S.thr;
     }
+    // Loudest 10% of a band over the window.
+    function bandTop(arr, a, b) {
+        const hist = new Int32Array(101); let n = 0;
+        for (let i = a; i <= b; i++) { const v = arr[i]; if (v !== UNKNOWN) { hist[-v]++; n++; } }
+        if (!n) return null;
+        let acc = 0; for (let d = 0; d <= 100; d++) { acc += hist[d]; if (acc >= n * 0.10) return { n, top: -d }; }
+        return { n, top: -100 };
+    }
+    // The ROOM: the overall level of the quietest 10% of bins in the window.
+    function rmsFloor(a, b) {
+        const hist = new Int32Array(101); let n = 0;
+        for (let i = a; i <= b; i++) { const v = S.bins[i]; if (v !== UNKNOWN) { hist[-v]++; n++; } }
+        if (!n) return null;
+        let acc = 0; for (let d = 100; d >= 0; d--) { acc += hist[d]; if (acc >= n * 0.10) return -d; }
+        return -100;
+    }
+    // A band's floor is its median level IN THE ROOM BINS (overall level within
+    // 3 dB of the room), not its lowest values anywhere: a vowel has almost no
+    // sibilant energy, and taking the floor from vowels would push the sibilant
+    // threshold under the room's own hiss.
+    function bandFloorInRoom(arr, a, b, floorRms) {
+        const vals = [];
+        for (let i = a; i <= b; i++) if (S.bins[i] !== UNKNOWN && S.bins[i] <= floorRms + 3 && arr[i] !== UNKNOWN) vals.push(arr[i]);
+        if (vals.length < 8) return null;
+        vals.sort((x, y) => x - y);
+        return vals[Math.floor(vals.length / 2)];
+    }
     function computeThreshold(t) {
         if (!S.bins) return null;
         const a = Math.max(0, Math.floor((t - LOCAL_WINDOW_S) / BIN_S));
         const b = Math.min(S.binCount - 1, Math.floor((t + LOCAL_AHEAD_S) / BIN_S));
-        const hist = new Int32Array(101); let n = 0;
-        for (let i = a; i <= b; i++) { const v = S.bins[i]; if (v !== UNKNOWN) { hist[-v]++; n++; } }
-        if (n * BIN_S < MIN_KNOWN_S) return null;
-        // percentiles over the window: floor = quietest 10%, speech = loudest 10%
-        let acc = 0, floor = -100, speech = 0;
-        for (let d = 100; d >= 0; d--) { acc += hist[d]; if (acc >= n * 0.10) { floor = -d; break; } }
-        acc = 0;
-        for (let d = 0; d <= 100; d++) { acc += hist[d]; if (acc >= n * 0.10) { speech = -d; break; } }
-        if (speech - floor < MIN_CONTRAST_DB) return null;      // voice barely above the room: leave it alone
-        const thr = floor + THR_FRACTION * (speech - floor);
-        return Math.max(THR_MIN_DB, Math.min(THR_MAX_DB, thr));
+        const room = rmsFloor(a, b);
+        const V = bandTop(S.binsV, a, b), H = bandTop(S.binsH, a, b);
+        if (room == null || !V || V.n * BIN_S < MIN_KNOWN_S) return null;
+        const vFloor = bandFloorInRoom(S.binsV, a, b, room), hFloor = bandFloorInRoom(S.binsH, a, b, room);
+        if (vFloor == null || V.top - vFloor < MIN_CONTRAST_DB) return null;   // voice barely above the room: leave it alone
+        const v = Math.max(THR_MIN_DB, Math.min(THR_MAX_DB, vFloor + THR_FRACTION * (V.top - vFloor)));
+        // Sibilant band: only meaningful when it has contrast of its own; otherwise
+        // ignore it (h = +Infinity means "never counts as speech").
+        const h = (H && hFloor != null && H.top - hFloor >= MIN_CONTRAST_DB) ? hFloor + THR_FRACTION_HI * (H.top - hFloor) : Infinity;
+        return { v, h };
     }
+    // Speech in bin i under thresholds thr: either band stands out.
+    const isSpeech = (i, thr, margin) => S.binsV[i] >= thr.v - (margin || 0) || S.binsH[i] >= thr.h - (margin || 0);
 
     // The quiet run containing time t, if any. Returns { start, end, open } where
     // `open` means the run reaches the edge of what has been analysed (end is the
@@ -223,24 +300,24 @@
         const thr = threshold(t);
         if (thr == null) return null;
         const i0 = Math.floor(t / BIN_S);
-        if (i0 < 0 || i0 >= S.binCount || S.bins[i0] === UNKNOWN || S.bins[i0] >= thr) return null;
+        if (i0 < 0 || i0 >= S.binCount || S.bins[i0] === UNKNOWN || isSpeech(i0, thr)) return null;
         const blip = Math.round(BLIP_S / BIN_S);
         // walk back to the start of the run (absorbing blips)
         let i = i0, loud = 0;
         while (i - 1 >= 0 && S.bins[i - 1] !== UNKNOWN) {
-            if (S.bins[i - 1] >= thr) { if (++loud > blip) break; } else loud = 0;
+            if (isSpeech(i - 1, thr)) { if (++loud > blip) break; } else loud = 0;
             i--;
         }
-        // The pause only counts from where the level is clearly under the threshold
-        // (TAIL_DROP_DB below it): the fade-out of a word — its trailing "s" — is speech.
+        // The pause only counts from where both bands are clearly under their
+        // thresholds (TAIL_DROP_DB below): the fade-out of a word is still the word.
         let startBin = i + loud;
-        while (startBin < i0 && S.bins[startBin] > thr - TAIL_DROP_DB) startBin++;
+        while (startBin < i0 && isSpeech(startBin, thr, TAIL_DROP_DB)) startBin++;   // still within TAIL_DROP_DB of speech: the tail of the word
         if (startBin >= i0) return null;
         // walk forward to the end
         i = i0; loud = 0; let open = false;
         while (true) {
             if (i + 1 >= S.binCount || S.bins[i + 1] === UNKNOWN) { open = true; break; }
-            if (S.bins[i + 1] >= thr) { if (++loud > blip) break; } else loud = 0;
+            if (isSpeech(i + 1, thr)) { if (++loud > blip) break; } else loud = 0;
             i++;
         }
         const endBin = i + 1 - loud;   // first bin of speech
@@ -266,10 +343,9 @@
                         const n = ad.numberOfFrames, sr = ad.sampleRate || t.init.sampleRate;
                         const buf = new Float32Array(n);
                         ad.copyTo(buf, { planeIndex: 0, format: 'f32-planar' });
-                        let s = 0; for (let i = 0; i < n; i++) s += buf[i] * buf[i];
-                        const db = 20 * Math.log10(Math.sqrt(s / n) + 1e-9);
+                        const f = analyseFrame(buf, n, sr);
                         const start = ad.timestamp / 1e6, end = start + n / sr;
-                        if (t === S.active) { writeBins(start, end, db); if (!S.firstDataAt) S.firstDataAt = Date.now(); }
+                        if (t === S.active) { writeBins(start, end, f.rmsDb, f.voiceDb, f.sibDb); if (!S.firstDataAt) S.firstDataAt = Date.now(); }
                         t.frames++; S.stats.decodedFrames++;
                     } catch (e) {}
                     ad.close();
@@ -440,8 +516,8 @@
         S.lastSave = Date.now(); S.dirty = false;
         try {
             let last = S.binCount - 1; while (last > 0 && S.bins[last] === UNKNOWN) last--;
-            const slice = new Uint8Array(S.bins.buffer, 0, last + 1);
-            chrome.storage.local.set({ [cacheKey()]: { ts: Date.now(), bin: BIN_S, n: last + 1, b64: b64(slice) } });
+            const sl = (arr) => b64(new Uint8Array(arr.buffer, 0, last + 1));
+            chrome.storage.local.set({ [cacheKey()]: { ts: Date.now(), v: MAP_VERSION, bin: BIN_S, n: last + 1, b64: sl(S.bins), b64v: sl(S.binsV), b64h: sl(S.binsH) } });
         } catch (e) {}
     }
     function loadCache() {
@@ -449,9 +525,9 @@
             try {
                 chrome.storage.local.get(cacheKey(), (r) => {
                     const c = r && r[cacheKey()];
-                    if (!c || c.bin !== BIN_S || !c.b64 || Date.now() - c.ts > 30 * 86400000) return resolve(false);
-                    const u = unb64(c.b64); ensureBins(u.length * BIN_S);
-                    S.bins.set(new Int8Array(u.buffer, 0, u.length)); S.dirty = false;
+                    if (!c || c.v !== MAP_VERSION || c.bin !== BIN_S || !c.b64 || !c.b64v || !c.b64h || Date.now() - c.ts > 30 * 86400000) return resolve(false);
+                    const u = unb64(c.b64), uv = unb64(c.b64v), uh = unb64(c.b64h); ensureBins(u.length * BIN_S);
+                    S.bins.set(new Int8Array(u.buffer, 0, u.length)); S.binsV.set(new Int8Array(uv.buffer, 0, uv.length)); S.binsH.set(new Int8Array(uh.buffer, 0, uh.length)); S.dirty = false;
                     S.stats.source = 'cache'; S.firstDataAt = Date.now();
                     resolve(true);
                 });
@@ -539,17 +615,17 @@
             if (!S.bins) return false;
             const t = video.currentTime, thr = threshold(t);
             if (thr == null) return false;
-            for (let x = t - secs; x < t; x += BIN_S) { const v = binAt(x); if (v === UNKNOWN || v >= thr) return false; }
+            for (let x = t - secs; x < t; x += BIN_S) { const i = Math.floor(x / BIN_S); if (i < 0 || i >= S.binCount || S.bins[i] === UNKNOWN || isSpeech(i, thr)) return false; }
             return true;
         },
         // Where we are our own seek (so other code can ignore it as a user scrub).
         lastSeekAt() { return S.ourSeekAt; },
         stats() {
             let knownBins = 0; if (S.bins) for (let i = 0; i < S.binCount; i++) if (S.bins[i] !== UNKNOWN) knownBins++;
-            return { ...S.stats, knownSeconds: Math.round(knownBins * BIN_S), thresholdDb: threshold(S.video ? S.video.currentTime : 0), tracks: [...S.tracks.values()].map((t) => ({ url: t.url.slice(-40), frames: t.frames, hasInit: !!t.init, dead: t.dead })), activeTrack: S.active ? S.active.url.slice(-40) : null };
+            return { ...S.stats, knownSeconds: Math.round(knownBins * BIN_S), threshold: threshold(S.video ? S.video.currentTime : 0), tracks: [...S.tracks.values()].map((t) => ({ url: t.url.slice(-40), frames: t.frames, hasInit: !!t.init, dead: t.dead })), activeTrack: S.active ? S.active.url.slice(-40) : null };
         },
         // For tests: feed a segment directly.
-        _ingest: ingestSegment, _silenceRunAt: silenceRunAt, _state: S, _controllerTick: controllerTick, _prefetchTick: prefetchTick,
+        _ingest: ingestSegment, _silenceRunAt: silenceRunAt, _state: S, _controllerTick: controllerTick, _prefetchTick: prefetchTick, _analyseFrame: analyseFrame, _writeBins: writeBins,
     };
     global.PcsSilence = api;
 })(typeof window !== 'undefined' ? window : globalThis);
