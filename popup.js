@@ -1991,12 +1991,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 locked = !!_aiBudget.exhausted;
                 if (locked) {
                     labelText  = _aiBudget.isTrial
-                        ? "Today's free-trial AI allowance used — resets at midnight UTC (subscribe for the full allowance)"
+                        ? "Today's free-trial AI allowance used — resets at midnight UTC. Premium gets double every day"
                         : "Today's AI allowance used — resets at midnight UTC";
                     labelColor = '#dc2626';
                 } else {
                     labelText  = _aiBudget.isTrial
-                        ? `AI usage: ${pct}% of today's free-trial allowance left`
+                        ? `AI usage: ${pct}% of today's trial allowance left (Premium gets double)`
                         : `AI usage: ${pct}% of today's allowance left`;
                     labelColor = '#11773D';
                 }
