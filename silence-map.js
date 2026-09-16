@@ -55,6 +55,7 @@
     const VOICE_LO_HZ = 150, VOICE_HI_HZ = 3500, SIB_HI_HZ = 9000;
     const FFT_N = 1024;
     const MIN_CONTRAST_DB  = 12;     // voice must stand this far above the room to skip anything
+    const MIN_CONTRAST_HI  = 6;      // the sibilant band needs less: hiss is distinctive even when soft
     const MAP_VERSION      = 2;      // cache format: three arrays per lecture
     const THR_MIN_DB       = -75, THR_MAX_DB = -30, THR_DEFAULT_DB = -55;
     const MIN_KNOWN_S      = 8;      // seconds of recent map needed before trusting the local threshold
@@ -286,7 +287,7 @@
         const v = Math.max(THR_MIN_DB, Math.min(THR_MAX_DB, vFloor + THR_FRACTION * (V.top - vFloor)));
         // Sibilant band: only meaningful when it has contrast of its own; otherwise
         // ignore it (h = +Infinity means "never counts as speech").
-        const h = (H && hFloor != null && H.top - hFloor >= MIN_CONTRAST_DB) ? hFloor + THR_FRACTION_HI * (H.top - hFloor) : Infinity;
+        const h = (H && hFloor != null && H.top - hFloor >= MIN_CONTRAST_HI) ? hFloor + THR_FRACTION_HI * (H.top - hFloor) : Infinity;
         return { v, h };
     }
     // Speech in bin i under thresholds thr: either band stands out.
