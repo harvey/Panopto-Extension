@@ -1824,7 +1824,7 @@ function setupFlashcards() {
 }
 
 function flashErrorText(code, reason) {
-    if (code === 'not_premium' && reason === 'free_used') return 'You’ve used today’s free flashcard deck — it resets at midnight UTC. Premium gets up to 50 a day, and a 7-day trial needs no card.';
+    if (code === 'not_premium' && reason === 'free_used') return 'You’ve used today’s free flashcard deck — it resets at midnight UTC. Premium gets 5× more AI every day, and the 7-day trial needs no card.';
     if (code === 'not_premium')      return 'Sign in to make flashcards — free users get one deck a day.';
     if (code === 'budget_exceeded')  return "You've used your AI allowance for this month. It resets on the 1st.";
     if (code === 'free_ai_exhausted') return "Today's free AI capacity is used up. It resets overnight.";
