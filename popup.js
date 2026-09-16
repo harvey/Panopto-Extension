@@ -1990,15 +1990,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 const pct = Math.max(0, Math.min(100, _aiBudget.pctLeft || 0));
                 locked = !!_aiBudget.exhausted;
                 if (locked) {
-                    const resetDay = _aiBudget.resetAt ? new Date(_aiBudget.resetAt).toLocaleDateString() : 'the 1st';
                     labelText  = _aiBudget.isTrial
-                        ? 'Free-trial AI allowance used — subscribe for the full monthly allowance'
-                        : `Monthly AI allowance used — resets ${resetDay}`;
+                        ? "Today's free-trial AI allowance used — resets at midnight UTC (subscribe for the full allowance)"
+                        : "Today's AI allowance used — resets at midnight UTC";
                     labelColor = '#dc2626';
                 } else {
                     labelText  = _aiBudget.isTrial
-                        ? `AI usage: ${pct}% of your free-trial allowance left`
-                        : `AI usage: ${pct}% left this month`;
+                        ? `AI usage: ${pct}% of today's free-trial allowance left`
+                        : `AI usage: ${pct}% of today's allowance left`;
                     labelColor = '#11773D';
                 }
             } else if (_isPremium) {

@@ -1720,7 +1720,7 @@ function chatErrorText(code) {
     if (code === 'not_premium')      return 'Chat with the lecture is a Premium feature — notes and a flashcard deck a day stay free.';
     if (code === 'budget_exceeded')  return "You've used your AI allowance for this month. It resets on the 1st.";
     if (code === 'free_ai_exhausted') return "Today's free AI capacity is used up. It resets overnight.";
-    if (code === 'rate_limited')     return "You've hit today's chat limit. It resets at midnight UTC.";
+    if (code === 'rate_limited')     return "You've used today's AI allowance. It resets at midnight UTC.";
     if (code === 'caption_too_long') return 'This lecture is too long for chat.';
     if (code === 'bad_input')        return 'Please ask a shorter question.';
     if (code === 'Unauthorized')     return 'Your sign-in expired. Open the extension popup and sign in again.';
@@ -1828,7 +1828,7 @@ function flashErrorText(code, reason) {
     if (code === 'not_premium')      return 'Sign in to make flashcards — free users get one deck a day.';
     if (code === 'budget_exceeded')  return "You've used your AI allowance for this month. It resets on the 1st.";
     if (code === 'free_ai_exhausted') return "Today's free AI capacity is used up. It resets overnight.";
-    if (code === 'rate_limited')     return "You've hit today's flashcard limit. It resets at midnight UTC.";
+    if (code === 'rate_limited')     return "You've used today's AI allowance. It resets at midnight UTC.";
     if (code === 'caption_too_long') return 'This lecture is too long to make flashcards from.';
     if (code === 'Unauthorized')     return 'Your sign-in expired. Open the extension popup and sign in again.';
     return "Couldn't generate flashcards right now. Please try again.";
@@ -2001,7 +2001,7 @@ function cardOpErrText(err) {
     // monthly-allowance message is the accurate one when the server sent that code.
     if (code === 'budget_exceeded')                    return "You've used your AI allowance for this month. It resets on the 1st.";
     if (code === 'free_ai_exhausted')                  return "Today's free AI capacity is used up. It resets overnight.";
-    if (status === 429 || code === 'rate_limited')     return "You've hit today's flashcard limit. It resets at midnight UTC.";
+    if (status === 429 || code === 'rate_limited')     return "You've used today's AI allowance. It resets at midnight UTC.";
     if (status === 413 || code === 'caption_too_long') return 'This lecture is too long to generate cards from.';
     return "Couldn't generate a card right now. Please try again.";
 }
