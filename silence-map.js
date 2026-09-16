@@ -560,7 +560,7 @@
             const remaining = target - t;
             if (!run.open && remaining >= SEEK_MIN_S && run.end - run.start >= MIN_SILENCE_S) {
                 S.ourSeekAt = now; S.stats.seeks++; S.stats.savedSecs += remaining / user;
-                try { S.opts.onSaved && S.opts.onSaved(remaining / user); } catch {}
+                try { S.opts.onSaved && S.opts.onSaved(remaining / user, 'seek'); } catch {}   // real seconds the jump saves at this speed
                 if (S.mode === 'fast') { S.mode = 'normal'; setRate(user); }
                 v.currentTime = target;
                 log('skip', t.toFixed(2), '→', target.toFixed(2));
@@ -569,7 +569,7 @@
             if (remaining > 0 && run.end - run.start >= MIN_SILENCE_S) {
                 const rate = Math.max(SILENCE_SPEED, user);
                 if (S.mode !== 'fast' || v.playbackRate !== rate) { S.mode = 'fast'; setRate(rate); }
-                if (dt > 0 && dt < 1) { const extra = dt * (rate / user - 1); S.stats.spedSecs += dt; S.stats.savedSecs += extra; try { S.opts.onSaved && S.opts.onSaved(extra); } catch {} }
+                if (dt > 0 && dt < 1) { const extra = dt * (rate / user - 1); S.stats.spedSecs += dt; S.stats.savedSecs += extra; try { S.opts.onSaved && S.opts.onSaved(extra, 'rate'); } catch {} }
                 return;
             }
         }

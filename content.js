@@ -517,7 +517,7 @@ function startLegacySilenceSkipper() {
                     const dt    = (now - _lastSilenceTick) / 1000;
                     const extra = dt * (video.playbackRate / userSpeed - 1);
                     if (extra > 0) {
-                        reportSilenceSaved(extra);
+                        reportSilenceSaved(extra, 'rate');
                     }
                 }
                 _lastSilenceTick = now;
@@ -561,8 +561,15 @@ async function silenceAllowance() {
 }
 // Every second of silence the skipper saves goes through here (both the map
 // skipper and the legacy analyser), so the free allowance is enforced live.
-function reportSilenceSaved(secs) {
+// `kind` says how it was saved: a 'seek' jumped over the pause, which the main
+// time-saved tracker cannot see (it freezes during seeks so scrubbing can't
+// inflate it), so the jump is credited to the main total here as well; a
+// 'rate' saving came from playing at 3x, which the main tracker already counts
+// on its own (playback rate above 1), so only the silence total takes it.
+function reportSilenceSaved(secs, kind) {
+    if (!(secs > 0)) return;
     try { chrome.runtime.sendMessage({ type: "updateSilenceSavedTime", savedTime: secs }, () => void chrome.runtime.lastError); } catch (e) {}
+    if (kind === 'seek') { try { chrome.runtime.sendMessage({ type: "updateSavedTime", savedTime: secs }, () => void chrome.runtime.lastError); } catch (e) {} }
     const now = Date.now();
     if (now - _silenceLastCheck < 5000) return;
     _silenceLastCheck = now;
@@ -629,7 +636,7 @@ function startSilenceSkipper() {
             userSpeed:  () => parseFloat(localStorage.getItem('panoptoExtSpeed') || '1'),
             setRate:    (r) => setRate(video, r),
             isHold:     () => _holdActive,
-            onSaved:    (secs) => reportSilenceSaved(secs),
+            onSaved:    (secs, kind) => reportSilenceSaved(secs, kind),
             onFallback: () => { PcsSilence.stop(); startLegacySilenceSkipper(); },
             debug: PCS_DEBUG,
         }).catch(() => startLegacySilenceSkipper());
