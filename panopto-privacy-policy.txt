@@ -1,12 +1,14 @@
 Privacy Policy for Panopto Custom Speed
 
-Effective Date: 31/08/2026
+Effective Date: 14/10/2026
 
 1. Information Collection
 
 Anonymous Usage Data: We collect the amount of time you save by using the extension. This usage data is collected in an anonymous format unless you opt into leaderboard logging and sign in with your Google account, in which case the data is linked to your email address for leaderboard and reward purposes.
 
-Anonymous Device Identifier: The extension generates a random identifier on your device so anonymous time-saved totals are not double counted. It is not derived from your name, email address, IP address, or any hardware identifier, and it is not linked to your identity unless you choose to sign in.
+Anonymous Device Identifier: The extension generates a random identifier on your device so anonymous totals and counts are not double counted. It is not derived from your name, email address, IP address, or any hardware identifier, and it is not linked to your identity unless you choose to sign in.
+
+Settings Usage: Once a day, when you open a lecture, the extension sends the anonymous identifier described above, the extension version, whether some optional settings are switched on (New player, Fast Panopto only, which on-device captions model, if any, and Auto-Skip Silence), and whether the free Auto-Skip Silence allowance has been used up. Nothing about the lecture, your account or what you watch is included. You can turn this off at any time with "Share anonymous usage stats" in the extension's settings (the gear next to Playback Speed).
 
 User Identification: When you log in using your Google account, your email address is recorded along with your usage data. This is the only personal information we collect.
 
