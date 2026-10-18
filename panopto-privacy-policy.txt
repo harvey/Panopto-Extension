@@ -1,6 +1,6 @@
 Privacy Policy for Panopto Custom Speed
 
-Effective Date: 14/10/2026
+Effective Date: 18/10/2026
 
 1. Information Collection
 
@@ -17,6 +17,8 @@ Opt In Requirement: Leaderboard data collection is opt in and is disabled by def
 Lecture Content: The AI features (notes, chat, flashcards, translation and dubbing) read the captions of the lecture you have open and send that text to our server so it can be processed by an AI provider. Lectures that have no captions may have their audio transcribed for the same purpose. We do not record your screen, your microphone, or the lecture video itself. Caption text is used only to produce the result you asked for and a short-lived cache of it, and is never sold or used to train anybody's models.
 
 Uninstall Information: If you remove the extension, Chrome opens a short goodbye page and we record the anonymous identifier described above, how many days the extension was installed, how many lectures it ran on, whether the speed control ever successfully started, whether you had Premium, the Panopto hostname you last used it on, the extension version, and the country your browser connected from. If a lecture page ever fails to start the extension, the Panopto hostname is recorded so the problem can be fixed. The exit survey is entirely optional; if you answer it, your chosen reason and any free-text comment are stored with that record. No email address is requested or required.
+
+Support Messages and Feedback: If you choose to message support or send feedback from inside the extension, what you write and the email address you are signed in with are stored, with the extension version and your Premium status at the time, so the developer can read it, reply, and apply any Premium fix or optional reward to that account. Nothing is sent unless you press Send.
 
 2. Purpose of Data Collection
 
