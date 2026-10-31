@@ -12,6 +12,8 @@ Settings Usage: Once a day, when you open a lecture, the extension sends the ano
 
 User Identification: When you log in using your Google account, your email address is recorded along with your usage data. Apart from an email address you choose to type on the goodbye page or send with a support message, this is the only personal information we collect.
 
+Welcome Page and Upgrade Messages: With the anonymous identifier described above, we record which parts of the welcome page and first-run tour you used (for example opening it, or switching Auto-Skip Silence on from the tour), and whether the message saying your free Auto-Skip Silence is used up was shown and its trial button clicked. Nothing about the lecture or your account is included, and the upgrade-message counts stop if you turn off "Share anonymous usage stats".
+
 Feature Usage: When you are signed in, the extension records which Premium features you use (for example Picture-in-Picture or downloading a lecture). If a lecture download fails, it also records the kind of error and the Panopto hostname, so broken downloads can be found and fixed. Nothing about the lecture itself or the saved files is included.
 
 Opt In Requirement: Leaderboard data collection is opt in and is disabled by default. You must explicitly opt in via the extension's main page to enable it.
